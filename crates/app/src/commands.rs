@@ -51,10 +51,10 @@ pub fn start_test(
     let test_mode: Box<dyn TestMode> = match mode.as_str() {
         "time" => {
             let secs = duration.unwrap_or(30);
-            // Для Time mode: генерируем 50 слов из словаря если текст не передан
+            let word_count = TimeMode::recommended_word_count(secs);
             let test_text = text.unwrap_or_else(|| {
                 word_pack_loader()
-                    .generate_words(&lang, 50)
+                    .generate_words(&lang, word_count)
                     .unwrap_or_else(|| "The quick brown fox jumps over the lazy dog".to_string())
             });
             Box::new(TimeMode::new(test_text, lang, secs))
