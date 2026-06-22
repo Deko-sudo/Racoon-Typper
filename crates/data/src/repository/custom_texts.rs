@@ -195,10 +195,6 @@ mod tests {
     use super::*;
     use crate::db::Database;
 
-    fn make_text<'a>(name: &'a str, text: &'a str) -> (&'a str, &'a str) {
-        (name, text)
-    }
-
     #[test]
     fn save_and_get_all() {
         let db = Database::open_in_memory().unwrap();
@@ -213,6 +209,12 @@ mod tests {
         assert_eq!(texts[0].name, "Test 1");
         assert_eq!(texts[0].text, "Hello world");
         assert_eq!(texts[0].use_count, 0);
+    }
+
+    #[test]
+    fn validate_valid_text_accepted() {
+        assert!(validate_text("My Text", "Hello world").is_ok());
+        assert!(validate_text("A", "x").is_ok());
     }
 
     #[test]
@@ -378,12 +380,6 @@ mod tests {
     fn validate_too_long_text_rejected() {
         let long_text = "a".repeat(MAX_CUSTOM_TEXT_LENGTH + 1);
         assert!(validate_text("Name", &long_text).is_err());
-    }
-
-    #[test]
-    fn validate_valid_text_accepted() {
-        assert!(validate_text("My Text", "Hello world").is_ok());
-        assert!(validate_text("A", "x").is_ok());
     }
 
     #[test]

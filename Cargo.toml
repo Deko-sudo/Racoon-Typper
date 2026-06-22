@@ -27,3 +27,7 @@ racoon-resources = { path = "crates/resources" }
 
 # Shared deps
 chrono = "0.4"
+
+[profile.release]
+strip = true
+lto = "thin"

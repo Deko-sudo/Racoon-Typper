@@ -309,17 +309,10 @@ mod tests {
     use std::thread;
     use std::time::Duration;
 
-    fn type_text(buf: &mut TextBuffer, text: &str) {
-        let ts: Vec<u64> = (0..text.len() as u64).collect();
-        for (i, ch) in text.chars().enumerate() {
-            buf.process_print(ch, ts[i]);
-        }
-    }
-
     #[test]
     fn wpm_calculation() {
         // 100 correct chars / 60s = 100/5 = 20 WPM
-        let wpm = WpmCalculator::net_wpm(100, 1.0); // 1 minute
+        let wpm = WpmCalculator::net_wpm(100, 1.0);
         assert!((wpm - 20.0).abs() < 0.01);
     }
 
