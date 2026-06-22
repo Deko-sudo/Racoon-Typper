@@ -1,0 +1,16 @@
+{
+  "name": "serika_light",
+  "display_name": "Serika Light",
+  "author": "racoon-typper",
+  "version": "1.0.0",
+  "description": "Светлая тема в стиле Monkeytype",
+  "is_dark": false,
+  "preview_colors": {
+    "bg": "#f0f0f0",
+    "main": "#e2b714",
+    "caret": "#e2b714",
+    "sub": "#aaaaaa",
+    "text": "#333333",
+    "error": "#ca4754"
+  }
+}

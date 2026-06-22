@@ -1,0 +1,26 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicokosi/tauri-v2-schema/main/tauri.schema.json",
+  "productName": "racoon-typper",
+  "version": "0.1.0",
+  "identifier": "com.racoon.typper",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../frontend/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Racoon Typper",
+        "width": 1200,
+        "height": 800,
+        "minWidth": 800,
+        "minHeight": 600
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    }
+  }
+}

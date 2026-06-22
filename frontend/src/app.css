@@ -1,0 +1,57 @@
+:root {
+  --bg: #323437;
+  --bg-main: #323437;
+  --bg-sub: #2c2e31;
+  --main: #e2b714;
+  --caret: #e2b714;
+  --sub: #555555;
+  --text: #999999;
+  --error: #ca4754;
+  --error-extra: #ca4754;
+  --colorful-error: #ca4754;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  background-color: var(--bg);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 24px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+#app {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  gap: 2rem;
+}
+
+h1 {
+  color: var(--main);
+  font-size: 2rem;
+}
+
+.loading {
+  color: var(--sub);
+  font-size: 1rem;
+}
+
+.ready {
+  color: var(--main);
+  font-size: 0.875rem;
+}
+
+.ping-result {
+  color: var(--text);
+  font-size: 0.875rem;
+  margin-top: 1rem;
+}

@@ -1,0 +1,16 @@
+{
+  "name": "racoon_dark",
+  "display_name": "Racoon Dark",
+  "author": "racoon-typper",
+  "version": "1.0.0",
+  "description": "Фирменная тёмная тема Racoon Typper с синим акцентом",
+  "is_dark": true,
+  "preview_colors": {
+    "bg": "#1a1b26",
+    "main": "#7aa2f7",
+    "caret": "#7aa2f7",
+    "sub": "#565f89",
+    "text": "#a9b1d6",
+    "error": "#f7768e"
+  }
+}
