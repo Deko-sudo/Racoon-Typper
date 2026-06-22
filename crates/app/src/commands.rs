@@ -5,7 +5,7 @@
 //! Sprint 4: get_stats_history, get_test_detail, get_personal_bests, save_test_result
 //! Sprint 5: custom_texts CRUD, settings, themes
 
-use racoon_core::{CoreEngine, KeyEvent};
+use racoon_core::{CoreEngine, CustomMode, KeyEvent, TestMode, TimeMode};
 use racoon_data::repository::{
     AppSettings, CustomTextRepository, PersonalBestsRepository, SqliteCustomTextRepository,
     SqlitePersonalBestsRepository, SqliteTestRepository, TestRepository,
@@ -37,14 +37,25 @@ pub fn get_app_info() -> AppInfo {
 pub fn start_test(
     state: State<'_, Mutex<CoreEngine>>,
     text: String,
+    duration: Option<u64>,
+    language: Option<String>,
 ) -> Result<TestSessionResponse, String> {
     let mut engine = state.lock().map_err(|e| e.to_string())?;
     let session_id = generate_session_id();
-    let info = engine.start_test(session_id.clone(), &text);
+
+    let lang = language.unwrap_or_else(|| "en".to_string());
+    let secs = duration.unwrap_or(30);
+
+    let mode: Box<dyn TestMode> = Box::new(TimeMode::new(text.clone(), lang, secs));
+    let info = engine.start_test_mode(session_id.clone(), mode);
+
     Ok(TestSessionResponse {
         session_id,
         text: info.text,
         text_length: info.text_length,
+        mode_type: info.mode_type,
+        mode_config: info.mode_config,
+        language: info.language,
     })
 }
 
@@ -65,15 +76,29 @@ pub fn process_key(
     let output = engine.process_key(&key_event);
 
     if let Some(ref final_stats) = output.test_complete {
+        // Получаем mode info из CoreEngine
+        let (mode_type, mode_config, language) = {
+            let engine = engine_state.lock().map_err(|e| e.to_string())?;
+            let mt = engine
+                .current_mode_type()
+                .map(|m| m.to_string())
+                .unwrap_or_else(|| "time".to_string());
+            let mc = engine
+                .current_mode_config()
+                .unwrap_or(serde_json::json!({}));
+            let lang = engine.current_language().unwrap_or("en").to_string();
+            (mt, mc, lang)
+        };
+
         let db = app_state.db.lock().map_err(|e| e.to_string())?;
         let conn = db.conn();
         let repo = SqliteTestRepository::new(&conn);
 
         let record = TestRecord {
             created_at: chrono::Utc::now().to_rfc3339(),
-            mode_type: "time".to_string(),
-            mode_config: serde_json::json!({"duration": 30}),
-            language: "en".to_string(),
+            mode_type,
+            mode_config,
+            language,
             text_length: 0,
             duration_ms: final_stats.duration_ms,
             wpm: final_stats.wpm,
@@ -94,10 +119,25 @@ pub fn process_key(
         let test_id = repo.save_test(record).map_err(|e| e.to_string())?;
 
         let pb_repo = SqlitePersonalBestsRepository::new(&conn);
+        let mode_type_str = engine_state
+            .lock()
+            .map_err(|e| e.to_string())?
+            .current_mode_type()
+            .map(|m| m.to_string())
+            .unwrap_or_else(|| "time".to_string());
+        let mode_config_str = serde_json::to_string(
+            &engine_state
+                .lock()
+                .map_err(|e| e.to_string())?
+                .current_mode_config()
+                .unwrap_or(serde_json::json!({})),
+        )
+        .unwrap_or_default();
+
         let _pb_updates = pb_repo
             .check_and_update(
-                "time",
-                r#"{"duration":30}"#,
+                &mode_type_str,
+                &mode_config_str,
                 final_stats.wpm,
                 final_stats.accuracy,
                 test_id,
@@ -249,12 +289,17 @@ pub fn start_custom_text_test(
 
     let mut engine = engine_state.lock().map_err(|e| e.to_string())?;
     let session_id = generate_session_id();
-    let info = engine.start_test(session_id.clone(), &custom_text.text);
+    let mode: Box<dyn TestMode> =
+        Box::new(CustomMode::new(custom_text.text.clone(), "en".to_string()));
+    let info = engine.start_test_mode(session_id.clone(), mode);
 
     Ok(TestSessionResponse {
         session_id,
         text: info.text,
         text_length: info.text_length,
+        mode_type: info.mode_type,
+        mode_config: info.mode_config,
+        language: info.language,
     })
 }
 
@@ -336,6 +381,9 @@ pub struct TestSessionResponse {
     pub session_id: String,
     pub text: String,
     pub text_length: usize,
+    pub mode_type: String,
+    pub mode_config: serde_json::Value,
+    pub language: String,
 }
 
 #[derive(Debug, serde::Serialize)]
