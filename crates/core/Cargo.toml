@@ -9,3 +9,7 @@ authors.workspace = true
 racoon-domain = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+
+[dev-dependencies]
+racoon-data = { workspace = true }
+chrono = { workspace = true }

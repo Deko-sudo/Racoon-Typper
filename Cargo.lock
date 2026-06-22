@@ -2372,6 +2372,8 @@ dependencies = [
 name = "racoon-core"
 version = "0.1.0"
 dependencies = [
+ "chrono",
+ "racoon-data",
  "racoon-domain",
  "serde",
  "serde_json",

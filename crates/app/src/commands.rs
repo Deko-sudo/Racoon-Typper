@@ -1,9 +1,5 @@
 //! Tauri IPC commands.
-//! Sprint 1: ping, get_app_info
-//! Sprint 2: start_test, process_key, abort_session
-//! Sprint 3: статистика в EngineOutput
-//! Sprint 4: get_stats_history, get_test_detail, get_personal_bests, save_test_result
-//! Sprint 5: custom_texts CRUD, settings, themes
+//! All commands return Result<T, AppError>.
 
 use racoon_core::{CoreEngine, CustomMode, KeyEvent, QuoteMode, TestMode, TimeMode, WordsMode};
 use racoon_data::repository::{
@@ -18,6 +14,7 @@ use racoon_resources::{quote_loader, word_pack_loader};
 use std::sync::Mutex;
 use tauri::State;
 
+use crate::error::AppError;
 use crate::state::AppState;
 
 // ── System ──
@@ -43,18 +40,18 @@ pub fn start_test(
     word_count: Option<usize>,
     quote_id: Option<i64>,
     language: Option<String>,
-) -> Result<TestSessionResponse, String> {
-    let mut engine = state.lock().map_err(|e| e.to_string())?;
+) -> Result<TestSessionResponse, AppError> {
+    let mut engine = state.lock()?;
     let session_id = generate_session_id();
     let lang = language.unwrap_or_else(|| "en".to_string());
 
     let test_mode: Box<dyn TestMode> = match mode.as_str() {
         "time" => {
             let secs = duration.unwrap_or(30);
-            let word_count = TimeMode::recommended_word_count(secs);
+            let wc = TimeMode::recommended_word_count(secs);
             let test_text = text.unwrap_or_else(|| {
                 word_pack_loader()
-                    .generate_words(&lang, word_count)
+                    .generate_words(&lang, wc)
                     .unwrap_or_else(|| "The quick brown fox jumps over the lazy dog".to_string())
             });
             Box::new(TimeMode::new(test_text, lang, secs))
@@ -83,7 +80,7 @@ pub fn start_test(
             let test_text = text.unwrap_or_else(|| "Custom text".to_string());
             Box::new(CustomMode::new(test_text, lang))
         }
-        _ => return Err(format!("Unknown mode: {}", mode)),
+        _ => return Err(AppError::InvalidMode(mode)),
     };
 
     let info = engine.start_test_mode(session_id.clone(), test_mode);
@@ -105,8 +102,8 @@ pub fn process_key(
     key: String,
     code: String,
     timestamp: u64,
-) -> Result<EngineOutput, String> {
-    let mut engine = engine_state.lock().map_err(|e| e.to_string())?;
+) -> Result<EngineOutput, AppError> {
+    let mut engine = engine_state.lock()?;
     let key_event = KeyEvent {
         key,
         code,
@@ -115,9 +112,8 @@ pub fn process_key(
     let output = engine.process_key(&key_event);
 
     if let Some(ref final_stats) = output.test_complete {
-        // Получаем mode info из CoreEngine
         let (mode_type, mode_config, language) = {
-            let engine = engine_state.lock().map_err(|e| e.to_string())?;
+            let engine = engine_state.lock()?;
             let mt = engine
                 .current_mode_type()
                 .map(|m| m.to_string())
@@ -129,7 +125,7 @@ pub fn process_key(
             (mt, mc, lang)
         };
 
-        let db = app_state.db.lock().map_err(|e| e.to_string())?;
+        let db = app_state.db.lock()?;
         let conn = db.conn();
         let repo = SqliteTestRepository::new(&conn);
 
@@ -155,41 +151,37 @@ pub fn process_key(
             tags: "".to_string(),
         };
 
-        let test_id = repo.save_test(record).map_err(|e| e.to_string())?;
+        let test_id = repo.save_test(record)?;
 
         let pb_repo = SqlitePersonalBestsRepository::new(&conn);
         let mode_type_str = engine_state
-            .lock()
-            .map_err(|e| e.to_string())?
+            .lock()?
             .current_mode_type()
             .map(|m| m.to_string())
             .unwrap_or_else(|| "time".to_string());
         let mode_config_str = serde_json::to_string(
             &engine_state
-                .lock()
-                .map_err(|e| e.to_string())?
+                .lock()?
                 .current_mode_config()
                 .unwrap_or(serde_json::json!({})),
         )
         .unwrap_or_default();
 
-        let _pb_updates = pb_repo
-            .check_and_update(
-                &mode_type_str,
-                &mode_config_str,
-                final_stats.wpm,
-                final_stats.accuracy,
-                test_id,
-            )
-            .map_err(|e| e.to_string())?;
+        let _ = pb_repo.check_and_update(
+            &mode_type_str,
+            &mode_config_str,
+            final_stats.wpm,
+            final_stats.accuracy,
+            test_id,
+        )?;
     }
 
     Ok(output)
 }
 
 #[tauri::command]
-pub fn abort_session(state: State<'_, Mutex<CoreEngine>>) -> Result<(), String> {
-    let mut engine = state.lock().map_err(|e| e.to_string())?;
+pub fn abort_session(state: State<'_, Mutex<CoreEngine>>) -> Result<(), AppError> {
+    let mut engine = state.lock()?;
     engine.abort();
     Ok(())
 }
@@ -202,42 +194,38 @@ pub fn get_stats_history(
     limit: Option<usize>,
     offset: Option<usize>,
     mode_filter: Option<String>,
-) -> Result<StatsHistoryResponse, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+) -> Result<StatsHistoryResponse, AppError> {
+    let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteTestRepository::new(&conn);
 
     let lim = limit.unwrap_or(50);
     let off = offset.unwrap_or(0);
 
-    let tests = repo
-        .get_history(lim, off, mode_filter.as_deref())
-        .map_err(|e| e.to_string())?;
-    let total = repo
-        .get_count(mode_filter.as_deref())
-        .map_err(|e| e.to_string())?;
+    let tests = repo.get_history(lim, off, mode_filter.as_deref())?;
+    let total = repo.get_count(mode_filter.as_deref())?;
 
     Ok(StatsHistoryResponse { tests, total })
 }
 
 #[tauri::command]
-pub fn get_test_detail(state: State<'_, AppState>, id: i64) -> Result<TestDetail, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+pub fn get_test_detail(state: State<'_, AppState>, id: i64) -> Result<TestDetail, AppError> {
+    let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteTestRepository::new(&conn);
-    repo.get_by_id(id).map_err(|e| e.to_string())
+    repo.get_by_id(id).map_err(AppError::from)
 }
 
 #[tauri::command]
 pub fn get_personal_bests(
     state: State<'_, AppState>,
     mode_filter: Option<String>,
-) -> Result<Vec<PersonalBest>, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+) -> Result<Vec<PersonalBest>, AppError> {
+    let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqlitePersonalBestsRepository::new(&conn);
     repo.get_bests(mode_filter.as_deref())
-        .map_err(|e| e.to_string())
+        .map_err(AppError::from)
 }
 
 // ── Custom Texts ──
@@ -246,22 +234,22 @@ pub fn get_personal_bests(
 pub fn get_custom_texts(
     state: State<'_, AppState>,
     limit: Option<usize>,
-) -> Result<Vec<racoon_data::CustomText>, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+) -> Result<Vec<racoon_data::CustomText>, AppError> {
+    let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteCustomTextRepository::new(&conn);
-    repo.get_all(limit.unwrap_or(50)).map_err(|e| e.to_string())
+    repo.get_all(limit.unwrap_or(50)).map_err(AppError::from)
 }
 
 #[tauri::command]
 pub fn get_custom_text(
     state: State<'_, AppState>,
     id: i64,
-) -> Result<racoon_data::CustomText, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+) -> Result<racoon_data::CustomText, AppError> {
+    let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteCustomTextRepository::new(&conn);
-    repo.get_by_id(id).map_err(|e| e.to_string())
+    repo.get_by_id(id).map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -269,11 +257,11 @@ pub fn save_custom_text(
     state: State<'_, AppState>,
     name: String,
     text: String,
-) -> Result<i64, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+) -> Result<i64, AppError> {
+    let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteCustomTextRepository::new(&conn);
-    repo.save(&name, &text).map_err(|e| e.to_string())
+    repo.save(&name, &text).map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -282,19 +270,19 @@ pub fn update_custom_text(
     id: i64,
     name: String,
     text: String,
-) -> Result<(), String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+) -> Result<(), AppError> {
+    let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteCustomTextRepository::new(&conn);
-    repo.update(id, &name, &text).map_err(|e| e.to_string())
+    repo.update(id, &name, &text).map_err(AppError::from)
 }
 
 #[tauri::command]
-pub fn delete_custom_text(state: State<'_, AppState>, id: i64) -> Result<(), String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+pub fn delete_custom_text(state: State<'_, AppState>, id: i64) -> Result<(), AppError> {
+    let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteCustomTextRepository::new(&conn);
-    repo.delete(id).map_err(|e| e.to_string())
+    repo.delete(id).map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -302,12 +290,12 @@ pub fn search_custom_texts(
     state: State<'_, AppState>,
     query: String,
     limit: Option<usize>,
-) -> Result<Vec<racoon_data::CustomText>, String> {
-    let db = state.db.lock().map_err(|e| e.to_string())?;
+) -> Result<Vec<racoon_data::CustomText>, AppError> {
+    let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteCustomTextRepository::new(&conn);
     repo.search(&query, limit.unwrap_or(20))
-        .map_err(|e| e.to_string())
+        .map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -315,18 +303,17 @@ pub fn start_custom_text_test(
     engine_state: State<'_, Mutex<CoreEngine>>,
     app_state: State<'_, AppState>,
     custom_text_id: i64,
-) -> Result<TestSessionResponse, String> {
+) -> Result<TestSessionResponse, AppError> {
     let custom_text = {
-        let db = app_state.db.lock().map_err(|e| e.to_string())?;
+        let db = app_state.db.lock()?;
         let conn = db.conn();
         let repo = SqliteCustomTextRepository::new(&conn);
-        let ct = repo.get_by_id(custom_text_id).map_err(|e| e.to_string())?;
-        repo.increment_use(custom_text_id)
-            .map_err(|e| e.to_string())?;
+        let ct = repo.get_by_id(custom_text_id)?;
+        repo.increment_use(custom_text_id)?;
         ct
     };
 
-    let mut engine = engine_state.lock().map_err(|e| e.to_string())?;
+    let mut engine = engine_state.lock()?;
     let session_id = generate_session_id();
     let mode: Box<dyn TestMode> =
         Box::new(CustomMode::new(custom_text.text.clone(), "en".to_string()));
@@ -345,9 +332,9 @@ pub fn start_custom_text_test(
 // ── Settings ──
 
 #[tauri::command]
-pub fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, String> {
+pub fn get_settings(state: State<'_, AppState>) -> Result<AppSettings, AppError> {
     let store = state.settings_store();
-    store.load().map_err(|e| e.to_string())
+    store.load().map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -355,16 +342,16 @@ pub fn set_setting(
     state: State<'_, AppState>,
     key: String,
     value: serde_json::Value,
-) -> Result<AppSettings, String> {
+) -> Result<AppSettings, AppError> {
     let store = state.settings_store();
     let toml_value = json_to_toml_value(&value);
-    store.set(&key, toml_value).map_err(|e| e.to_string())
+    store.set(&key, toml_value).map_err(AppError::from)
 }
 
 // ── Themes ──
 
 #[tauri::command]
-pub fn get_themes() -> Result<Vec<ThemeInfo>, String> {
+pub fn get_themes() -> Result<Vec<ThemeInfo>, AppError> {
     Ok(vec![
         ThemeInfo {
             name: "serika_dark".to_string(),
@@ -403,12 +390,12 @@ pub fn get_themes() -> Result<Vec<ThemeInfo>, String> {
 }
 
 #[tauri::command]
-pub fn get_theme_css(name: String) -> Result<String, String> {
+pub fn get_theme_css(name: String) -> Result<String, AppError> {
     let css = match name.as_str() {
         "serika_dark" => include_str!("../../../resources/themes/serika_dark/theme.css"),
         "serika_light" => include_str!("../../../resources/themes/serika_light/theme.css"),
         "racoon_dark" => include_str!("../../../resources/themes/racoon_dark/theme.css"),
-        _ => return Err(format!("Theme not found: {}", name)),
+        _ => return Err(AppError::ThemeNotFound(name)),
     };
     Ok(css.to_string())
 }

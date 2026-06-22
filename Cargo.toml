@@ -24,3 +24,6 @@ racoon-domain = { path = "crates/domain" }
 racoon-core = { path = "crates/core" }
 racoon-data = { path = "crates/data" }
 racoon-resources = { path = "crates/resources" }
+
+# Shared deps
+chrono = "0.4"

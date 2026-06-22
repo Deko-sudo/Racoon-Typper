@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Racoon Typper
+Comment=Local touch typing trainer
+Exec=racoon-typper
+Icon=racoon-typper
+Categories=Education;Typing;
+Terminal=false

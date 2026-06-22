@@ -12,6 +12,7 @@ pub mod typing;
 pub use engine::{CoreEngine, TestSession, TestSessionInfo};
 pub use input::{KeyAction, KeyClassifier, KeyEvent};
 pub use modes::{ModeResult, ModeType, TestMode};
+pub use racoon_domain::KeyResult;
 pub use stats::{AccuracyCalculator, HeatmapBuilder, LiveTracker, StatisticsEngine, WpmCalculator};
 pub use typing::{TextBuffer, TypingResult};
 

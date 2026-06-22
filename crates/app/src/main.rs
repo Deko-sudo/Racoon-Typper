@@ -9,6 +9,7 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 mod commands;
+mod error;
 mod state;
 
 use state::AppState;
