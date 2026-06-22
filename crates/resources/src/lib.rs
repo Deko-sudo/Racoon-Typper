@@ -1,6 +1,8 @@
-//! Resources — загрузка word packs, quotes, lessons, themes.
-//! Sprint 1: пустой skeleton.
+//! Resources — загрузка word packs, quotes.
+//! Sprint 6: WordPackLoader (txt), QuoteLoader (toml).
 
-pub fn placeholder() -> &'static str {
-    "resources"
-}
+pub mod quotes;
+pub mod words;
+
+pub use quotes::{quote_loader, Quote, QuoteLoader, QuotePack};
+pub use words::{word_pack_loader, WordPack, WordPackLoader};

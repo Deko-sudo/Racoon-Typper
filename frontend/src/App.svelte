@@ -19,6 +19,14 @@
   let elapsedMs = $state(0);
   let finalStats = $state<FinalStats | null>(null);
 
+  // Test config
+  let selectedMode = $state<'time' | 'words' | 'quote' | 'custom'>('time');
+  let selectedDuration = $state(30);
+  let selectedWordCount = $state(25);
+  let selectedLanguage = $state<'en' | 'ru'>('en');
+  let sessionModeType = $state('time');
+  let sessionLanguage = $state('en');
+
   // History
   let history = $state<TestSummary[]>([]);
   let historyTotal = $state(0);
@@ -43,7 +51,7 @@
   let appliedTheme = $state('');
 
   interface CharStatus { expected: string; typed: string | null; status: string; }
-  interface TestSessionResponse { session_id: string; text: string; text_length: number; }
+  interface TestSessionResponse { session_id: string; text: string; text_length: number; mode_type: string; mode_config: Record<string, unknown>; language: string; }
   interface EngineOutput {
     key_result: string; caret_pos: number;
     live_stats: { wpm: number; accuracy: number; elapsed_ms: number } | null;
@@ -60,10 +68,18 @@
   interface AppSettings { theme: string; font_size: number; caret_style: string; show_live_wpm: boolean; show_accuracy: boolean; }
   interface ThemeInfo { name: string; display_name: string; is_dark: boolean; preview_colors: { bg: string; main: string; text: string; error: string; }; }
 
-  async function startTest(testText: string = TEST_TEXT) {
+  async function startTest() {
     errorMsg = ''; finalStats = null;
-    const resp = await invoke<TestSessionResponse>('start_test', { text: testText || TEST_TEXT });
+    const params: Record<string, unknown> = {
+      mode: selectedMode,
+      language: selectedLanguage,
+    };
+    if (selectedMode === 'time') params.duration = selectedDuration;
+    if (selectedMode === 'words') params.wordCount = selectedWordCount;
+
+    const resp = await invoke<TestSessionResponse>('start_test', params);
     text = resp.text; caretPos = 0; isComplete = false; isRunning = true;
+    sessionModeType = resp.mode_type; sessionLanguage = resp.language;
     liveWpm = 0; liveAccuracy = 100; elapsedMs = 0;
     charStatuses = text.split('').map((ch) => ({ expected: ch, typed: null, status: 'pending' }));
   }
@@ -134,6 +150,7 @@
   async function startCustomTest(id: number) {
     const resp = await invoke<TestSessionResponse>('start_custom_text_test', { customTextId: id });
     text = resp.text; caretPos = 0; isComplete = false; isRunning = true; finalStats = null;
+    sessionModeType = resp.mode_type; sessionLanguage = resp.language;
     charStatuses = text.split('').map((ch) => ({ expected: ch, typed: null, status: 'pending' }));
     view = 'test';
   }
@@ -182,10 +199,36 @@
         <button onclick={() => startTest()}>Restart</button>
       </div>
     {:else if text}
+      <div class="mode-selector">
+        <div class="mode-group">
+          <button class:active={selectedMode === 'time'} onclick={() => { selectedMode = 'time'; startTest(); }}>Time</button>
+          <button class:active={selectedMode === 'words'} onclick={() => { selectedMode = 'words'; startTest(); }}>Words</button>
+          <button class:active={selectedMode === 'quote'} onclick={() => { selectedMode = 'quote'; startTest(); }}>Quote</button>
+        </div>
+        {#if selectedMode === 'time'}
+          <div class="preset-group">
+            {#each [15, 30, 60, 120] as d}
+              <button class:active={selectedDuration === d} onclick={() => { selectedDuration = d; startTest(); }}>{d}s</button>
+            {/each}
+          </div>
+        {/if}
+        {#if selectedMode === 'words'}
+          <div class="preset-group">
+            {#each [10, 25, 50, 100] as w}
+              <button class:active={selectedWordCount === w} onclick={() => { selectedWordCount = w; startTest(); }}>{w}</button>
+            {/each}
+          </div>
+        {/if}
+        <div class="lang-group">
+          <button class:active={selectedLanguage === 'en'} onclick={() => { selectedLanguage = 'en'; startTest(); }}>EN</button>
+          <button class:active={selectedLanguage === 'ru'} onclick={() => { selectedLanguage = 'ru'; startTest(); }}>RU</button>
+        </div>
+      </div>
       <div class="live-stats">
         {#if settings?.show_live_wpm}<span class="stat">WPM: {liveWpm.toFixed(0)}</span>{/if}
         {#if settings?.show_accuracy}<span class="stat">Acc: {liveAccuracy.toFixed(1)}%</span>{/if}
         <span class="stat">Time: {(elapsedMs / 1000).toFixed(1)}s</span>
+        <span class="stat mode-badge">{sessionModeType}/{sessionLanguage}</span>
       </div>
       <div class="text-display" tabindex="0">
         {#each charStatuses as char, i}<span class="char {char.status}" class:caret={i === caretPos}>{char.expected === ' ' ? '\u00A0' : char.expected}</span>{/each}
@@ -243,6 +286,11 @@
   nav button.active { color: var(--main); border-color: var(--main); }
   h1 { color: var(--main); } h2 { color: var(--main); font-size: 1.5rem; margin-bottom: 1rem; } h3 { color: var(--main); font-size: 1.1rem; margin: 1rem 0 0.5rem; }
   .live-stats { display: flex; gap: 2rem; font-size: 1.25rem; } .stat { color: var(--sub); }
+  .mode-badge { font-size: 0.75rem; color: var(--main); }
+  .mode-selector { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: center; }
+  .mode-group, .preset-group, .lang-group { display: flex; gap: 0.25rem; }
+  .mode-group button, .preset-group button, .lang-group button { background: var(--bg-sub); color: var(--sub); border: 1px solid var(--sub); padding: 0.25rem 0.75rem; font-family: inherit; font-size: 0.75rem; cursor: pointer; border-radius: 4px; }
+  .mode-group button.active, .preset-group button.active, .lang-group button.active { color: var(--main); border-color: var(--main); }
   .text-display { font-size: 2rem; line-height: 1.8; max-width: 900px; text-align: center; padding: 2rem; background-color: var(--bg-sub); border-radius: 8px; user-select: none; }
   .char { transition: color 0.05s; position: relative; } .char.pending { color: var(--sub); } .char.correct { color: var(--text); } .char.incorrect { color: var(--error); } .char.backspaced { color: var(--sub); }
   .char.caret::before { content: '|'; position: absolute; left: -0.5ch; color: var(--caret); animation: blink 1s infinite; }

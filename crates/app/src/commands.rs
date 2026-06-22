@@ -5,7 +5,7 @@
 //! Sprint 4: get_stats_history, get_test_detail, get_personal_bests, save_test_result
 //! Sprint 5: custom_texts CRUD, settings, themes
 
-use racoon_core::{CoreEngine, CustomMode, KeyEvent, TestMode, TimeMode};
+use racoon_core::{CoreEngine, CustomMode, KeyEvent, QuoteMode, TestMode, TimeMode, WordsMode};
 use racoon_data::repository::{
     AppSettings, CustomTextRepository, PersonalBestsRepository, SqliteCustomTextRepository,
     SqlitePersonalBestsRepository, SqliteTestRepository, TestRepository,
@@ -14,6 +14,7 @@ use racoon_domain::PersonalBest;
 use racoon_domain::TestDetail;
 use racoon_domain::TestSummary;
 use racoon_domain::{AppInfo, EngineOutput, TestRecord};
+use racoon_resources::{quote_loader, word_pack_loader};
 use std::sync::Mutex;
 use tauri::State;
 
@@ -36,18 +37,56 @@ pub fn get_app_info() -> AppInfo {
 #[tauri::command]
 pub fn start_test(
     state: State<'_, Mutex<CoreEngine>>,
-    text: String,
+    mode: String,
+    text: Option<String>,
     duration: Option<u64>,
+    word_count: Option<usize>,
+    quote_id: Option<i64>,
     language: Option<String>,
 ) -> Result<TestSessionResponse, String> {
     let mut engine = state.lock().map_err(|e| e.to_string())?;
     let session_id = generate_session_id();
-
     let lang = language.unwrap_or_else(|| "en".to_string());
-    let secs = duration.unwrap_or(30);
 
-    let mode: Box<dyn TestMode> = Box::new(TimeMode::new(text.clone(), lang, secs));
-    let info = engine.start_test_mode(session_id.clone(), mode);
+    let test_mode: Box<dyn TestMode> = match mode.as_str() {
+        "time" => {
+            let secs = duration.unwrap_or(30);
+            // Для Time mode: генерируем 50 слов из словаря если текст не передан
+            let test_text = text.unwrap_or_else(|| {
+                word_pack_loader()
+                    .generate_words(&lang, 50)
+                    .unwrap_or_else(|| "The quick brown fox jumps over the lazy dog".to_string())
+            });
+            Box::new(TimeMode::new(test_text, lang, secs))
+        }
+        "words" => {
+            let count = word_count.unwrap_or(25);
+            let test_text = text.unwrap_or_else(|| {
+                word_pack_loader()
+                    .generate_words(&lang, count)
+                    .unwrap_or_else(|| "The quick brown fox jumps over the lazy dog".to_string())
+            });
+            Box::new(WordsMode::new(test_text, lang, count))
+        }
+        "quote" => {
+            let quote = if let Some(qid) = quote_id {
+                quote_loader().get_quote_by_index(&lang, qid as usize)
+            } else {
+                quote_loader().get_random_quote(&lang)
+            };
+            let test_text = quote
+                .map(|q| q.text.clone())
+                .unwrap_or_else(|| "The quick brown fox jumps over the lazy dog".to_string());
+            Box::new(QuoteMode::new(test_text, lang, quote_id))
+        }
+        "custom" => {
+            let test_text = text.unwrap_or_else(|| "Custom text".to_string());
+            Box::new(CustomMode::new(test_text, lang))
+        }
+        _ => return Err(format!("Unknown mode: {}", mode)),
+    };
+
+    let info = engine.start_test_mode(session_id.clone(), test_mode);
 
     Ok(TestSessionResponse {
         session_id,
