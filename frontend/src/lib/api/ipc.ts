@@ -129,3 +129,20 @@ export async function getStreakInfo(): Promise<StreakInfoResponse> {
 export async function getProgressHistory(days?: number): Promise<ProgressPoint[]> {
   return invoke<ProgressPoint[]>('get_progress_history', { days });
 }
+
+// Analytics
+export async function getAchievements(): Promise<unknown> {
+  return invoke('get_achievements');
+}
+
+export async function getInsights(): Promise<unknown> {
+  return invoke('get_insights');
+}
+
+export async function getConsistency(): Promise<unknown> {
+  return invoke('get_consistency');
+}
+
+export async function exportData(format: 'json' | 'csv'): Promise<string> {
+  return invoke<string>('export_data', { format });
+}

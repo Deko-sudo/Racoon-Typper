@@ -65,6 +65,11 @@ fn main() {
             commands::get_dashboard_stats,
             commands::get_streak_info,
             commands::get_progress_history,
+            // Analytics
+            commands::get_achievements,
+            commands::get_insights,
+            commands::get_consistency,
+            commands::export_data,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

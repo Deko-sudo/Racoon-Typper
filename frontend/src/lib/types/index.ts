@@ -118,7 +118,7 @@ export interface ThemeInfo {
   };
 }
 
-export type ViewName = 'dashboard' | 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys';
+export type ViewName = 'dashboard' | 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys' | 'analytics';
 export type ModeName = 'time' | 'words' | 'quote' | 'custom';
 export type LanguageCode = 'en' | 'ru';
 

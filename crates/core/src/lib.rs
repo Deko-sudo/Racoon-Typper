@@ -6,6 +6,9 @@
 //! Sprint 10: AdaptiveTextGenerator, WeakKeysAnalyzer, Lesson Progression.
 
 pub mod adaptive;
+pub mod analytics;
+pub mod burst;
+pub mod consistency;
 pub mod engine;
 pub mod finger_map;
 pub mod input;

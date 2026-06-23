@@ -20,6 +20,7 @@
   import TypingWarnings from './components/TypingWarnings.svelte';
   import NotificationStack from './components/NotificationStack.svelte';
   import DashboardView from './components/DashboardView.svelte';
+  import AnalyticsView from './components/AnalyticsView.svelte';
 
   // Navigation
   let view = $state<ViewName>('test');
@@ -457,6 +458,8 @@
       charStats={weakKeysCharStats}
       onGenerateTraining={onGenerateTraining}
     />
+  {:else if view === 'analytics'}
+    <AnalyticsView />
   {/if}
 </main>
 

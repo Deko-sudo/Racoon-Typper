@@ -719,6 +719,163 @@ pub fn get_progress_history(
     Ok(points)
 }
 
+// ── Analytics ──
+
+#[tauri::command]
+pub fn get_achievements(state: State<'_, AppState>) -> Result<Vec<serde_json::Value>, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let test_repo = SqliteTestRepository::new(&conn);
+    let lesson_repo = SqliteLessonRepository::new(&conn);
+
+    let total_tests = test_repo.get_count(None).unwrap_or(0);
+    let history = test_repo.get_history(500, 0, None).unwrap_or_default();
+    let best_wpm = history.iter().map(|t| t.wpm).fold(0.0_f64, f64::max);
+    let best_acc = history.iter().map(|t| t.accuracy).fold(0.0_f64, f64::max);
+
+    let dates: Vec<String> = history
+        .iter()
+        .map(|t| t.created_at.split('T').next().unwrap_or("").to_string())
+        .filter(|d| !d.is_empty())
+        .collect();
+    let (_, longest_streak) = racoon_core::StreakEngine::streak_from_dates(&dates);
+
+    let lessons = lesson_repo.get_progress("en").unwrap_or_default();
+    let lessons_completed = lessons.iter().filter(|l| l.status == "completed").count() as i64;
+    let lessons_ru = lesson_repo.get_progress("ru").unwrap_or_default();
+    let lessons_completed_ru = lessons_ru
+        .iter()
+        .filter(|l| l.status == "completed")
+        .count() as i64;
+
+    let achievements = racoon_core::analytics::check_achievements(
+        total_tests,
+        best_wpm,
+        best_acc,
+        0,
+        longest_streak,
+        lessons_completed + lessons_completed_ru,
+    );
+
+    serde_json::to_value(achievements)
+        .map(|v| vec![v])
+        .map_err(AppError::from)
+}
+
+#[tauri::command]
+pub fn get_insights(state: State<'_, AppState>) -> Result<Vec<serde_json::Value>, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let daily_repo = SqliteDailyStatsRepository::new(&conn);
+    let test_repo = SqliteTestRepository::new(&conn);
+
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let week_ago = (chrono::Utc::now() - chrono::Duration::days(7))
+        .format("%Y-%m-%d")
+        .to_string();
+    let week_stats = daily_repo.get_range(&week_ago, &today).unwrap_or_default();
+
+    let avg_wpm: f64 = if week_stats.is_empty() {
+        0.0
+    } else {
+        let total: i64 = week_stats.iter().map(|s| s.total_tests).sum();
+        let weighted: f64 = week_stats
+            .iter()
+            .map(|s| s.avg_wpm * s.total_tests as f64)
+            .sum();
+        if total > 0 {
+            weighted / total as f64
+        } else {
+            0.0
+        }
+    };
+
+    let avg_acc: f64 = if week_stats.is_empty() {
+        0.0
+    } else {
+        let total: i64 = week_stats.iter().map(|s| s.total_tests).sum();
+        let weighted: f64 = week_stats
+            .iter()
+            .map(|s| s.avg_accuracy * s.total_tests as f64)
+            .sum();
+        if total > 0 {
+            weighted / total as f64
+        } else {
+            0.0
+        }
+    };
+
+    let history = test_repo.get_history(100, 0, None).unwrap_or_default();
+    let wpm_samples: Vec<f64> = history.iter().map(|t| t.wpm).collect();
+    let consistency = racoon_core::consistency::calc_consistency(&wpm_samples);
+
+    let insights = racoon_core::analytics::generate_insights(
+        avg_wpm,
+        avg_acc,
+        consistency.score,
+        0, // weak_key_count — needs engine state
+        0, // streak — simplified
+    );
+
+    serde_json::to_value(insights)
+        .map(|v| vec![v])
+        .map_err(AppError::from)
+}
+
+#[tauri::command]
+pub fn get_consistency(state: State<'_, AppState>) -> Result<serde_json::Value, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let test_repo = SqliteTestRepository::new(&conn);
+    let history = test_repo.get_history(100, 0, None)?;
+    let wpm_samples: Vec<f64> = history.iter().map(|t| t.wpm).collect();
+    let report = racoon_core::consistency::calc_consistency(&wpm_samples);
+    serde_json::to_value(report).map_err(AppError::from)
+}
+
+#[tauri::command]
+pub fn export_data(state: State<'_, AppState>, format: String) -> Result<String, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let test_repo = SqliteTestRepository::new(&conn);
+    let history = test_repo.get_history(1000, 0, None)?;
+
+    match format.as_str() {
+        "json" => {
+            let data = serde_json::json!({
+                "tests": history.iter().map(|t| serde_json::json!({
+                    "date": t.created_at,
+                    "mode": t.mode_type,
+                    "wpm": t.wpm,
+                    "accuracy": t.accuracy,
+                    "duration_ms": t.duration_ms,
+                })).collect::<Vec<_>>(),
+            });
+            Ok(racoon_core::analytics::export_json(&data))
+        }
+        "csv" => {
+            let mut rows = vec![vec![
+                "Date".to_string(),
+                "Mode".to_string(),
+                "WPM".to_string(),
+                "Accuracy".to_string(),
+                "Duration_ms".to_string(),
+            ]];
+            for t in &history {
+                rows.push(vec![
+                    t.created_at.clone(),
+                    t.mode_type.clone(),
+                    format!("{:.1}", t.wpm),
+                    format!("{:.1}", t.accuracy),
+                    t.duration_ms.to_string(),
+                ]);
+            }
+            Ok(racoon_core::analytics::export_csv(&rows))
+        }
+        _ => Err(AppError::Internal(format!("Unknown format: {}", format))),
+    }
+}
+
 // ── Helpers ──
 
 #[derive(Debug, serde::Serialize)]
