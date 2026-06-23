@@ -116,3 +116,16 @@ export async function analyzeWeakKeys(): Promise<unknown> {
 export async function generateWeakKeysTraining(language: string, wordCount?: number): Promise<string> {
   return invoke<string>('generate_weak_keys_training', { language, wordCount });
 }
+
+// Dashboard
+export async function getDashboardStats(): Promise<DashboardStatsResponse> {
+  return invoke<DashboardStatsResponse>('get_dashboard_stats');
+}
+
+export async function getStreakInfo(): Promise<StreakInfoResponse> {
+  return invoke<StreakInfoResponse>('get_streak_info');
+}
+
+export async function getProgressHistory(days?: number): Promise<ProgressPoint[]> {
+  return invoke<ProgressPoint[]>('get_progress_history', { days });
+}

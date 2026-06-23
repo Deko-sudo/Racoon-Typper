@@ -12,6 +12,7 @@ pub mod input;
 pub mod lesson;
 pub mod modes;
 pub mod stats;
+pub mod streaks;
 pub mod typing;
 pub mod viewport;
 pub mod weak_keys;
@@ -29,5 +30,6 @@ pub use lesson::{
 pub use modes::{CustomMode, ModeResult, ModeType, QuoteMode, TestMode, TimeMode, WordsMode};
 pub use racoon_domain::KeyResult;
 pub use stats::{AccuracyCalculator, HeatmapBuilder, LiveTracker, StatisticsEngine, WpmCalculator};
+pub use streaks::{StreakEngine, StreakInfo};
 pub use typing::{TextBuffer, TypingResult};
 pub use weak_keys::{WeakKey, WeakKeysAnalyzer, WeakKeysReport};

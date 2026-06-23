@@ -6,6 +6,7 @@
     CharStatus, TestSessionResponse, FinalStats, TestSummary,
     StatsHistoryResponse, PersonalBest, CustomText, AppSettings,
     ThemeInfo, ViewName, ModeName, LanguageCode, ModuleResponse,
+    DashboardStatsResponse,
   } from './lib/types/index';
 
   import NavigationBar from './components/NavigationBar.svelte';
@@ -18,6 +19,7 @@
   import WeakKeysPanel from './components/WeakKeysPanel.svelte';
   import TypingWarnings from './components/TypingWarnings.svelte';
   import NotificationStack from './components/NotificationStack.svelte';
+  import DashboardView from './components/DashboardView.svelte';
 
   // Navigation
   let view = $state<ViewName>('test');
@@ -72,6 +74,9 @@
   // Weak Keys
   let weakKeysData = $state<Array<{ ch: string; error_count: number; accuracy: number; rank: number }>>([]);
   let weakKeysCharStats = $state<Record<string, { correct: number; incorrect: number; total: number }>>({});
+
+  // Dashboard
+  let dashboardStats = $state<DashboardStatsResponse | null>(null);
 
   // Typing warnings
   let lastTypedChar = $state('');
@@ -276,6 +281,15 @@
     if (v === 'custom') loadCustomTexts();
     if (v === 'lessons') loadLessons();
     if (v === 'weakkeys') loadWeakKeys();
+    if (v === 'dashboard') loadDashboard();
+  }
+
+  async function loadDashboard() {
+    try {
+      dashboardStats = await ipc.getDashboardStats();
+    } catch (e) {
+      errorMsg = `Dashboard error: ${e}`;
+    }
   }
 
   async function loadWeakKeys() {
@@ -364,7 +378,9 @@
     <p class="error">{errorMsg}</p>
   {/if}
 
-  {#if view === 'test'}
+  {#if view === 'dashboard'}
+    <DashboardView stats={dashboardStats} onNavigate={(v) => switchView(v as ViewName)} />
+  {:else if view === 'test'}
     {#if isRunning && settings?.show_layout_warnings}
       <TypingWarnings
         expectedLanguage={sessionLanguage}

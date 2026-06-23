@@ -61,6 +61,10 @@ fn main() {
             // Weak Keys
             commands::analyze_weak_keys,
             commands::generate_weak_keys_training,
+            // Dashboard
+            commands::get_dashboard_stats,
+            commands::get_streak_info,
+            commands::get_progress_history,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

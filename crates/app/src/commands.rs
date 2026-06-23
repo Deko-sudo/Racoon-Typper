@@ -6,9 +6,9 @@ use racoon_core::{
     LessonMode, QuoteMode, TestMode, TimeMode, WeakKeysAnalyzer, WordsMode,
 };
 use racoon_data::repository::{
-    AppSettings, CustomTextRepository, LessonRepository, PersonalBestsRepository,
-    SqliteCustomTextRepository, SqliteLessonRepository, SqlitePersonalBestsRepository,
-    SqliteTestRepository, TestRepository,
+    AppSettings, CustomTextRepository, DailyStatsRepository, LessonRepository,
+    PersonalBestsRepository, SqliteCustomTextRepository, SqliteDailyStatsRepository,
+    SqliteLessonRepository, SqlitePersonalBestsRepository, SqliteTestRepository, TestRepository,
 };
 use racoon_domain::PersonalBest;
 use racoon_domain::TestDetail;
@@ -177,6 +177,17 @@ pub fn process_key(
                 final_stats.accuracy,
                 test_id,
             )?;
+
+            // Update daily stats
+            let daily_repo = SqliteDailyStatsRepository::new(&conn);
+            let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+            let _ = daily_repo.update_after_test(
+                &today,
+                final_stats.duration_ms as i64,
+                (final_stats.correct_chars + final_stats.incorrect_chars) as i64,
+                final_stats.wpm,
+                final_stats.accuracy,
+            );
         }
     }
 
@@ -556,6 +567,156 @@ pub fn generate_weak_keys_training(
     let text = generator.generate(&weak_chars, word_count.unwrap_or(25));
 
     Ok(text)
+}
+
+// ── Dashboard ──
+
+#[derive(Debug, serde::Serialize)]
+pub struct DashboardStatsResponse {
+    pub current_streak: i64,
+    pub longest_streak: i64,
+    pub avg_wpm: f64,
+    pub avg_accuracy: f64,
+    pub tests_today: i64,
+    pub tests_this_week: i64,
+    pub total_tests: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct StreakInfoResponse {
+    pub current: i64,
+    pub longest: i64,
+    pub is_active: bool,
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct ProgressPoint {
+    pub date: String,
+    pub wpm: f64,
+    pub accuracy: f64,
+    pub tests: i64,
+}
+
+#[tauri::command]
+pub fn get_dashboard_stats(state: State<'_, AppState>) -> Result<DashboardStatsResponse, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let test_repo = SqliteTestRepository::new(&conn);
+    let daily_repo = SqliteDailyStatsRepository::new(&conn);
+
+    let total = test_repo.get_count(None)?;
+
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let today_stats = daily_repo.get_day(&today)?;
+    let tests_today = today_stats.as_ref().map(|s| s.total_tests).unwrap_or(0);
+
+    let week_ago = (chrono::Utc::now() - chrono::Duration::days(7))
+        .format("%Y-%m-%d")
+        .to_string();
+    let week_stats = daily_repo.get_range(&week_ago, &today)?;
+    let tests_this_week: i64 = week_stats.iter().map(|s| s.total_tests).sum();
+
+    let avg_wpm = if week_stats.is_empty() {
+        0.0
+    } else {
+        let weighted: f64 = week_stats
+            .iter()
+            .map(|s| s.avg_wpm * s.total_tests as f64)
+            .sum();
+        let total_count: i64 = week_stats.iter().map(|s| s.total_tests).sum();
+        if total_count > 0 {
+            weighted / total_count as f64
+        } else {
+            0.0
+        }
+    };
+
+    let avg_accuracy = if week_stats.is_empty() {
+        0.0
+    } else {
+        let weighted: f64 = week_stats
+            .iter()
+            .map(|s| s.avg_accuracy * s.total_tests as f64)
+            .sum();
+        let total_count: i64 = week_stats.iter().map(|s| s.total_tests).sum();
+        if total_count > 0 {
+            weighted / total_count as f64
+        } else {
+            0.0
+        }
+    };
+
+    // Streak: get all test dates
+    let history = test_repo.get_history(1000, 0, None)?;
+    let dates: Vec<String> = history
+        .iter()
+        .map(|t| t.created_at.split('T').next().unwrap_or("").to_string())
+        .filter(|d| !d.is_empty())
+        .collect();
+    let (current_streak, longest_streak) = racoon_core::StreakEngine::streak_from_dates(&dates);
+
+    Ok(DashboardStatsResponse {
+        current_streak,
+        longest_streak,
+        avg_wpm,
+        avg_accuracy,
+        tests_today,
+        tests_this_week,
+        total_tests: total,
+    })
+}
+
+#[tauri::command]
+pub fn get_streak_info(state: State<'_, AppState>) -> Result<StreakInfoResponse, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let test_repo = SqliteTestRepository::new(&conn);
+
+    let history = test_repo.get_history(1000, 0, None)?;
+    let dates: Vec<String> = history
+        .iter()
+        .map(|t| t.created_at.split('T').next().unwrap_or("").to_string())
+        .filter(|d| !d.is_empty())
+        .collect();
+
+    let (current, longest) = racoon_core::StreakEngine::streak_from_dates(&dates);
+    let is_active = current > 0;
+
+    Ok(StreakInfoResponse {
+        current,
+        longest,
+        is_active,
+    })
+}
+
+#[tauri::command]
+pub fn get_progress_history(
+    state: State<'_, AppState>,
+    days: Option<u32>,
+) -> Result<Vec<ProgressPoint>, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let daily_repo = SqliteDailyStatsRepository::new(&conn);
+
+    let d = days.unwrap_or(30);
+    let from = (chrono::Utc::now() - chrono::Duration::days(d as i64))
+        .format("%Y-%m-%d")
+        .to_string();
+    let to = chrono::Utc::now().format("%Y-%m-%d").to_string();
+
+    let stats = daily_repo.get_range(&from, &to)?;
+
+    let points: Vec<ProgressPoint> = stats
+        .iter()
+        .map(|s| ProgressPoint {
+            date: s.date.clone(),
+            wpm: s.avg_wpm,
+            accuracy: s.avg_accuracy,
+            tests: s.total_tests,
+        })
+        .collect();
+
+    Ok(points)
 }
 
 // ── Helpers ──

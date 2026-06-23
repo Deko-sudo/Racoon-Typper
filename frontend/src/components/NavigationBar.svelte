@@ -5,6 +5,7 @@
 </script>
 
 <nav>
+  <button class:active={view === 'dashboard'} onclick={() => onNavigate('dashboard')}>Dashboard</button>
   <button class:active={view === 'test'} onclick={() => onNavigate('test')}>Test</button>
     <button class:active={view === 'lessons'} onclick={() => onNavigate('lessons')}>Lessons</button>
     <button class:active={view === 'weakkeys'} onclick={() => onNavigate('weakkeys')}>Weak Keys</button>

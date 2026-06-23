@@ -118,7 +118,7 @@ export interface ThemeInfo {
   };
 }
 
-export type ViewName = 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys';
+export type ViewName = 'dashboard' | 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys';
 export type ModeName = 'time' | 'words' | 'quote' | 'custom';
 export type LanguageCode = 'en' | 'ru';
 
@@ -139,4 +139,27 @@ export interface LessonResponse {
 export interface CourseResponse {
   language: string;
   modules: ModuleResponse[];
+}
+
+export interface DashboardStatsResponse {
+  current_streak: number;
+  longest_streak: number;
+  avg_wpm: number;
+  avg_accuracy: number;
+  tests_today: number;
+  tests_this_week: number;
+  total_tests: number;
+}
+
+export interface StreakInfoResponse {
+  current: number;
+  longest: number;
+  is_active: boolean;
+}
+
+export interface ProgressPoint {
+  date: string;
+  wpm: number;
+  accuracy: number;
+  tests: number;
 }
