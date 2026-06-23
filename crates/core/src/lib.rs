@@ -12,6 +12,7 @@ pub mod lesson;
 pub mod modes;
 pub mod stats;
 pub mod typing;
+pub mod viewport;
 pub mod weak_keys;
 
 pub use adaptive::{AdaptiveTextGenerator, FrequencyAdaptiveGenerator, WeakChar};

@@ -99,7 +99,7 @@
     if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
     if (e.key === 'Backspace' || e.key === 'Tab' || e.key === ' ' || e.key.length === 1) e.preventDefault();
     try {
-      const output = await ipc.processKey(e.key, e.code, performance.now());
+      const output = await ipc.processKey(e.key, e.code);
       caretPos = output.caret_pos;
       if (output.live_stats) {
         liveWpm = output.live_stats.wpm;

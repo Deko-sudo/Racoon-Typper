@@ -28,10 +28,10 @@ export async function startTest(params: {
   return invoke<TestSessionResponse>('start_test', params);
 }
 
-export async function processKey(key: string, code: string, timestamp: number) {
+export async function processKey(key: string, code: string) {
   return invoke<{ key_result: string; caret_pos: number; live_stats: { wpm: number; accuracy: number; elapsed_ms: number } | null; test_complete: FinalStats | null }>(
     'process_key',
-    { key, code, timestamp }
+    { key, code }
   );
 }
 

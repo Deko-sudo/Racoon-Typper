@@ -105,10 +105,14 @@ pub fn process_key(
     app_state: State<'_, AppState>,
     key: String,
     code: String,
-    timestamp: u64,
 ) -> Result<EngineOutput, AppError> {
     let (output, mode_info) = {
         let mut engine = engine_state.lock()?;
+        // Timestamp генерируется в Rust, не передаётся из frontend
+        let timestamp = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
         let key_event = KeyEvent {
             key,
             code,

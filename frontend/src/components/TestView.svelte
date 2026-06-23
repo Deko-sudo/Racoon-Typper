@@ -51,6 +51,15 @@
     onAbort: () => void;
     onRestart: () => void;
   } = $props();
+
+  // Viewport: показываем окно из N символов вокруг курсора
+  const VIEWPORT_CHARS = 80;
+  const VIEWPORT_PADDING = 20;
+
+  let viewportStart = $derived(Math.max(0, caretPos - VIEWPORT_PADDING));
+  let viewportEnd = $derived(Math.min(charStatuses.length, viewportStart + VIEWPORT_CHARS));
+  let viewportChars = $derived(charStatuses.slice(viewportStart, viewportEnd));
+  let viewportOffset = $derived(caretPos - viewportStart);
 </script>
 
 {#if isComplete && finalStats}
@@ -72,12 +81,17 @@
     <span class="stat">Time: {(elapsedMs / 1000).toFixed(1)}s</span>
     <span class="stat mode-badge">{sessionModeType}/{sessionLanguage}</span>
   </div>
-  <div class="text-display" tabindex="0">
-    {#each charStatuses as char, i}
-      <span class="char {char.status}" class:caret={i === caretPos}>
-        {char.expected === ' ' ? '\u00A0' : char.expected}
-      </span>
-    {/each}
+  <div class="text-viewport">
+    <div class="text-display">
+      {#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}
+      {#each viewportChars as char, i}
+        <span
+          class="char {char.status}"
+          class:caret={i === viewportOffset}
+        >{char.expected === ' ' ? '\u00A0' : char.expected}</span>
+      {/each}
+      {#if viewportEnd < charStatuses.length}<span class="text-ellipsis">…</span>{/if}
+    </div>
   </div>
   <div class="info">
     <span>Position: {caretPos}/{text.length}</span>
@@ -89,10 +103,17 @@
   .live-stats { display: flex; gap: 2rem; font-size: 1.25rem; }
   .stat { color: var(--sub); }
   .mode-badge { font-size: 0.75rem; color: var(--main); }
-  .text-display {
-    font-size: 2rem; line-height: 1.8; max-width: 900px; text-align: center;
-    padding: 2rem; background-color: var(--bg-sub); border-radius: 8px; user-select: none;
+  .text-viewport {
+    max-width: 900px; width: 100%; overflow: hidden;
+    background-color: var(--bg-sub); border-radius: 8px;
+    padding: 2rem 1.5rem; position: relative;
   }
+  .text-display {
+    font-size: 2rem; line-height: 1.8; text-align: center;
+    user-select: none; white-space: pre-wrap; word-wrap: break-word;
+    min-height: 3.6em; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+  }
+  .text-ellipsis { color: var(--sub); opacity: 0.5; padding: 0 0.25rem; }
   .char { transition: color 0.05s; position: relative; }
   .char.pending { color: var(--sub); }
   .char.correct { color: var(--text); }
