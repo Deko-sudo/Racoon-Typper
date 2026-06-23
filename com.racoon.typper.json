@@ -1,0 +1,41 @@
+{
+  "app-id": "com.racoon.typper",
+  "runtime": "org.gnome.Platform",
+  "runtime-version": "45",
+  "sdk": "org.gnome.Sdk",
+  "command": "racoon-typper",
+  "modules": [
+    {
+      "name": "racoon-typper",
+      "buildsystem": "simple",
+      "build-commands": [
+        "install -Dm755 target/release/racoon-app /app/bin/racoon-typper",
+        "install -Dm644 racoon-typper.desktop /app/share/applications/racoon-typper.desktop",
+        "install -Dm644 crates/app/icons/128x128@2x.png /app/share/icons/hicolor/256x256/apps/racoon-typper.png"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "."
+        }
+      ],
+      "build-options": {
+        "build-args": [
+          "--share=network"
+        ],
+        "env": {
+          "CARGO_HOME": "/run/build/racoon-typper/.cargo",
+          "RUST_BACKTRACE": "1"
+        }
+      }
+    }
+  ],
+  "finish-args": [
+    "--socket=x11",
+    "--socket=wayland",
+    "--share=ipc",
+    "--device=dri",
+    "--filesystem=xdg-data/racoon-typper",
+    "--filesystem=xdg-config/racoon-typper"
+  ]
+}

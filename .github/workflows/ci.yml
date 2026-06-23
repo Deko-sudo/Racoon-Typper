@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main, master]
+    tags: ['v*']
   pull_request:
     branches: [main, master]
 
@@ -40,7 +41,7 @@ jobs:
       - name: Build frontend
         run: npm run build --prefix frontend
 
-  tauri-build-linux:
+  build-linux:
     runs-on: ubuntu-latest
     needs: [rust-checks, frontend-build]
     steps:
@@ -59,13 +60,20 @@ jobs:
         run: npm ci --prefix frontend
       - name: Build Tauri app
         run: npx --prefix frontend tauri build
+      - name: Package tarball
+        run: |
+          VERSION=${GITHUB_REF_NAME:-0.9.0}
+          VERSION=${VERSION#v}
+          tar czf racoon-typper-v${VERSION}-x86_64.tar.gz -C target/release racoon-app
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: racoon-typper-linux
-          path: target/release/racoon-app
+          path: |
+            target/release/racoon-app
+            racoon-typper-*.tar.gz
 
-  tauri-build-windows:
+  build-windows:
     runs-on: windows-latest
     needs: [rust-checks, frontend-build]
     steps:
@@ -78,10 +86,50 @@ jobs:
         run: npm install --prefix frontend @tauri-apps/cli@^2
       - name: Install frontend deps
         run: npm ci --prefix frontend
-      - name: Build Tauri app
-        run: npx --prefix frontend tauri build
+      - name: Build Tauri app (NSIS)
+        run: npx --prefix frontend tauri build --target nsis
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: racoon-typper-windows
-          path: target/release/racoon-app.exe
+          path: |
+            target/release/racoon-app.exe
+            target/release/bundle/nsis/*.exe
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-windows]
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: true
+          tag_name: ${{ github.ref_name }}
+          name: Racoon Typper ${{ github.ref_name }} RC
+          files: |
+            artifacts/racoon-typper-linux/*
+            artifacts/racoon-typper-windows/*
+          body: |
+            ## Release Candidate ${{ github.ref_name }}
+
+            ### Artifacts
+            - Linux binary (x86_64)
+            - Windows installer (NSIS)
+            - PKGBUILD (Arch Linux)
+
+            ### Install
+            See INSTALL.md for details.
+      - name: Generate torrent
+        run: |
+          sudo apt-get install -y transmission-cli
+          cd artifacts
+          transmission-create -o racoon-typper-${{ github.ref_name }}.torrent \
+            --webseed "https://github.com/${{ github.repository }}/releases/download/${{ github.ref_name }}/" \
+            racoon-typper-linux/*.tar.gz racoon-typper-windows/*.exe

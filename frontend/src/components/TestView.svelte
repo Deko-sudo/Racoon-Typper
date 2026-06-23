@@ -136,6 +136,7 @@
     font-size: 2rem; line-height: 1.8; text-align: center;
     user-select: none; white-space: pre-wrap; word-wrap: break-word;
     min-height: 3.6em; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+    transition: transform 0.15s ease-out;
   }
   .text-ellipsis { color: var(--sub); opacity: 0.4; padding: 0 0.25rem; }
   .char { transition: color 0.05s, opacity 0.1s; position: relative; }
@@ -152,6 +153,9 @@
     animation: blink 1s infinite;
   }
   @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
+  .char.correct { transition: color 0.1s ease; }
+  .char.incorrect { animation: shake 0.2s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
   .info { display: flex; align-items: center; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
   .abort-btn {
     background-color: var(--bg-sub); color: var(--sub); border: 1px solid var(--sub);

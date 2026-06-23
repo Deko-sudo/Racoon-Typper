@@ -1,6 +1,6 @@
 # Maintainer: Racoon Typper Contributors
 pkgname=racoon-typper
-pkgver=0.1.0
+pkgver=0.9.0
 pkgrel=1
 pkgdesc="Local desktop touch-typing trainer for Linux — combines Monkeytype and Stamina"
 arch=('x86_64')

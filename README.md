@@ -14,27 +14,17 @@ Local desktop touch-typing trainer for Linux. Combines Monkeytype and Stamina.
 - **Settings**: Font size, caret style, live WPM/accuracy display
 - **Fully Offline**: No network requests, all data stored locally
 
-## Build (Arch Linux)
+## Installation
 
-### Dependencies
+See [INSTALL.md](INSTALL.md) for all installation methods.
+
+### Quick Start (Arch Linux)
 
 ```bash
 sudo pacman -S rust webkit2gtk-4.1 base-devel npm
-```
-
-### Development
-
-```bash
+git clone https://github.com/racoon-typper/racoon-typper.git
 cd racoon-typper
-npm install --prefix frontend
-cargo tauri dev
-```
-
-### Production Build
-
-```bash
-cargo tauri build
-# Binary: target/release/racoon-typper
+makepkg -si
 ```
 
 ## Repository Structure
