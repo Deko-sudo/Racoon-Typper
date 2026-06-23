@@ -64,7 +64,7 @@
 
   // Lessons
   let courseModules = $state<ModuleResponse[]>([]);
-  let lessonProgress: Record<string, { status: string; best_wpm: number; best_accuracy: number }> = {};
+  let lessonProgress = $state<Record<string, { status: string; best_wpm: number; best_accuracy: number }>>({});
   let lessonLang = $state<'en' | 'ru'>('en');
 
   // Weak Keys
