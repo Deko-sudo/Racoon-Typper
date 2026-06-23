@@ -3,6 +3,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
   AppSettings,
+  CourseResponse,
   CustomText,
   FinalStats,
   PersonalBest,
@@ -88,4 +89,21 @@ export async function getThemes(): Promise<ThemeInfo[]> {
 
 export async function getThemeCss(name: string): Promise<string> {
   return invoke<string>('get_theme_css', { name });
+}
+
+// Lessons
+export async function getCourse(language: string): Promise<CourseResponse> {
+  return invoke<CourseResponse>('get_course', { language });
+}
+
+export async function getLessonProgress(language: string): Promise<unknown> {
+  return invoke('get_lesson_progress', { language });
+}
+
+export async function startLesson(lessonId: string, language: string): Promise<TestSessionResponse> {
+  return invoke<TestSessionResponse>('start_lesson', { lessonId, language });
+}
+
+export async function completeLesson(lessonId: string, wpm: number, accuracy: number): Promise<void> {
+  return invoke('complete_lesson', { lessonId, wpm, accuracy });
 }

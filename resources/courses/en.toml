@@ -1,0 +1,249 @@
+# Racoon Typper English Course
+
+[[modules]]
+id = "en_m1"
+name = "Home Row"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "en_m1_l1"
+name = "Left Hand: f j"
+text = "f j f j f j f j f j f j f j f j f j f j f j f j"
+
+[[modules.lessons]]
+id = "en_m1_l2"
+name = "Left Hand: d k"
+text = "d k d k d k d k d k d k d k d k d k d k d k d k"
+
+[[modules.lessons]]
+id = "en_m1_l3"
+name = "Home Row: a s l ;"
+text = "a s l a s l a s l a s l a s l a s l a s l a s l"
+
+[[modules.lessons]]
+id = "en_m1_l4"
+name = "Full Home Row"
+text = "a s d f g h j k l ; a s d f g h j k l ; asdfghjkl; asdfghjkl;"
+
+[[modules.lessons]]
+id = "en_m1_l5"
+name = "Home Row Words"
+text = "dad lass fall jada glass fad had sad lad dash flash jalf"
+
+[[modules]]
+id = "en_m2"
+name = "Top Row"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "en_m2_l1"
+name = "Top Row: q w o p"
+text = "q w o p q w o p q w o p q w o p q w o p q w o p"
+
+[[modules.lessons]]
+id = "en_m2_l2"
+name = "Top Row: e r t y u i"
+text = "e r t y u i e r t y u i e r t y u i e r t y u i"
+
+[[modules.lessons]]
+id = "en_m2_l3"
+name = "Full Top Row"
+text = "q w e r t y u i o p qwer tyui op qwertyuiop qwertyuiop"
+
+[[modules.lessons]]
+id = "en_m2_l4"
+name = "Top Row Words"
+text = "type write quote report power party worry your iron quit"
+
+[[modules.lessons]]
+id = "en_m2_l5"
+name = "Top + Home Row"
+text = "the quick brown fox jumps over lazy dog type write quote report"
+
+[[modules]]
+id = "en_m3"
+name = "Bottom Row"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "en_m3_l1"
+name = "Bottom Row: z x c v b n m"
+text = "z x c v b n m z x c v b n m z x c v b n m zxcvbnm"
+
+[[modules.lessons]]
+id = "en_m3_l2"
+name = "Bottom Row + Space"
+text = "z x c v b n m z x c v b n m z x c v b n m z x c v b n m"
+
+[[modules.lessons]]
+id = "en_m3_l3"
+name = "Full Bottom Row"
+text = "z x c v b n m , . / zxcvbnm,./ zxcvbnm comma dot slash"
+
+[[modules.lessons]]
+id = "en_m3_l4"
+name = "Bottom Row Words"
+text = "zone xbox come very brown next move zoom calm vibe numb"
+
+[[modules.lessons]]
+id = "en_m3_l5"
+name = "All Three Rows"
+text = "the quick brown fox jumps over the lazy dog zxcvbnm asdfghjkl qwertyuiop"
+
+[[modules]]
+id = "en_m4"
+name = "Mixed Letters"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "en_m4_l1"
+name = "Common Bigrams"
+text = "th he in er an re on at en nd ti or es te of"
+
+[[modules.lessons]]
+id = "en_m4_l2"
+name = "Common Trigrams"
+text = "the and ing for are but not you all any can had her"
+
+[[modules.lessons]]
+id = "en_m4_l3"
+name = "Letter Patterns"
+text = "st re nd er th an in on at io le al ve me de"
+
+[[modules.lessons]]
+id = "en_m4_l4"
+name = "Mixed Practice"
+text = "first water after right think called about long down made been"
+
+[[modules.lessons]]
+id = "en_m4_l5"
+name = "Speed Drill"
+text = "each find work more look time year many very come them come"
+
+[[modules]]
+id = "en_m5"
+name = "Common Words"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "en_m5_l1"
+name = "Top 50 Words"
+text = "the be to of and a in that have it for not on with he as"
+
+[[modules.lessons]]
+id = "en_m5_l2"
+name = "Top 100 Words"
+text = "you do at this but his by from they we say her she or an will my one"
+
+[[modules.lessons]]
+id = "en_m5_l3"
+name = "Top 200 Words"
+text = "all would there their what so up out if about who get which go me when make can"
+
+[[modules.lessons]]
+id = "en_m5_l4"
+name = "Action Words"
+text = "run walk jump swim fly read write speak listen think build create destroy help learn teach"
+
+[[modules.lessons]]
+id = "en_m5_l5"
+name = "Business Words"
+text = "project system company program question government number office report decision plan develop service"
+
+[[modules]]
+id = "en_m6"
+name = "Sentences"
+difficulty = "intermediate"
+order = 6
+
+[[modules.lessons]]
+id = "en_m6_l1"
+name = "Short Sentences"
+text = "the cat sat on the mat. the dog ran fast. we went home. it was fun."
+
+[[modules.lessons]]
+id = "en_m6_l2"
+name = "Medium Sentences"
+text = "the quick brown fox jumps over the lazy dog every single day without fail."
+
+[[modules.lessons]]
+id = "en_m6_l3"
+name = "Questions"
+text = "what is your name? where do you live? how are you today? why is the sky blue?"
+
+[[modules.lessons]]
+id = "en_m6_l4"
+name = "Complex Sentences"
+text = "despite the rain, we decided to go for a walk in the park because the air was fresh and clean."
+
+[[modules.lessons]]
+id = "en_m6_l5"
+name = "Paragraph"
+text = "practice makes perfect. the more you type, the faster you become. keep your fingers on the home row and look at the screen, not the keyboard."
+
+[[modules]]
+id = "en_m7"
+name = "Punctuation"
+difficulty = "advanced"
+order = 7
+
+[[modules.lessons]]
+id = "en_m7_l1"
+name = "Periods and Commas"
+text = "hello, world. goodbye, friend. one, two, three. four, five, six."
+
+[[modules.lessons]]
+id = "en_m7_l2"
+name = "Question Marks"
+text = "how are you? what time is it? where are we going? who is that person?"
+
+[[modules.lessons]]
+id = "en_m7_l3"
+name = "Exclamation Marks"
+text = "wow! amazing! incredible! fantastic! well done! great job! perfect! excellent!"
+
+[[modules.lessons]]
+id = "en_m7_l4"
+name = "Mixed Punctuation"
+text = "the cat, the dog, and the bird went for a walk. what a sight! they had fun."
+
+[[modules.lessons]]
+id = "en_m7_l5"
+name = "Quotation Marks"
+text = "she said, hello! he replied, how are you? they laughed, what a joke!"
+
+[[modules]]
+id = "en_m8"
+name = "Free Practice"
+difficulty = "advanced"
+order = 8
+
+[[modules.lessons]]
+id = "en_m8_l1"
+name = "Long Text 1"
+text = "the journey of a thousand miles begins with a single step. every expert was once a beginner. practice is the key to mastery. keep typing, keep learning, keep growing."
+
+[[modules.lessons]]
+id = "en_m8_l2"
+name = "Long Text 2"
+text = "touch typing is the ability to type without looking at the keyboard. it requires practice, patience, and persistence. start with the home row and gradually expand to other keys."
+
+[[modules.lessons]]
+id = "en_m8_l3"
+name = "Long Text 3"
+text = "speed comes with accuracy first. do not rush. focus on hitting the right keys. speed will follow naturally as your muscle memory develops over time with consistent practice."
+
+[[modules.lessons]]
+id = "en_m8_l4"
+name = "Long Text 4"
+text = "the quick brown fox jumps over the lazy dog. pack my box with five dozen liquor jugs. how vexingly quick daft zebras jump. the five boxing wizards jump quickly."
+
+[[modules.lessons]]
+id = "en_m8_l5"
+name = "Final Challenge"
+text = "success is not final, failure is not fatal: it is the courage to continue that counts. the only way to do great work is to love what you do. believe you can and you are halfway there."

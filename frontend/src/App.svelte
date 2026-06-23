@@ -5,7 +5,7 @@
   import type {
     CharStatus, TestSessionResponse, FinalStats, TestSummary,
     StatsHistoryResponse, PersonalBest, CustomText, AppSettings,
-    ThemeInfo, ViewName, ModeName, LanguageCode,
+    ThemeInfo, ViewName, ModeName, LanguageCode, ModuleResponse,
   } from './lib/types/index';
 
   import NavigationBar from './components/NavigationBar.svelte';
@@ -14,6 +14,7 @@
   import BestsView from './components/BestsView.svelte';
   import CustomTextsView from './components/CustomTextsView.svelte';
   import SettingsView from './components/SettingsView.svelte';
+  import LessonListView from './components/LessonListView.svelte';
 
   // Navigation
   let view = $state<ViewName>('test');
@@ -59,6 +60,11 @@
   // Themes
   let themes = $state<ThemeInfo[]>([]);
   let activeTheme = $state('serika_dark');
+
+  // Lessons
+  let courseModules = $state<ModuleResponse[]>([]);
+  let lessonProgress: Record<string, { status: string; best_wpm: number; best_accuracy: number }> = {};
+  let lessonLang = $state<'en' | 'ru'>('en');
 
   async function startTest() {
     errorMsg = '';
@@ -222,6 +228,36 @@
     if (v === 'history') loadHistory();
     if (v === 'bests') loadBests();
     if (v === 'custom') loadCustomTexts();
+    if (v === 'lessons') loadLessons();
+  }
+
+  async function loadLessons() {
+    try {
+      const course = await ipc.getCourse(lessonLang);
+      courseModules = course.modules;
+      const p = await ipc.getLessonProgress(lessonLang) as { modules: Array<{ module_id: string; completed_lessons: number }> };
+      // Progress is course-level, we need per-lesson. For now, use empty.
+      lessonProgress = {};
+    } catch (e) {
+      errorMsg = `Lessons error: ${e}`;
+    }
+  }
+
+  async function onSelectLesson(lessonId: string, language: string) {
+    try {
+      const resp = await ipc.startLesson(lessonId, language);
+      text = resp.text;
+      caretPos = 0;
+      isComplete = false;
+      isRunning = true;
+      finalStats = null;
+      sessionModeType = resp.mode_type;
+      sessionLanguage = resp.language;
+      charStatuses = text.split('').map((ch) => ({ expected: ch, typed: null, status: 'pending' as const }));
+      view = 'test';
+    } catch (e) {
+      errorMsg = `Start lesson error: ${e}`;
+    }
   }
 
   function onModeChange(m: ModeName) {
@@ -311,6 +347,17 @@
       onSelectTheme={selectTheme}
       onUpdateSetting={updateSetting}
     />
+  {:else if view === 'lessons'}
+    <div class="lesson-lang-selector">
+      <button class:active={lessonLang === 'en'} onclick={() => { lessonLang = 'en'; loadLessons(); }}>EN</button>
+      <button class:active={lessonLang === 'ru'} onclick={() => { lessonLang = 'ru'; loadLessons(); }}>RU</button>
+    </div>
+    <LessonListView
+      modules={courseModules}
+      progress={lessonProgress}
+      language={lessonLang}
+      onSelectLesson={onSelectLesson}
+    />
   {/if}
 </main>
 
@@ -327,4 +374,7 @@
     font-family: 'JetBrains Mono', monospace; font-size: 24px;
   }
   .error { color: var(--error); font-size: 0.875rem; }
+  .lesson-lang-selector { display: flex; gap: 0.25rem; }
+  .lesson-lang-selector button { background: var(--bg-sub); color: var(--sub); border: 1px solid var(--sub); padding: 0.25rem 0.75rem; font-family: inherit; font-size: 0.75rem; cursor: pointer; border-radius: 4px; }
+  .lesson-lang-selector button.active { color: var(--main); border-color: var(--main); }
 </style>

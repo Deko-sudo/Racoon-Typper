@@ -53,6 +53,21 @@ export interface TestSummary {
   is_pb: boolean;
 }
 
+export interface TestDetail {
+  id: number;
+  created_at: string;
+  mode_type: string;
+  mode_config: Record<string, unknown>;
+  language: string;
+  wpm: number;
+  raw_wpm: number;
+  accuracy: number;
+  raw_accuracy: number;
+  duration_ms: number;
+  char_stats: Record<string, unknown>;
+  heatmap_data: Record<string, unknown>;
+}
+
 export interface StatsHistoryResponse {
   tests: TestSummary[];
   total: number;
@@ -99,6 +114,25 @@ export interface ThemeInfo {
   };
 }
 
-export type ViewName = 'test' | 'history' | 'bests' | 'custom' | 'settings';
+export type ViewName = 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons';
 export type ModeName = 'time' | 'words' | 'quote' | 'custom';
 export type LanguageCode = 'en' | 'ru';
+
+export interface ModuleResponse {
+  id: string;
+  name: string;
+  difficulty: string;
+  order: number;
+  lessons: LessonResponse[];
+}
+
+export interface LessonResponse {
+  id: string;
+  name: string;
+  text_length: number;
+}
+
+export interface CourseResponse {
+  language: string;
+  modules: ModuleResponse[];
+}

@@ -53,6 +53,11 @@ fn main() {
             // Themes
             commands::get_themes,
             commands::get_theme_css,
+            // Lessons
+            commands::get_course,
+            commands::get_lesson_progress,
+            commands::start_lesson,
+            commands::complete_lesson,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

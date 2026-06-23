@@ -12,6 +12,13 @@ mod embedded {
     embed_migrations!("migrations");
 }
 
+/// Применяет миграции к соединению.
+pub fn run_migrations(conn: &mut Connection) {
+    embedded::migrations::runner()
+        .run(conn)
+        .expect("Failed to run migrations");
+}
+
 /// Database — обёртка над Mutex<Connection>.
 pub struct Database {
     conn: Mutex<Connection>,
@@ -53,7 +60,8 @@ impl Database {
         })
     }
 
-    /// Возвращает блокировку соединения.
+    /// Возвращает ссылку на соединение (для тестов).
+    /// Возвращает MutexGuard на соединение.
     pub fn conn(&self) -> std::sync::MutexGuard<'_, Connection> {
         self.conn.lock().expect("DB mutex poisoned")
     }

@@ -6,6 +6,11 @@ pub mod quote;
 pub mod time;
 pub mod words;
 
+pub use custom::CustomMode;
+pub use quote::QuoteMode;
+pub use time::TimeMode;
+pub use words::WordsMode;
+
 use crate::typing::TextBuffer;
 
 /// Тип режима теста.

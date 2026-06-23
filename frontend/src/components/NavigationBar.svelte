@@ -6,7 +6,8 @@
 
 <nav>
   <button class:active={view === 'test'} onclick={() => onNavigate('test')}>Test</button>
-  <button class:active={view === 'history'} onclick={() => onNavigate('history')}>History ({historyTotal})</button>
+    <button class:active={view === 'lessons'} onclick={() => onNavigate('lessons')}>Lessons</button>
+    <button class:active={view === 'history'} onclick={() => onNavigate('history')}>History ({historyTotal})</button>
   <button class:active={view === 'bests'} onclick={() => onNavigate('bests')}>Bests</button>
   <button class:active={view === 'custom'} onclick={() => onNavigate('custom')}>Texts</button>
   <button class:active={view === 'settings'} onclick={() => onNavigate('settings')}>Settings</button>

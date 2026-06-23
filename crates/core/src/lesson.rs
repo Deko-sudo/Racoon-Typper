@@ -1,0 +1,316 @@
+//! Lesson Engine — управление процессом прохождения урока.
+//! Использует существующий Typing Engine (TextBuffer, TypedChar).
+//! Не дублирует Typing Engine — делегирует ему обработку клавиш.
+
+use crate::modes::{ModeResult, ModeType, TestMode};
+use crate::typing::{TextBuffer, TypingResult};
+
+/// Состояние прохождения урока.
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum LessonState {
+    NotStarted,
+    InProgress,
+    Completed,
+}
+
+/// Результат завершения урока.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct LessonResult {
+    pub lesson_id: String,
+    pub module_id: String,
+    pub language: String,
+    pub wpm: f64,
+    pub accuracy: f64,
+    pub correct_chars: usize,
+    pub incorrect_chars: usize,
+    pub duration_ms: u64,
+    pub state: LessonState,
+}
+
+/// LessonMode — режим TestMode для уроков.
+/// Текст урока фиксирован. Завершение по последнему символу.
+pub struct LessonMode {
+    lesson_id: String,
+    module_id: String,
+    language: String,
+    text: String,
+}
+
+impl LessonMode {
+    pub fn new(lesson_id: String, module_id: String, language: String, text: String) -> Self {
+        Self {
+            lesson_id,
+            module_id,
+            language,
+            text,
+        }
+    }
+
+    pub fn lesson_id(&self) -> &str {
+        &self.lesson_id
+    }
+
+    pub fn module_id(&self) -> &str {
+        &self.module_id
+    }
+}
+
+impl TestMode for LessonMode {
+    fn mode_type(&self) -> ModeType {
+        ModeType::Custom
+    }
+
+    fn mode_config(&self) -> serde_json::Value {
+        serde_json::json!({
+            "lesson_id": self.lesson_id,
+            "module_id": self.module_id,
+        })
+    }
+
+    fn on_key_press(&mut self, ch: char, timestamp: u64, buf: &mut TextBuffer) -> ModeResult {
+        let result = buf.process_print(ch, timestamp);
+        match result {
+            TypingResult::TestEnded => ModeResult::Complete,
+            _ => ModeResult::Continue,
+        }
+    }
+
+    fn on_backspace(&mut self, buf: &mut TextBuffer) -> ModeResult {
+        let _ = buf.process_backspace();
+        ModeResult::Continue
+    }
+
+    fn is_complete(&self, buf: &TextBuffer) -> bool {
+        buf.is_complete
+    }
+
+    fn get_text(&self) -> &str {
+        &self.text
+    }
+
+    fn language(&self) -> &str {
+        &self.language
+    }
+}
+
+/// LessonSession — управляет сессией урока.
+pub struct LessonSession {
+    pub lesson_id: String,
+    pub module_id: String,
+    pub language: String,
+    pub text: String,
+    pub buffer: TextBuffer,
+    pub state: LessonState,
+}
+
+impl LessonSession {
+    /// Создаёт новую сессию урока.
+    pub fn start(lesson_id: String, module_id: String, language: String, text: String) -> Self {
+        let buffer = TextBuffer::new(&text);
+        Self {
+            lesson_id,
+            module_id,
+            language,
+            text,
+            buffer,
+            state: LessonState::InProgress,
+        }
+    }
+
+    /// Обрабатывает нажатие клавиши.
+    pub fn process_key(&mut self, ch: char, timestamp: u64) -> TypingResult {
+        if self.state != LessonState::InProgress {
+            return TypingResult::TestEnded;
+        }
+        let result = self.buffer.process_print(ch, timestamp);
+        if self.buffer.is_complete {
+            self.state = LessonState::Completed;
+        }
+        result
+    }
+
+    /// Обрабатывает backspace.
+    pub fn process_backspace(&mut self) -> TypingResult {
+        self.buffer.process_backspace()
+    }
+
+    /// Завершает урок и возвращает результат.
+    pub fn complete(&self) -> LessonResult {
+        let elapsed = self.buffer.elapsed_ms();
+        let correct = self.buffer.correct_chars();
+        let incorrect = self.buffer.incorrect_chars();
+        let total = correct + incorrect;
+
+        let wpm = if elapsed > 0 {
+            (correct as f64 / 5.0) / (elapsed as f64 / 60000.0)
+        } else {
+            0.0
+        };
+
+        let accuracy = if total > 0 {
+            (correct as f64 / total as f64) * 100.0
+        } else {
+            100.0
+        };
+
+        LessonResult {
+            lesson_id: self.lesson_id.clone(),
+            module_id: self.module_id.clone(),
+            language: self.language.clone(),
+            wpm,
+            accuracy,
+            correct_chars: correct,
+            incorrect_chars: incorrect,
+            duration_ms: elapsed,
+            state: self.state.clone(),
+        }
+    }
+
+    /// Текущая позиция курсора.
+    pub fn caret_position(&self) -> usize {
+        self.buffer.current_position
+    }
+
+    /// Завершён ли урок.
+    pub fn is_complete(&self) -> bool {
+        self.state == LessonState::Completed
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_session() -> LessonSession {
+        LessonSession::start(
+            "en_m1_l1".to_string(),
+            "en_m1".to_string(),
+            "en".to_string(),
+            "hello".to_string(),
+        )
+    }
+
+    #[test]
+    fn lesson_session_start() {
+        let s = make_session();
+        assert_eq!(s.lesson_id, "en_m1_l1");
+        assert_eq!(s.module_id, "en_m1");
+        assert_eq!(s.language, "en");
+        assert_eq!(s.state, LessonState::InProgress);
+        assert!(!s.is_complete());
+    }
+
+    #[test]
+    fn lesson_process_correct_key() {
+        let mut s = make_session();
+        let result = s.process_key('h', 0);
+        assert_eq!(result, TypingResult::Correct);
+        assert_eq!(s.caret_position(), 1);
+    }
+
+    #[test]
+    fn lesson_process_incorrect_key() {
+        let mut s = make_session();
+        let result = s.process_key('x', 0);
+        assert_eq!(result, TypingResult::Incorrect);
+        assert_eq!(s.caret_position(), 0);
+    }
+
+    #[test]
+    fn lesson_complete_on_full_text() {
+        let mut s = make_session();
+        for ch in "hello".chars() {
+            s.process_key(ch, 0);
+        }
+        assert!(s.is_complete());
+        assert_eq!(s.state, LessonState::Completed);
+    }
+
+    #[test]
+    fn lesson_result_after_completion() {
+        let mut s = make_session();
+        for ch in "hello".chars() {
+            s.process_key(ch, 0);
+        }
+        let result = s.complete();
+        assert_eq!(result.lesson_id, "en_m1_l1");
+        assert_eq!(result.correct_chars, 5);
+        assert_eq!(result.incorrect_chars, 0);
+        assert!((result.accuracy - 100.0).abs() < 0.01);
+        assert_eq!(result.state, LessonState::Completed);
+    }
+
+    #[test]
+    fn lesson_result_with_errors() {
+        let mut s = make_session();
+        // Type 'h' correct, 'x' incorrect (stays at pos 1), then 'e' correct for pos 1
+        // Wait — 'e' is the correct char for pos 1, so it replaces the incorrect
+        // Instead, let's skip to pos 1 and type wrong char that doesn't match
+        s.process_key('h', 0); // pos 0 correct
+        s.process_key('x', 10); // pos 1 incorrect (expected 'e')
+                                // Now 'e' is correct for pos 1 — it will replace incorrect
+                                // So we need to type the rest correctly to complete
+        s.process_key('e', 20); // pos 1 correct (replaces incorrect)
+        s.process_key('l', 30); // pos 2
+        s.process_key('l', 40); // pos 3
+        s.process_key('o', 50); // pos 4
+        let result = s.complete();
+        assert_eq!(result.correct_chars, 5);
+        // incorrect_chars counts current Incorrect status, which is 0 after correction
+        // But first_typed was 'x' — the heatmap would show it
+        assert_eq!(result.incorrect_chars, 0); // corrected before advancing
+    }
+
+    #[test]
+    fn lesson_backspace_works() {
+        let mut s = make_session();
+        s.process_key('h', 0);
+        assert_eq!(s.caret_position(), 1);
+        s.process_backspace();
+        assert_eq!(s.caret_position(), 0);
+    }
+
+    #[test]
+    fn lesson_mode_implements_test_mode() {
+        let mode = LessonMode::new(
+            "en_m1_l1".to_string(),
+            "en_m1".to_string(),
+            "en".to_string(),
+            "hello".to_string(),
+        );
+        assert_eq!(mode.lesson_id(), "en_m1_l1");
+        assert_eq!(mode.module_id(), "en_m1");
+        assert_eq!(mode.get_text(), "hello");
+        assert_eq!(mode.language(), "en");
+    }
+
+    #[test]
+    fn lesson_mode_config_has_lesson_id() {
+        let mode = LessonMode::new(
+            "ru_m1_l1".to_string(),
+            "ru_m1".to_string(),
+            "ru".to_string(),
+            "привет".to_string(),
+        );
+        let config = mode.mode_config();
+        assert_eq!(config["lesson_id"], "ru_m1_l1");
+        assert_eq!(config["module_id"], "ru_m1");
+    }
+
+    #[test]
+    fn lesson_session_not_started_state() {
+        let result = LessonResult {
+            lesson_id: "test".to_string(),
+            module_id: "test_m".to_string(),
+            language: "en".to_string(),
+            wpm: 0.0,
+            accuracy: 100.0,
+            correct_chars: 0,
+            incorrect_chars: 0,
+            duration_ms: 0,
+            state: LessonState::NotStarted,
+        };
+        assert_eq!(result.state, LessonState::NotStarted);
+    }
+}
