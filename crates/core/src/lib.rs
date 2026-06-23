@@ -14,6 +14,7 @@ pub mod finger_map;
 pub mod input;
 pub mod lesson;
 pub mod modes;
+pub mod replay;
 pub mod stats;
 pub mod streaks;
 pub mod typing;
@@ -32,6 +33,7 @@ pub use lesson::{
 };
 pub use modes::{CustomMode, ModeResult, ModeType, QuoteMode, TestMode, TimeMode, WordsMode};
 pub use racoon_domain::KeyResult;
+pub use replay::{ReplayEngine, ReplaySpeed, ReplayState};
 pub use stats::{AccuracyCalculator, HeatmapBuilder, LiveTracker, StatisticsEngine, WpmCalculator};
 pub use streaks::{StreakEngine, StreakInfo};
 pub use typing::{TextBuffer, TypingResult};

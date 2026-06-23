@@ -146,3 +146,12 @@ export async function getConsistency(): Promise<unknown> {
 export async function exportData(format: 'json' | 'csv'): Promise<string> {
   return invoke<string>('export_data', { format });
 }
+
+// Replay
+export async function getReplay(testId: number): Promise<unknown> {
+  return invoke('get_replay', { testId });
+}
+
+export async function hasReplay(testId: number): Promise<boolean> {
+  return invoke<boolean>('has_replay', { testId });
+}

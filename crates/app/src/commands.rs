@@ -7,8 +7,9 @@ use racoon_core::{
 };
 use racoon_data::repository::{
     AppSettings, CustomTextRepository, DailyStatsRepository, LessonRepository,
-    PersonalBestsRepository, SqliteCustomTextRepository, SqliteDailyStatsRepository,
-    SqliteLessonRepository, SqlitePersonalBestsRepository, SqliteTestRepository, TestRepository,
+    PersonalBestsRepository, ReplayRepository, SqliteCustomTextRepository,
+    SqliteDailyStatsRepository, SqliteLessonRepository, SqlitePersonalBestsRepository,
+    SqliteReplayRepository, SqliteTestRepository, TestRepository,
 };
 use racoon_domain::PersonalBest;
 use racoon_domain::TestDetail;
@@ -874,6 +875,30 @@ pub fn export_data(state: State<'_, AppState>, format: String) -> Result<String,
         }
         _ => Err(AppError::Internal(format!("Unknown format: {}", format))),
     }
+}
+
+// ── Replay ──
+
+#[tauri::command]
+pub fn get_replay(
+    state: State<'_, AppState>,
+    test_id: i64,
+) -> Result<Vec<serde_json::Value>, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let repo = SqliteReplayRepository::new(&conn);
+    let frames = repo.load_replay(test_id).map_err(AppError::from)?;
+    serde_json::to_value(frames)
+        .map(|v| vec![v])
+        .map_err(AppError::from)
+}
+
+#[tauri::command]
+pub fn has_replay(state: State<'_, AppState>, test_id: i64) -> Result<bool, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let repo = SqliteReplayRepository::new(&conn);
+    repo.has_replay(test_id).map_err(AppError::from)
 }
 
 // ── Helpers ──

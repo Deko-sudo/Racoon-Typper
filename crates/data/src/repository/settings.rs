@@ -115,6 +115,26 @@ impl SettingsStore {
                     settings.show_accuracy = v;
                 }
             }
+            "show_keyboard_trainer" => {
+                if let Some(v) = value.as_bool() {
+                    settings.show_keyboard_trainer = v;
+                }
+            }
+            "show_hand_guide" => {
+                if let Some(v) = value.as_bool() {
+                    settings.show_hand_guide = v;
+                }
+            }
+            "show_layout_warnings" => {
+                if let Some(v) = value.as_bool() {
+                    settings.show_layout_warnings = v;
+                }
+            }
+            "show_capslock_warnings" => {
+                if let Some(v) = value.as_bool() {
+                    settings.show_capslock_warnings = v;
+                }
+            }
             _ => {
                 return Err(DbError::Write(format!("Unknown setting key: {}", key)));
             }

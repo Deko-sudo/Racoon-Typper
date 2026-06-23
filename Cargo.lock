@@ -2384,6 +2384,7 @@ name = "racoon-data"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "racoon-core",
  "racoon-domain",
  "refinery",
  "rusqlite",

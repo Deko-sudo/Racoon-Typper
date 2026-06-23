@@ -70,6 +70,9 @@ fn main() {
             commands::get_insights,
             commands::get_consistency,
             commands::export_data,
+            // Replay
+            commands::get_replay,
+            commands::has_replay,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
