@@ -79,6 +79,9 @@
   // Dashboard
   let dashboardStats = $state<DashboardStatsResponse | null>(null);
 
+  // Zen mode — hide everything except text
+  let zenActive = $state(false);
+
   // Typing warnings
   let lastTypedChar = $state('');
   let capsLockOn = $state(false);
@@ -98,6 +101,7 @@
   async function startTest() {
     errorMsg = '';
     finalStats = null;
+    if (settings?.zen_mode_enabled) zenActive = true;
     const params: Record<string, unknown> = {
       mode: selectedMode,
       language: selectedLanguage,
@@ -162,6 +166,7 @@
       if (output.test_complete) {
         finalStats = output.test_complete;
         isComplete = true;
+        zenActive = false;
         isRunning = false;
         if (finalStats.accuracy >= 95) {
           addNotification('SUCCESS', 'Отличный результат!');
@@ -373,7 +378,9 @@
 <svelte:window on:keydown={handleKeydown} />
 
 <main>
-  <NavigationBar {view} {historyTotal} onNavigate={switchView} />
+  {#if !zenActive}
+    <NavigationBar {view} {historyTotal} onNavigate={switchView} />
+  {/if}
 
   {#if errorMsg}
     <p class="error">{errorMsg}</p>

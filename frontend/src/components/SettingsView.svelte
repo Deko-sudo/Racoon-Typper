@@ -65,6 +65,18 @@
         <label>Caps Lock Warnings</label>
         <input type="checkbox" checked={settings.show_capslock_warnings} onchange={(e) => onUpdateSetting('show_capslock_warnings', e.currentTarget.checked)} />
       </div>
+      <div class="setting-row">
+        <label>Sound Enabled</label>
+        <input type="checkbox" checked={settings.sound_enabled} onchange={(e) => onUpdateSetting('sound_enabled', e.currentTarget.checked)} />
+      </div>
+      <div class="setting-row">
+        <label>Sound Volume</label>
+        <input type="range" min="0" max="1" step="0.1" value={settings.sound_volume} onchange={(e) => onUpdateSetting('sound_volume', parseFloat(e.currentTarget.value))} />
+      </div>
+      <div class="setting-row">
+        <label>Zen Mode</label>
+        <input type="checkbox" checked={settings.zen_mode_enabled} onchange={(e) => onUpdateSetting('zen_mode_enabled', e.currentTarget.checked)} />
+      </div>
     </div>
     <h3>Theme Preview</h3>
     <div class="theme-cards">

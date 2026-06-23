@@ -15,6 +15,7 @@ pub mod input;
 pub mod lesson;
 pub mod modes;
 pub mod replay;
+pub mod sound;
 pub mod stats;
 pub mod streaks;
 pub mod typing;

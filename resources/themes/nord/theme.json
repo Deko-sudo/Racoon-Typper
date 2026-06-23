@@ -1,0 +1,17 @@
+{
+  "name": "nord",
+  "display_name": "Nord",
+  "author": "racoon-typper",
+  "version": "1.0.0",
+  "description": "Cold blue dark theme based on the Nord color palette",
+  "is_dark": true,
+  "colors": {
+    "bg": "#2e3440",
+    "bg_sub": "#3b4252",
+    "main": "#88c0d0",
+    "sub": "#4c566a",
+    "text": "#e5e9f0",
+    "error": "#bf616a",
+    "caret": "#88c0d0"
+  }
+}

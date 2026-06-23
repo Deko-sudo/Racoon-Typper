@@ -22,6 +22,9 @@ pub struct AppSettings {
     pub show_layout_warnings: bool,
     #[serde(default)]
     pub show_capslock_warnings: bool,
+    pub sound_enabled: bool,
+    pub sound_volume: f64,
+    pub zen_mode_enabled: bool,
 }
 
 impl Default for AppSettings {
@@ -36,6 +39,9 @@ impl Default for AppSettings {
             show_hand_guide: true,
             show_layout_warnings: true,
             show_capslock_warnings: true,
+            sound_enabled: false,
+            sound_volume: 0.5,
+            zen_mode_enabled: false,
         }
     }
 }
@@ -133,6 +139,21 @@ impl SettingsStore {
             "show_capslock_warnings" => {
                 if let Some(v) = value.as_bool() {
                     settings.show_capslock_warnings = v;
+                }
+            }
+            "sound_enabled" => {
+                if let Some(v) = value.as_bool() {
+                    settings.sound_enabled = v;
+                }
+            }
+            "sound_volume" => {
+                if let Some(v) = value.as_float() {
+                    settings.sound_volume = v;
+                }
+            }
+            "zen_mode_enabled" => {
+                if let Some(v) = value.as_bool() {
+                    settings.zen_mode_enabled = v;
                 }
             }
             _ => {
@@ -288,6 +309,9 @@ mod tests {
             show_hand_guide: true,
             show_layout_warnings: true,
             show_capslock_warnings: true,
+            sound_enabled: false,
+            sound_volume: 0.5,
+            zen_mode_enabled: false,
         };
 
         let toml_str = toml::to_string(&settings).unwrap();

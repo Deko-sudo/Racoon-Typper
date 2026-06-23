@@ -901,6 +901,216 @@ pub fn has_replay(state: State<'_, AppState>, test_id: i64) -> Result<bool, AppE
     repo.has_replay(test_id).map_err(AppError::from)
 }
 
+// ── Sound ──
+
+#[derive(Debug, serde::Serialize)]
+pub struct SoundOutputResponse {
+    pub frequency: f64,
+    pub duration_ms: u64,
+    pub volume: f64,
+    pub event: String,
+}
+
+#[tauri::command]
+pub fn get_sound_event(
+    _engine_state: State<'_, Mutex<CoreEngine>>,
+    _state: State<'_, AppState>,
+    event: String,
+) -> Result<Option<SoundOutputResponse>, AppError> {
+    let settings_path = dirs::config_dir()
+        .unwrap_or_default()
+        .join("racoon-typper")
+        .join("settings.toml");
+    let settings_store = racoon_data::repository::SettingsStore::new(settings_path);
+    let settings = settings_store.load().unwrap_or_default();
+
+    if !settings.sound_enabled {
+        return Ok(None);
+    }
+
+    let sound_event = match event.as_str() {
+        "key_press" => racoon_core::sound::SoundEvent::KeyPress,
+        "error" => racoon_core::sound::SoundEvent::Error,
+        "lesson_complete" => racoon_core::sound::SoundEvent::LessonComplete,
+        "achievement_unlocked" => racoon_core::sound::SoundEvent::AchievementUnlocked,
+        _ => return Ok(None),
+    };
+
+    let now_ms = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default()
+        .as_millis() as u64;
+
+    let mut sound_engine = racoon_core::sound::SoundEngine::new(racoon_core::sound::SoundConfig {
+        enabled: settings.sound_enabled,
+        volume: settings.sound_volume,
+    });
+
+    let output = sound_engine.try_play(sound_event, now_ms);
+    Ok(output.map(|o| SoundOutputResponse {
+        frequency: o.frequency,
+        duration_ms: o.duration_ms,
+        volume: o.volume,
+        event: event.clone(),
+    }))
+}
+
+// ── Session Recovery ──
+
+#[derive(Debug, serde::Serialize, serde::Deserialize)]
+pub struct SessionState {
+    pub text: String,
+    pub typed_chars: Vec<bool>,
+    pub mode_type: String,
+    pub language: String,
+    pub elapsed_ms: u64,
+    pub saved_at: String,
+}
+
+#[tauri::command]
+pub fn save_session_state(
+    state: State<'_, AppState>,
+    session: SessionState,
+) -> Result<(), AppError> {
+    let path = state.data_dir.join("session_recovery.json");
+    let json = serde_json::to_string(&session).map_err(AppError::from)?;
+    std::fs::write(&path, json).map_err(|e| AppError::Internal(e.to_string()))
+}
+
+#[tauri::command]
+pub fn load_session_state(state: State<'_, AppState>) -> Result<Option<SessionState>, AppError> {
+    let path = state.data_dir.join("session_recovery.json");
+    if !path.exists() {
+        return Ok(None);
+    }
+    let json = std::fs::read_to_string(&path).map_err(|e| AppError::Internal(e.to_string()))?;
+    let session: SessionState = serde_json::from_str(&json).map_err(AppError::from)?;
+    Ok(Some(session))
+}
+
+#[tauri::command]
+pub fn clear_session_state(state: State<'_, AppState>) -> Result<(), AppError> {
+    let path = state.data_dir.join("session_recovery.json");
+    if path.exists() {
+        std::fs::remove_file(&path).map_err(|e| AppError::Internal(e.to_string()))?;
+    }
+    Ok(())
+}
+
+// ── Extended Statistics ──
+
+#[derive(Debug, serde::Serialize)]
+pub struct ExtendedStatsResponse {
+    pub best_day_wpm: f64,
+    pub best_day_date: String,
+    pub most_active_hour: i64,
+    pub avg_session_duration_ms: i64,
+    pub total_chars: i64,
+    pub total_words: i64,
+}
+
+#[tauri::command]
+pub fn get_extended_stats(state: State<'_, AppState>) -> Result<ExtendedStatsResponse, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let test_repo = SqliteTestRepository::new(&conn);
+    let daily_repo = SqliteDailyStatsRepository::new(&conn);
+
+    // Best day
+    let thirty_days_ago = (chrono::Utc::now() - chrono::Duration::days(30))
+        .format("%Y-%m-%d")
+        .to_string();
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    let range = daily_repo
+        .get_range(&thirty_days_ago, &today)
+        .unwrap_or_default();
+
+    let (best_day_wpm, best_day_date) = range
+        .iter()
+        .max_by(|a, b| {
+            a.best_wpm
+                .partial_cmp(&b.best_wpm)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+        .map(|d| (d.best_wpm, d.date.clone()))
+        .unwrap_or((0.0, "N/A".to_string()));
+
+    // Most active hour
+    let history = test_repo.get_history(500, 0, None).unwrap_or_default();
+    let mut hour_counts: [i64; 24] = [0; 24];
+    for test in &history {
+        if let Some(hour_str) = test.created_at.split('T').nth(1) {
+            if let Some(hour) = hour_str.get(0..2) {
+                if let Ok(h) = hour.parse::<usize>() {
+                    if h < 24 {
+                        hour_counts[h] += 1;
+                    }
+                }
+            }
+        }
+    }
+    let most_active_hour = hour_counts
+        .iter()
+        .enumerate()
+        .max_by_key(|(_, &c)| c)
+        .map(|(h, _)| h as i64)
+        .unwrap_or(0);
+
+    // Avg session duration
+    let total_duration: i64 = history.iter().map(|t| t.duration_ms as i64).sum();
+    let avg_session_duration_ms = if history.is_empty() {
+        0
+    } else {
+        total_duration / history.len() as i64
+    };
+
+    // Total chars and words (estimated from WPM * duration)
+    let total_chars: i64 = history
+        .iter()
+        .map(|t| (t.wpm * 5.0 * (t.duration_ms as f64 / 60000.0)) as i64)
+        .sum();
+    let total_words = total_chars / 5;
+
+    Ok(ExtendedStatsResponse {
+        best_day_wpm,
+        best_day_date,
+        most_active_hour,
+        avg_session_duration_ms,
+        total_chars,
+        total_words,
+    })
+}
+
+// ── Export/Import Profile ──
+
+#[tauri::command]
+pub fn export_profile(state: State<'_, AppState>) -> Result<String, AppError> {
+    let db = state.db.lock()?;
+    let conn = db.conn();
+    let test_repo = SqliteTestRepository::new(&conn);
+    let ct_repo = SqliteCustomTextRepository::new(&conn);
+    let lesson_repo = SqliteLessonRepository::new(&conn);
+    let pb_repo = SqlitePersonalBestsRepository::new(&conn);
+
+    let history = test_repo.get_history(10000, 0, None)?;
+    let custom_texts = ct_repo.get_all(1000)?;
+    let lessons_en = lesson_repo.get_progress("en").unwrap_or_default();
+    let lessons_ru = lesson_repo.get_progress("ru").unwrap_or_default();
+    let bests = pb_repo.get_bests(None)?;
+
+    let profile = serde_json::json!({
+        "version": "1.1.0",
+        "exported_at": chrono::Utc::now().to_rfc3339(),
+        "tests": history,
+        "custom_texts": custom_texts,
+        "lessons_en": lessons_en,
+        "lessons_ru": lessons_ru,
+        "personal_bests": bests,
+    });
+
+    Ok(serde_json::to_string_pretty(&profile).unwrap_or_default())
+}
+
 // ── Helpers ──
 
 #[derive(Debug, serde::Serialize)]

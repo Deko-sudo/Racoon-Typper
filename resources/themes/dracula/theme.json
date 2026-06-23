@@ -1,0 +1,17 @@
+{
+  "name": "dracula",
+  "display_name": "Dracula",
+  "author": "racoon-typper",
+  "version": "1.0.0",
+  "description": "Dark purple theme based on the Dracula color palette",
+  "is_dark": true,
+  "colors": {
+    "bg": "#282a36",
+    "bg_sub": "#21222c",
+    "main": "#ff79c6",
+    "sub": "#6272a4",
+    "text": "#f8f8f2",
+    "error": "#ff5555",
+    "caret": "#ff79c6"
+  }
+}

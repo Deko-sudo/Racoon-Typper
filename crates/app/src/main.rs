@@ -26,7 +26,7 @@ fn main() {
 
     tauri::Builder::default()
         .manage(Mutex::new(CoreEngine::new()))
-        .manage(AppState::new(db, settings_path))
+        .manage(AppState::new(db, settings_path, data_dir))
         .invoke_handler(tauri::generate_handler![
             // System
             commands::ping,
@@ -73,6 +73,16 @@ fn main() {
             // Replay
             commands::get_replay,
             commands::has_replay,
+            // Sound
+            commands::get_sound_event,
+            // Session Recovery
+            commands::save_session_state,
+            commands::load_session_state,
+            commands::clear_session_state,
+            // Extended Stats
+            commands::get_extended_stats,
+            // Profile Export
+            commands::export_profile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

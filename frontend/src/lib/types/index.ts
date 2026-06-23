@@ -104,6 +104,9 @@ export interface AppSettings {
   show_hand_guide: boolean;
   show_layout_warnings: boolean;
   show_capslock_warnings: boolean;
+  sound_enabled: boolean;
+  sound_volume: number;
+  zen_mode_enabled: boolean;
 }
 
 export interface ThemeInfo {

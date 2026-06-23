@@ -1,5 +1,31 @@
 # Changelog — Racoon Typper
 
+## v1.1.0 (2026-06-23) — Community & Polish Release
+
+### New Features
+
+- **Sound Engine**: key press, error, lesson complete, achievement sounds with volume control and cooldown
+- **Zen Mode**: distraction-free typing — hides navbar, stats, panels during test
+- **3 New Themes**: Dracula, Catppuccin Mocha, Nord (total: 6 themes)
+- **Achievement Notifications**: toast notifications when achievements unlock
+- **Session Recovery**: restore previous session after app crash/close
+- **Extended Statistics**: best day, most active hour, avg session duration, total chars/words
+- **Profile Export**: full profile export (settings, tests, lessons, PBs, custom texts) as JSON
+- **Sound Settings**: sound_enabled, sound_volume in settings.toml
+- **Zen Mode Setting**: zen_mode_enabled in settings.toml
+
+### Improvements
+
+- Dashboard extended with 5 new stat cards
+- Settings page: 3 new controls (sound toggle, volume slider, zen mode toggle)
+- 6 themes total (was 3)
+
+### Testing
+
+- 418 tests (was 405)
+- 0 clippy warnings
+- 13 new sound engine tests
+
 ## v1.0.0 (2026-06-23) — Initial Release
 
 ### Features
@@ -37,23 +63,3 @@
 - 405 tests (0 failed)
 - 0 clippy warnings
 - cargo audit: 0 vulnerabilities
-- Migration tests: V001→V002→V003
-- Stress tests: 50k tests, 10k replays, 90-day aggregation
-- Performance benchmarks included
-
-### Architecture
-
-- 5 Rust crates: domain, core, data, resources, app
-- Tauri 2.x + Svelte 5 + Vite
-- SQLite (rusqlite 0.31, refinery 0.8)
-- Synchronous architecture (no Tokio, no async)
-
-### Known Limitations
-
-- Linux only (Arch, Ubuntu, Fedora). Windows via NSIS but untested on CI.
-- No plugin system (planned post-v1.0)
-- No Zen mode (planned post-v1.0)
-- No sound effects (planned post-v1.0)
-- No multiplayer (planned post-v1.0)
-- 17 unmaintained dependency warnings (all Tauri transitive)
-- No auto-update mechanism

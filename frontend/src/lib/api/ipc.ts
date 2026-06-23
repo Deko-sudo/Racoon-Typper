@@ -155,3 +155,31 @@ export async function getReplay(testId: number): Promise<unknown> {
 export async function hasReplay(testId: number): Promise<boolean> {
   return invoke<boolean>('has_replay', { testId });
 }
+
+// Sound
+export async function getSoundEvent(event: string): Promise<{ frequency: number; duration_ms: number; volume: number; event: string } | null> {
+  return invoke('get_sound_event', { event });
+}
+
+// Session Recovery
+export async function saveSessionState(session: { text: string; typed_chars: boolean[]; mode_type: string; language: string; elapsed_ms: number; saved_at: string }): Promise<void> {
+  return invoke('save_session_state', { session });
+}
+
+export async function loadSessionState(): Promise<{ text: string; typed_chars: boolean[]; mode_type: string; language: string; elapsed_ms: number; saved_at: string } | null> {
+  return invoke('load_session_state');
+}
+
+export async function clearSessionState(): Promise<void> {
+  return invoke('clear_session_state');
+}
+
+// Extended Stats
+export async function getExtendedStats(): Promise<{ best_day_wpm: number; best_day_date: string; most_active_hour: number; avg_session_duration_ms: number; total_chars: number; total_words: number }> {
+  return invoke('get_extended_stats');
+}
+
+// Profile Export
+export async function exportProfile(): Promise<string> {
+  return invoke<string>('export_profile');
+}

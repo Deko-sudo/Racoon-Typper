@@ -1,0 +1,17 @@
+{
+  "name": "catppuccin_mocha",
+  "display_name": "Catppuccin Mocha",
+  "author": "racoon-typper",
+  "version": "1.0.0",
+  "description": "Warm dark theme based on the Catppuccin Mocha color palette",
+  "is_dark": true,
+  "colors": {
+    "bg": "#1e1e2e",
+    "bg_sub": "#181825",
+    "main": "#cba6f7",
+    "sub": "#6c7086",
+    "text": "#cdd6f4",
+    "error": "#f38ba8",
+    "caret": "#f5e0dc"
+  }
+}
