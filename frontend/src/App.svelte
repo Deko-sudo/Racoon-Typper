@@ -16,6 +16,8 @@
   import SettingsView from './components/SettingsView.svelte';
   import LessonListView from './components/LessonListView.svelte';
   import WeakKeysPanel from './components/WeakKeysPanel.svelte';
+  import TypingWarnings from './components/TypingWarnings.svelte';
+  import NotificationStack from './components/NotificationStack.svelte';
 
   // Navigation
   let view = $state<ViewName>('test');
@@ -71,6 +73,22 @@
   let weakKeysData = $state<Array<{ ch: string; error_count: number; accuracy: number; rank: number }>>([]);
   let weakKeysCharStats = $state<Record<string, { correct: number; incorrect: number; total: number }>>({});
 
+  // Typing warnings
+  let lastTypedChar = $state('');
+  let capsLockOn = $state(false);
+
+  // Notifications
+  let notifications = $state<Array<{ id: number; type: string; message: string; timestamp: number }>>([]);
+  let notifId = 0;
+
+  function addNotification(type: string, message: string) {
+    const id = ++notifId;
+    notifications = [...notifications, { id, type, message, timestamp: Date.now() }];
+    setTimeout(() => {
+      notifications = notifications.filter(n => n.id !== id);
+    }, 5000);
+  }
+
   async function startTest() {
     errorMsg = '';
     finalStats = null;
@@ -96,8 +114,23 @@
 
   async function handleKeydown(e: KeyboardEvent) {
     if (!isRunning || isComplete) return;
+
+    // Caps Lock detection
+    if (e.getModifierState && e.getModifierState('CapsLock') !== capsLockOn) {
+      capsLockOn = e.getModifierState('CapsLock');
+      if (capsLockOn && settings?.show_capslock_warnings) {
+        addNotification('WARNING', 'Caps Lock включён');
+      }
+    }
+
     if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
     if (e.key === 'Backspace' || e.key === 'Tab' || e.key === ' ' || e.key.length === 1) e.preventDefault();
+
+    // Track last typed char for layout detection
+    if (e.key.length === 1) {
+      lastTypedChar = e.key;
+    }
+
     try {
       const output = await ipc.processKey(e.key, e.code);
       caretPos = output.caret_pos;
@@ -105,6 +138,11 @@
         liveWpm = output.live_stats.wpm;
         liveAccuracy = output.live_stats.accuracy;
         elapsedMs = output.live_stats.elapsed_ms;
+
+        // Smart notifications
+        if (liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05) {
+          addNotification('SUCCESS', 'Точность выше 95%');
+        }
       }
       if (output.key_result === 'correct' && caretPos > 0) {
         charStatuses[caretPos - 1] = { ...charStatuses[caretPos - 1], typed: charStatuses[caretPos - 1].expected, status: 'correct' };
@@ -119,6 +157,9 @@
         finalStats = output.test_complete;
         isComplete = true;
         isRunning = false;
+        if (finalStats.accuracy >= 95) {
+          addNotification('SUCCESS', 'Отличный результат!');
+        }
       }
     } catch (err) {
       errorMsg = `Error: ${err}`;
@@ -324,6 +365,15 @@
   {/if}
 
   {#if view === 'test'}
+    {#if isRunning && settings?.show_layout_warnings}
+      <TypingWarnings
+        expectedLanguage={sessionLanguage}
+        {lastTypedChar}
+        {capsLockOn}
+        showLayoutWarnings={settings.show_layout_warnings}
+        showCapsLockWarnings={settings.show_capslock_warnings}
+      />
+    {/if}
     <TestView
       {text}
       {caretPos}
@@ -393,6 +443,8 @@
     />
   {/if}
 </main>
+
+<NotificationStack {notifications} />
 
 <style>
   :root {

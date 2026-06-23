@@ -176,6 +176,38 @@ impl LessonSession {
     pub fn is_complete(&self) -> bool {
         self.state == LessonState::Completed
     }
+
+    /// Возвращает следующий нужный символ, палец и клавишу.
+    pub fn next_required_key(&self) -> Option<NextKeyInfo> {
+        if self.state != LessonState::InProgress {
+            return None;
+        }
+        let pos = self.buffer.current_position;
+        let ch = self.text.chars().nth(pos)?;
+        let is_ru = self
+            .language
+            .chars()
+            .next()
+            .map(|c| c == 'r')
+            .unwrap_or(false);
+        let finger = crate::finger_map::finger_for_char(ch, is_ru);
+        let is_home = crate::finger_map::is_home_row(ch, is_ru);
+        Some(NextKeyInfo {
+            ch,
+            finger,
+            key_label: ch.to_string(),
+            is_home_row: is_home,
+        })
+    }
+}
+
+/// Информация о следующей нужной клавише.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct NextKeyInfo {
+    pub ch: char,
+    pub finger: crate::finger_map::Finger,
+    pub key_label: String,
+    pub is_home_row: bool,
 }
 
 /// Рекомендация по повторению урока.
@@ -448,6 +480,58 @@ mod tests {
         let config = mode.mode_config();
         assert_eq!(config["lesson_id"], "ru_m1_l1");
         assert_eq!(config["module_id"], "ru_m1");
+    }
+
+    #[test]
+    fn next_required_key_at_start() {
+        let s = make_session();
+        let info = s.next_required_key().unwrap();
+        assert_eq!(info.ch, 'h');
+        assert!(info.is_home_row); // 'h' is home row
+    }
+
+    #[test]
+    fn next_required_key_mid_text() {
+        let mut s = make_session();
+        s.process_key('h', 0);
+        let info = s.next_required_key().unwrap();
+        assert_eq!(info.ch, 'e');
+    }
+
+    #[test]
+    fn next_required_key_after_complete() {
+        let mut s = make_session();
+        for ch in "hello".chars() {
+            s.process_key(ch, 0);
+        }
+        assert!(s.is_complete());
+        assert!(s.next_required_key().is_none());
+    }
+
+    #[test]
+    fn next_required_key_home_row() {
+        let s = LessonSession::start(
+            "test".to_string(),
+            "m".to_string(),
+            "en".to_string(),
+            "asdf".to_string(),
+        );
+        let info = s.next_required_key().unwrap();
+        assert!(info.is_home_row);
+        assert_eq!(info.ch, 'a');
+    }
+
+    #[test]
+    fn next_required_key_russian() {
+        let s = LessonSession::start(
+            "ru_m1_l1".to_string(),
+            "ru_m1".to_string(),
+            "ru".to_string(),
+            "фыва".to_string(),
+        );
+        let info = s.next_required_key().unwrap();
+        assert_eq!(info.ch, 'ф');
+        assert!(info.is_home_row);
     }
 
     #[test]

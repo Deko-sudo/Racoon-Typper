@@ -2,16 +2,26 @@
 
 use std::path::{Path, PathBuf};
 
+use serde::{Deserialize, Serialize};
+
 use crate::error::DbError;
 
 /// Настройки приложения (подмножество для MVP Sprint 5).
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AppSettings {
     pub theme: String,
-    pub font_size: u32,
+    pub font_size: i64,
     pub caret_style: String,
     pub show_live_wpm: bool,
     pub show_accuracy: bool,
+    #[serde(default)]
+    pub show_keyboard_trainer: bool,
+    #[serde(default)]
+    pub show_hand_guide: bool,
+    #[serde(default)]
+    pub show_layout_warnings: bool,
+    #[serde(default)]
+    pub show_capslock_warnings: bool,
 }
 
 impl Default for AppSettings {
@@ -22,6 +32,10 @@ impl Default for AppSettings {
             caret_style: "underline".to_string(),
             show_live_wpm: true,
             show_accuracy: true,
+            show_keyboard_trainer: true,
+            show_hand_guide: true,
+            show_layout_warnings: true,
+            show_capslock_warnings: true,
         }
     }
 }
@@ -83,7 +97,7 @@ impl SettingsStore {
             }
             "font_size" => {
                 if let Some(v) = value.as_integer() {
-                    settings.font_size = v as u32;
+                    settings.font_size = v;
                 }
             }
             "caret_style" => {
@@ -250,6 +264,10 @@ mod tests {
             caret_style: "solid".to_string(),
             show_live_wpm: false,
             show_accuracy: true,
+            show_keyboard_trainer: true,
+            show_hand_guide: true,
+            show_layout_warnings: true,
+            show_capslock_warnings: true,
         };
 
         let toml_str = toml::to_string(&settings).unwrap();

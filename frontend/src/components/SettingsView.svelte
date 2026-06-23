@@ -49,6 +49,22 @@
         <label>Show Accuracy</label>
         <input type="checkbox" checked={settings.show_accuracy} onchange={(e) => onUpdateSetting('show_accuracy', e.currentTarget.checked)} />
       </div>
+      <div class="setting-row">
+        <label>Keyboard Trainer</label>
+        <input type="checkbox" checked={settings.show_keyboard_trainer} onchange={(e) => onUpdateSetting('show_keyboard_trainer', e.currentTarget.checked)} />
+      </div>
+      <div class="setting-row">
+        <label>Hand Guide</label>
+        <input type="checkbox" checked={settings.show_hand_guide} onchange={(e) => onUpdateSetting('show_hand_guide', e.currentTarget.checked)} />
+      </div>
+      <div class="setting-row">
+        <label>Layout Warnings</label>
+        <input type="checkbox" checked={settings.show_layout_warnings} onchange={(e) => onUpdateSetting('show_layout_warnings', e.currentTarget.checked)} />
+      </div>
+      <div class="setting-row">
+        <label>Caps Lock Warnings</label>
+        <input type="checkbox" checked={settings.show_capslock_warnings} onchange={(e) => onUpdateSetting('show_capslock_warnings', e.currentTarget.checked)} />
+      </div>
     </div>
     <h3>Theme Preview</h3>
     <div class="theme-cards">

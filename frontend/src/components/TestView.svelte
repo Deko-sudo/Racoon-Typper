@@ -2,6 +2,8 @@
   import type { CharStatus, AppSettings } from '../types/index';
   import ModeSelector from './ModeSelector.svelte';
   import ResultOverlay from './ResultOverlay.svelte';
+  import KeyboardTrainer from './KeyboardTrainer.svelte';
+  import HandPositionGuide from './HandPositionGuide.svelte';
   import type { ModeName, LanguageCode, FinalStats } from '../types/index';
 
   let {
@@ -52,14 +54,27 @@
     onRestart: () => void;
   } = $props();
 
-  // Viewport: показываем окно из N символов вокруг курсора
+  // Viewport: окно из N символов вокруг курсора
   const VIEWPORT_CHARS = 80;
-  const VIEWPORT_PADDING = 20;
+  const VIEWPORT_PADDING = 30;
 
   let viewportStart = $derived(Math.max(0, caretPos - VIEWPORT_PADDING));
   let viewportEnd = $derived(Math.min(charStatuses.length, viewportStart + VIEWPORT_CHARS));
   let viewportChars = $derived(charStatuses.slice(viewportStart, viewportEnd));
   let viewportOffset = $derived(caretPos - viewportStart);
+
+  // Next character for keyboard trainer
+  let nextChar = $derived(isRunning && !isComplete && caretPos < text.length ? text[caretPos] : '');
+  let isRussian = $derived(sessionLanguage === 'ru');
+
+  // Character focus classes
+  function charClass(char: CharStatus, idx: number): string {
+    const classes: string[] = [char.status];
+    if (idx < viewportOffset) classes.push('past');
+    else if (idx === viewportOffset) classes.push('current');
+    else classes.push('future');
+    return classes.join(' ');
+  }
 </script>
 
 {#if isComplete && finalStats}
@@ -81,22 +96,31 @@
     <span class="stat">Time: {(elapsedMs / 1000).toFixed(1)}s</span>
     <span class="stat mode-badge">{sessionModeType}/{sessionLanguage}</span>
   </div>
+
   <div class="text-viewport">
     <div class="text-display">
       {#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}
       {#each viewportChars as char, i}
-        <span
-          class="char {char.status}"
-          class:caret={i === viewportOffset}
-        >{char.expected === ' ' ? '\u00A0' : char.expected}</span>
+        <span class="char {charClass(char, i)}" class:caret={i === viewportOffset}>
+          {char.expected === ' ' ? '\u00A0' : char.expected}
+        </span>
       {/each}
       {#if viewportEnd < charStatuses.length}<span class="text-ellipsis">…</span>{/if}
     </div>
   </div>
+
   <div class="info">
     <span>Position: {caretPos}/{text.length}</span>
     <button class="abort-btn" onclick={onAbort}>Abort</button>
   </div>
+
+  {#if settings?.show_keyboard_trainer && isRunning}
+    <KeyboardTrainer {nextChar} {isRussian} />
+  {/if}
+
+  {#if settings?.show_hand_guide && isRunning}
+    <HandPositionGuide {nextChar} {isRussian} />
+  {/if}
 {/if}
 
 <style>
@@ -113,12 +137,16 @@
     user-select: none; white-space: pre-wrap; word-wrap: break-word;
     min-height: 3.6em; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
   }
-  .text-ellipsis { color: var(--sub); opacity: 0.5; padding: 0 0.25rem; }
-  .char { transition: color 0.05s; position: relative; }
+  .text-ellipsis { color: var(--sub); opacity: 0.4; padding: 0 0.25rem; }
+  .char { transition: color 0.05s, opacity 0.1s; position: relative; }
   .char.pending { color: var(--sub); }
   .char.correct { color: var(--text); }
   .char.incorrect { color: var(--error); }
-  .char.backspaced { color: var(--sub); }
+  .char.backspaced { color: #ff8c42; }
+  /* Character focus: past = dimmer, current = bright, future = grey */
+  .char.past { opacity: 0.5; }
+  .char.current { opacity: 1; font-weight: 600; }
+  .char.future { opacity: 0.35; }
   .char.caret::before {
     content: '|'; position: absolute; left: -0.5ch; color: var(--caret);
     animation: blink 1s infinite;

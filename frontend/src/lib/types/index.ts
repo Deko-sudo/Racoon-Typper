@@ -100,6 +100,10 @@ export interface AppSettings {
   caret_style: string;
   show_live_wpm: boolean;
   show_accuracy: boolean;
+  show_keyboard_trainer: boolean;
+  show_hand_guide: boolean;
+  show_layout_warnings: boolean;
+  show_capslock_warnings: boolean;
 }
 
 export interface ThemeInfo {

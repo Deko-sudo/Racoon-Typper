@@ -7,6 +7,7 @@
 
 pub mod adaptive;
 pub mod engine;
+pub mod finger_map;
 pub mod input;
 pub mod lesson;
 pub mod modes;
@@ -17,9 +18,13 @@ pub mod weak_keys;
 
 pub use adaptive::{AdaptiveTextGenerator, FrequencyAdaptiveGenerator, WeakChar};
 pub use engine::{CoreEngine, TestSession, TestSessionInfo};
+pub use finger_map::{
+    finger_for_char, finger_for_key_jcuken, finger_for_key_qwerty, is_home_row, Finger,
+};
 pub use input::{KeyAction, KeyClassifier, KeyEvent};
 pub use lesson::{
-    unlock_next_lesson, LessonMode, LessonResult, LessonSession, LessonState, RepeatRecommendation,
+    unlock_next_lesson, LessonMode, LessonResult, LessonSession, LessonState, NextKeyInfo,
+    RepeatRecommendation,
 };
 pub use modes::{CustomMode, ModeResult, ModeType, QuoteMode, TestMode, TimeMode, WordsMode};
 pub use racoon_domain::KeyResult;
