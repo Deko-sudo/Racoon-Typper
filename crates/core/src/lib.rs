@@ -3,18 +3,25 @@
 //! Sprint 3: StatisticsEngine, WPM, Accuracy, Heatmap.
 //! Sprint 5+: TestMode trait, TimeMode, WordsMode (stub), QuoteMode (stub), CustomMode.
 //! Sprint 9: Lesson Engine, LessonMode, LessonSession.
+//! Sprint 10: AdaptiveTextGenerator, WeakKeysAnalyzer, Lesson Progression.
 
+pub mod adaptive;
 pub mod engine;
 pub mod input;
 pub mod lesson;
 pub mod modes;
 pub mod stats;
 pub mod typing;
+pub mod weak_keys;
 
+pub use adaptive::{AdaptiveTextGenerator, FrequencyAdaptiveGenerator, WeakChar};
 pub use engine::{CoreEngine, TestSession, TestSessionInfo};
 pub use input::{KeyAction, KeyClassifier, KeyEvent};
-pub use lesson::{LessonMode, LessonResult, LessonSession, LessonState};
+pub use lesson::{
+    unlock_next_lesson, LessonMode, LessonResult, LessonSession, LessonState, RepeatRecommendation,
+};
 pub use modes::{CustomMode, ModeResult, ModeType, QuoteMode, TestMode, TimeMode, WordsMode};
 pub use racoon_domain::KeyResult;
 pub use stats::{AccuracyCalculator, HeatmapBuilder, LiveTracker, StatisticsEngine, WpmCalculator};
 pub use typing::{TextBuffer, TypingResult};
+pub use weak_keys::{WeakKey, WeakKeysAnalyzer, WeakKeysReport};

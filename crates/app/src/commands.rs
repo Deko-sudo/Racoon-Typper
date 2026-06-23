@@ -2,7 +2,8 @@
 //! All commands return Result<T, AppError>.
 
 use racoon_core::{
-    CoreEngine, CustomMode, KeyEvent, LessonMode, QuoteMode, TestMode, TimeMode, WordsMode,
+    AdaptiveTextGenerator, CoreEngine, CustomMode, FrequencyAdaptiveGenerator, KeyEvent,
+    LessonMode, QuoteMode, TestMode, TimeMode, WeakKeysAnalyzer, WordsMode,
 };
 use racoon_data::repository::{
     AppSettings, CustomTextRepository, LessonRepository, PersonalBestsRepository,
@@ -517,6 +518,40 @@ pub fn complete_lesson(
     let repo = SqliteLessonRepository::new(&conn);
     repo.complete_lesson(&lesson_id, wpm, accuracy)?;
     Ok(())
+}
+
+// ── Weak Keys ──
+
+#[tauri::command]
+pub fn analyze_weak_keys(
+    engine_state: State<'_, Mutex<CoreEngine>>,
+) -> Result<serde_json::Value, AppError> {
+    let engine = engine_state.lock()?;
+    let char_stats = engine.current_char_stats().unwrap_or_default();
+    let analyzer = WeakKeysAnalyzer::new();
+    let report = analyzer.analyze(&char_stats);
+    serde_json::to_value(report).map_err(AppError::from)
+}
+
+#[tauri::command]
+pub fn generate_weak_keys_training(
+    engine_state: State<'_, Mutex<CoreEngine>>,
+    language: String,
+    word_count: Option<usize>,
+) -> Result<String, AppError> {
+    let engine = engine_state.lock()?;
+    let char_stats = engine.current_char_stats().unwrap_or_default();
+
+    let words = racoon_resources::word_pack_loader()
+        .get_pack(&language)
+        .map(|p| p.words.clone())
+        .unwrap_or_default();
+
+    let generator = FrequencyAdaptiveGenerator::new(words);
+    let weak_chars = generator.analyze(&char_stats);
+    let text = generator.generate(&weak_chars, word_count.unwrap_or(25));
+
+    Ok(text)
 }
 
 // ── Helpers ──

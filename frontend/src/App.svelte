@@ -15,6 +15,7 @@
   import CustomTextsView from './components/CustomTextsView.svelte';
   import SettingsView from './components/SettingsView.svelte';
   import LessonListView from './components/LessonListView.svelte';
+  import WeakKeysPanel from './components/WeakKeysPanel.svelte';
 
   // Navigation
   let view = $state<ViewName>('test');
@@ -65,6 +66,10 @@
   let courseModules = $state<ModuleResponse[]>([]);
   let lessonProgress: Record<string, { status: string; best_wpm: number; best_accuracy: number }> = {};
   let lessonLang = $state<'en' | 'ru'>('en');
+
+  // Weak Keys
+  let weakKeysData = $state<Array<{ ch: string; error_count: number; accuracy: number; rank: number }>>([]);
+  let weakKeysCharStats = $state<Record<string, { correct: number; incorrect: number; total: number }>>({});
 
   async function startTest() {
     errorMsg = '';
@@ -229,6 +234,28 @@
     if (v === 'bests') loadBests();
     if (v === 'custom') loadCustomTexts();
     if (v === 'lessons') loadLessons();
+    if (v === 'weakkeys') loadWeakKeys();
+  }
+
+  async function loadWeakKeys() {
+    try {
+      const data = await ipc.analyzeWeakKeys() as { weak_keys: Array<{ ch: string; error_count: number; accuracy: number; rank: number }> };
+      weakKeysData = data.weak_keys || [];
+    } catch (e) {
+      errorMsg = `Weak keys error: ${e}`;
+    }
+  }
+
+  async function onGenerateTraining() {
+    try {
+      const text = await ipc.generateWeakKeysTraining(selectedLanguage, 25);
+      // Start a test with this text
+      const resp = await ipc.startTest({ mode: 'custom', language: selectedLanguage, text });
+      // ... use resp to start test
+      view = 'test';
+    } catch (e) {
+      errorMsg = `Training error: ${e}`;
+    }
   }
 
   async function loadLessons() {
@@ -357,6 +384,12 @@
       progress={lessonProgress}
       language={lessonLang}
       onSelectLesson={onSelectLesson}
+    />
+  {:else if view === 'weakkeys'}
+    <WeakKeysPanel
+      weakKeys={weakKeysData}
+      charStats={weakKeysCharStats}
+      onGenerateTraining={onGenerateTraining}
     />
   {/if}
 </main>

@@ -107,3 +107,12 @@ export async function startLesson(lessonId: string, language: string): Promise<T
 export async function completeLesson(lessonId: string, wpm: number, accuracy: number): Promise<void> {
   return invoke('complete_lesson', { lessonId, wpm, accuracy });
 }
+
+// Weak Keys
+export async function analyzeWeakKeys(): Promise<unknown> {
+  return invoke('analyze_weak_keys');
+}
+
+export async function generateWeakKeysTraining(language: string, wordCount?: number): Promise<string> {
+  return invoke<string>('generate_weak_keys_training', { language, wordCount });
+}

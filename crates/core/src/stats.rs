@@ -305,7 +305,7 @@ impl Default for StatisticsEngine {
 mod tests {
     use super::*;
     use crate::typing::TextBuffer;
-    use racoon_domain::stats::TypedChar;
+
     use std::thread;
     use std::time::Duration;
 

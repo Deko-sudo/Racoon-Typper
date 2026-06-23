@@ -114,7 +114,7 @@ export interface ThemeInfo {
   };
 }
 
-export type ViewName = 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons';
+export type ViewName = 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys';
 export type ModeName = 'time' | 'words' | 'quote' | 'custom';
 export type LanguageCode = 'en' | 'ru';
 

@@ -178,6 +178,158 @@ impl LessonSession {
     }
 }
 
+/// Рекомендация по повторению урока.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct RepeatRecommendation {
+    pub should_repeat: bool,
+    pub reason: String,
+    pub critical_weak_keys: Vec<String>,
+}
+
+impl LessonResult {
+    /// Проверяет, нужно ли повторить урок.
+    /// Условия: accuracy < 90% ИЛИ есть критические weak keys.
+    pub fn should_repeat(
+        &self,
+        weak_report: &crate::weak_keys::WeakKeysReport,
+    ) -> RepeatRecommendation {
+        let mut reasons = Vec::new();
+        let mut critical_chars = Vec::new();
+
+        if self.accuracy < 90.0 {
+            reasons.push(format!("Accuracy {:.1}% < 90%", self.accuracy));
+        }
+
+        if weak_report.has_critical() {
+            for k in weak_report.critical_keys() {
+                critical_chars.push(k.ch.to_string());
+            }
+            reasons.push(format!("Critical weak keys: {}", critical_chars.join(", ")));
+        }
+
+        let should_repeat = !reasons.is_empty();
+
+        RepeatRecommendation {
+            should_repeat,
+            reason: if should_repeat {
+                reasons.join("; ")
+            } else {
+                "Passed".to_string()
+            },
+            critical_weak_keys: critical_chars,
+        }
+    }
+
+    /// Проверяет, пройден ли урок (accuracy >= 90%).
+    pub fn is_passed(&self, min_wpm: f64) -> bool {
+        self.accuracy >= 90.0 && self.wpm >= min_wpm
+    }
+}
+
+/// Логика разблокировки следующего урока.
+pub fn unlock_next_lesson(
+    _completed_lesson_id: &str,
+    accuracy: f64,
+    wpm: f64,
+    min_wpm: f64,
+) -> bool {
+    accuracy >= 90.0 && wpm >= min_wpm
+}
+
+#[cfg(test)]
+mod progression_tests {
+    use super::*;
+
+    fn make_result(accuracy: f64, wpm: f64) -> LessonResult {
+        LessonResult {
+            lesson_id: "test".to_string(),
+            module_id: "m1".to_string(),
+            language: "en".to_string(),
+            wpm,
+            accuracy,
+            correct_chars: 50,
+            incorrect_chars: 5,
+            duration_ms: 30000,
+            state: LessonState::Completed,
+        }
+    }
+
+    use crate::weak_keys::{WeakKey, WeakKeysReport};
+
+    fn make_report(has_critical: bool) -> WeakKeysReport {
+        let weak_keys = if has_critical {
+            vec![WeakKey {
+                ch: 'a',
+                error_count: 5,
+                total: 10,
+                accuracy: 50.0,
+                rank: 1,
+            }]
+        } else {
+            vec![]
+        };
+        WeakKeysReport {
+            weak_keys,
+            total_chars_analyzed: 10,
+            overall_accuracy: 50.0,
+            critical_count: if has_critical { 1 } else { 0 },
+        }
+    }
+
+    #[test]
+    fn unlock_next_passes() {
+        assert!(unlock_next_lesson("l1", 95.0, 30.0, 20.0));
+    }
+
+    #[test]
+    fn unlock_next_low_accuracy_fails() {
+        assert!(!unlock_next_lesson("l1", 85.0, 30.0, 20.0));
+    }
+
+    #[test]
+    fn unlock_next_low_wpm_fails() {
+        assert!(!unlock_next_lesson("l1", 95.0, 15.0, 20.0));
+    }
+
+    #[test]
+    fn should_repeat_low_accuracy() {
+        let result = make_result(85.0, 30.0);
+        let report = make_report(false);
+        let rec = result.should_repeat(&report);
+        assert!(rec.should_repeat);
+        assert!(rec.reason.contains("Accuracy"));
+    }
+
+    #[test]
+    fn should_repeat_critical_keys() {
+        let result = make_result(95.0, 30.0);
+        let report = make_report(true);
+        let rec = result.should_repeat(&report);
+        assert!(rec.should_repeat);
+        assert!(rec.critical_weak_keys.contains(&"a".to_string()));
+    }
+
+    #[test]
+    fn should_not_repeat_when_passed() {
+        let result = make_result(95.0, 30.0);
+        let report = make_report(false);
+        let rec = result.should_repeat(&report);
+        assert!(!rec.should_repeat);
+    }
+
+    #[test]
+    fn is_passed_true() {
+        let result = make_result(95.0, 30.0);
+        assert!(result.is_passed(20.0));
+    }
+
+    #[test]
+    fn is_passed_false_low_wpm() {
+        let result = make_result(95.0, 15.0);
+        assert!(!result.is_passed(20.0));
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

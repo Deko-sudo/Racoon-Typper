@@ -236,6 +236,15 @@ impl CoreEngine {
         self.session.as_ref().map(|s| s.mode.language())
     }
 
+    /// Возвращает char_stats из последней завершённой сессии.
+    pub fn current_char_stats(
+        &self,
+    ) -> Option<std::collections::HashMap<String, racoon_domain::keyboard::CharStat>> {
+        self.session
+            .as_ref()
+            .map(|s| crate::stats::HeatmapBuilder::build_char_stats(&s.buffer))
+    }
+
     /// Статус символа на позиции.
     pub fn char_status_at(&self, pos: usize) -> Option<racoon_domain::CharStatus> {
         self.session
