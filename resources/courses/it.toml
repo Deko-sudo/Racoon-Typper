@@ -1,0 +1,146 @@
+# Racoon Typper Italian Course (QWERTY)
+
+[[modules]]
+id = "it_m1"
+name = "Riga principale"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "it_m1_l1"
+name = "Mano sinistra: a s"
+text = "a s a s a s a s a s a s a s a s a s a s a s"
+
+[[modules.lessons]]
+id = "it_m1_l2"
+name = "Mano sinistra: d f"
+text = "d f d f d f d f d f d f d f d f d f d f"
+
+[[modules.lessons]]
+id = "it_m1_l3"
+name = "Riga principale: g h j k l"
+text = "g h j k l g h j k l g h j k l ghjkl ghjkl"
+
+[[modules.lessons]]
+id = "it_m1_l4"
+name = "Riga principale completa"
+text = "a s d f g h j k l a s d f g h j k l asdfghjkl asdfghjkl"
+
+[[modules.lessons]]
+id = "it_m1_l5"
+name = "Parole dalla riga principale"
+text = "sad lad fad dad fall lass had jaf dash"
+
+[[modules]]
+id = "it_m2"
+name = "Riga superiore"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "it_m2_l1"
+name = "Riga superiore: q w e r t"
+text = "q w e r t q w e r t q w e r t qwert qwert"
+
+[[modules.lessons]]
+id = "it_m2_l2"
+name = "Riga superiore: y u i o p"
+text = "y u i o p y u i o p y u i o p yuiop yuiop"
+
+[[modules.lessons]]
+id = "it_m2_l3"
+name = "Riga superiore completa"
+text = "q w e r t y u i o p qwertyuiop qwertyuiop"
+
+[[modules.lessons]]
+id = "it_m2_l4"
+name = "Parole dalla riga superiore"
+text = "tipo scrivere raporto potere qui nostro"
+
+[[modules.lessons]]
+id = "it_m2_l5"
+name = "Riga superiore e principale"
+text = "il tipo scrive parole per primo oggi"
+
+[[modules]]
+id = "it_m3"
+name = "Riga inferiore e segni"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "it_m3_l1"
+name = "Riga inferiore: z x c v b n m"
+text = "z x c v b n m z x c v b n m zxcvbnm zxcvbnm"
+
+[[modules.lessons]]
+id = "it_m3_l2"
+name = "Riga inferiore + segni"
+text = "z x c v b n m , . z x c v b n m , . zxcvbnm,. zxcvbnm,."
+
+[[modules.lessons]]
+id = "it_m3_l3"
+name = "Parole dalla riga inferiore"
+text = "zaino banca vetro zero molto niente"
+
+[[modules.lessons]]
+id = "it_m3_l4"
+name = "Tutte le righe"
+text = "la velpe volpe salta sopra il cane pigro"
+
+[[modules]]
+id = "it_m4"
+name = "Lettere accentate"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "it_m4_l1"
+name = "Accenti: à è é ì ò ù"
+text = "à è é ì ò ù à è é ì ò ù àèéìòù àèéìòù"
+
+[[modules.lessons]]
+id = "it_m4_l2"
+name = "Parole accentate"
+text = "città caffè perché sé lì più già sì"
+
+[[modules.lessons]]
+id = "it_m4_l3"
+name = "Frasi con accenti"
+text = "è bello andare in città perché è ricca"
+
+[[modules.lessons]]
+id = "it_m4_l4"
+name = "Pratica mista"
+text = "perché più lontano più veloce città"
+
+[[modules]]
+id = "it_m5"
+name = "Frasi"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "it_m5_l1"
+name = "Frasi brevi"
+text = "il gatto dorme. il cane corre. andiamo a casa."
+
+[[modules.lessons]]
+id = "it_m5_l2"
+name = "Frasi medie"
+text = "la veloce volpe marrone salta sopra il cane pigro ogni giorno."
+
+[[modules.lessons]]
+id = "it_m5_l3"
+name = "Domande"
+text = "come ti chiami? dove abiti? come stai oggi? perché il cielo è blu?"
+
+[[modules.lessons]]
+id = "it_m5_l4"
+name = "Frasi complesse"
+text = "nonostante la pioggia, abbiamo deciso di andare al parco perché l'aria era fresca."
+
+[[modules.lessons]]
+id = "it_m5_l5"
+name = "Paragrafo"
+text = "la pratica fa il maestro. più scrivi, più veloce diventi. tieni le dita sulla riga principale."

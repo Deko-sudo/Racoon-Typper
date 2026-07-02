@@ -1,0 +1,146 @@
+# Racoon Typper French Course (AZERTY)
+
+[[modules]]
+id = "fr_m1"
+name = "Ligne de base"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "fr_m1_l1"
+name = "Main gauche: q s"
+text = "q s q s q s q s q s q s q s q s q s q s q s"
+
+[[modules.lessons]]
+id = "fr_m1_l2"
+name = "Main gauche: d f"
+text = "d f d f d f d f d f d f d f d f d f d f"
+
+[[modules.lessons]]
+id = "fr_m1_l3"
+name = "Ligne de base: g h j k l m"
+text = "g h j k l m g h j k l m ghjklm ghjklm"
+
+[[modules.lessons]]
+id = "fr_m1_l4"
+name = "Ligne de base complète"
+text = "q s d f g h j k l m q s d f g h j k l m qsdfghjklm qsdfghjklm"
+
+[[modules.lessons]]
+id = "fr_m1_l5"
+name = "Mots de la ligne de base"
+text = "les des les das mal sal lad lad fall"
+
+[[modules]]
+id = "fr_m2"
+name = "Ligne supérieure"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "fr_m2_l1"
+name = "Ligne supérieure: a z e r t"
+text = "a z e r t a z e r t a z e r t azert azert"
+
+[[modules.lessons]]
+id = "fr_m2_l2"
+name = "Ligne supérieure: y u i o p"
+text = "y u i o p y u i o p y u i o p yuiop yuiop"
+
+[[modules.lessons]]
+id = "fr_m2_l3"
+name = "Ligne supérieure complète"
+text = "a z e r t y u i o p azertyuiop azertyuiop"
+
+[[modules.lessons]]
+id = "fr_m2_l4"
+name = "Mots de la ligne supérieure"
+text = "type rire porte ouvrir petit votre"
+
+[[modules.lessons]]
+id = "fr_m2_l5"
+name = "Ligne supérieure et de base"
+text = "le petit rire porte ouvrir votre jour"
+
+[[modules]]
+id = "fr_m3"
+name = "Ligne inférieure et accents"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "fr_m3_l1"
+name = "Ligne inférieure: w x c v b n , :"
+text = "w x c v b n , : w x c v b n , : wxcvbn,: wxcvbn,:"
+
+[[modules.lessons]]
+id = "fr_m3_l2"
+name = "Ligne inférieure + signes"
+text = "w x c v b n ; : ! w x c v b n ; : ! wxcvbn;:! wxcvbn;:!"
+
+[[modules.lessons]]
+id = "fr_m3_l3"
+name = "Mots de la ligne inférieure"
+text = "wagon xylophone crocodile vache banane nuit"
+
+[[modules.lessons]]
+id = "fr_m3_l4"
+name = "Toutes les lignes"
+text = "le renard brun rapide saute par dessus le chien paresseux"
+
+[[modules]]
+id = "fr_m4"
+name = "Accents"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "fr_m4_l1"
+name = "Accents aigus et graves: é è à"
+text = "é è à é è à é è à éèà éèà éèà éèà"
+
+[[modules.lessons]]
+id = "fr_m4_l2"
+name = "Circonflexe et tréma: â ê î ô û ü"
+text = "â ê î ô û ü âêîôûü âêîôûü âêîôûü"
+
+[[modules.lessons]]
+id = "fr_m4_l3"
+name = "Mots accentués"
+text = "école été être hôtel forêt où à noël"
+
+[[modules.lessons]]
+id = "fr_m4_l4"
+name = "Cédille: ç"
+text = "ça façade garçon reçufrançais leçon"
+
+[[modules]]
+id = "fr_m5"
+name = "Phrases"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "fr_m5_l1"
+name = "Phrases courtes"
+text = "le chat dort. le chien court. nous rentrons."
+
+[[modules.lessons]]
+id = "fr_m5_l2"
+name = "Phrases moyennes"
+text = "le renard brun rapide saute par dessus le chien paresseux tous les jours."
+
+[[modules.lessons]]
+id = "fr_m5_l3"
+name = "Questions"
+text = "comment t'appelles-tu? où habites-tu? comment vas-tu? pourquoi le ciel est bleu?"
+
+[[modules.lessons]]
+id = "fr_m5_l4"
+name = "Phrases complexes"
+text = "malgré la pluie, nous avons décidé d'aller au parc car l'air était frais."
+
+[[modules.lessons]]
+id = "fr_m5_l5"
+name = "Paragraphe"
+text = "la pratique fait le maître. plus tu écris, plus tu deviens rapide. garde les doigts sur la ligne de base."

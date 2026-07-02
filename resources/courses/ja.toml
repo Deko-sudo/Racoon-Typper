@@ -1,0 +1,110 @@
+# Racoon Typper Japanese Course
+
+[[modules]]
+id = "ja_m1"
+name = "ホームロー"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "ja_m1_l1"
+name = "左の手: あ い"
+text = "あ い あ い あ い あ い あ い あ い あ い あ い"
+
+[[modules.lessons]]
+id = "ja_m1_l2"
+name = "左の手: う え"
+text = "う え う え う え う え う え う え う え"
+
+[[modules.lessons]]
+id = "ja_m1_l3"
+name = "右の手: お か"
+text = "お か お か お か お か お か お か お か"
+
+[[modules.lessons]]
+id = "ja_m1_l4"
+name = "右の手: き く け こ"
+text = "き く け こ き く け こ き く け こ きくけこ"
+
+[[modules.lessons]]
+id = "ja_m1_l5"
+name = "ホームローの言葉"
+text = "いか うき あけ こえ きお かお うか えき"
+
+[[modules]]
+id = "ja_m2"
+name = "上の段"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "ja_m2_l1"
+name = "上の段: さ し す せ そ"
+text = "さ し す せ そ さ し す せ そ さしすせそ さしすせそ"
+
+[[modules.lessons]]
+id = "ja_m2_l2"
+name = "上の段: た ち つ て と"
+text = "た ち つ て と たちつてと たちつてと たちつてと"
+
+[[modules.lessons]]
+id = "ja_m2_l3"
+name = "上の段の言葉"
+text = "しごと たし すてき そら ちきゅう てつづき"
+
+[[modules.lessons]]
+id = "ja_m2_l4"
+name = "上の段とホームロー"
+text = "かきくけこ さしすせそ たちつてと なにぬねの"
+
+[[modules]]
+id = "ja_m3"
+name = "下の段と濁音"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "ja_m3_l1"
+name = "下の段: や ゆ よ わ を ん"
+text = "や ゆ よ わ を ん や ゆ よ わ を ん やゆよわをん"
+
+[[modules.lessons]]
+id = "ja_m3_l2"
+name = "下の段の言葉"
+text = "やま ゆき よる わに をか んな やまゆき よる"
+
+[[modules.lessons]]
+id = "ja_m3_l3"
+name = "濁音: が ぎ ぐ げ ご"
+text = "が ぎ ぐ げ ご が ぎ ぐ げ ご がぎぐげご がぎぐげご"
+
+[[modules.lessons]]
+id = "ja_m3_l4"
+name = "拗音と濁音の言葉"
+text = "がっこう ぎじゅつ げんき ごご ぐあい"
+
+[[modules]]
+id = "ja_m4"
+name = "言葉と文"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "ja_m4_l1"
+name = "簡単な言葉"
+text = "こんにちは ありがとう さようなら すみません"
+
+[[modules.lessons]]
+id = "ja_m4_l2"
+name = "短い文"
+text = "ねこはねむる。いぬははしる。わたしはかえる。"
+
+[[modules.lessons]]
+id = "ja_m4_l3"
+name = "日常の言葉"
+text = "まいあさ まいばん きょう あした きのう"
+
+[[modules.lessons]]
+id = "ja_m4_l4"
+name = "長い文"
+text = "れんしゅうじょうたいになる。たくさん書けば、はやくなる。がんばろう。"

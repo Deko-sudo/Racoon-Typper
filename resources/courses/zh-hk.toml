@@ -1,0 +1,89 @@
+# Racoon Typper Traditional Chinese (Hong Kong) Course
+
+[[modules]]
+id = "zh-hk_m1"
+name = "基本筆畫"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "zh-hk_m1_l1"
+name = "基本字: 一 二 三"
+text = "一 二 三 一 二 三 一 二 三 一二三 一二三"
+
+[[modules.lessons]]
+id = "zh-hk_m1_l2"
+name = "基本字: 人 口 日"
+text = "人 口 日 人 口 日 人 口 日 人口日 人口日"
+
+[[modules.lessons]]
+id = "zh-hk_m1_l3"
+name = "基本字: 大 小 中"
+text = "大 小 中 大 小 中 大 小 中 大小中 大小中"
+
+[[modules.lessons]]
+id = "zh-hk_m1_l4"
+name = "基本字: 上 下 不"
+text = "上 下 不 上 下 不 上 下 不 上下不 上下不"
+
+[[modules.lessons]]
+id = "zh-hk_m1_l5"
+name = "基本詞語"
+text = "你好 朋友 香港 學生 老師 今天 明天"
+
+[[modules]]
+id = "zh-hk_m2"
+name = "常用字"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "zh-hk_m2_l1"
+name = "數字: 四 五 六 七 八 九 十"
+text = "四 五 六 七 八 九 十 四五六七八九十 四五六七八九十"
+
+[[modules.lessons]]
+id = "zh-hk_m2_l2"
+name = "方向詞: 東 南 西 北"
+text = "東 南 西 北 東 南 西 北 東南西北 東南西北"
+
+[[modules.lessons]]
+id = "zh-hk_m2_l3"
+name = "自然詞: 山 水 火 土 木"
+text = "山 水 火 土 木 山水火土木 山水火土木 山水火土木"
+
+[[modules.lessons]]
+id = "zh-hk_m2_l4"
+name = "常用詞語"
+text = "學校 醫院 銀行 郵局 書店 餐廳"
+
+[[modules]]
+id = "zh-hk_m3"
+name = "句子練習"
+difficulty = "intermediate"
+order = 3
+
+[[modules.lessons]]
+id = "zh-hk_m3_l1"
+name = "短句"
+text = "貓在睡覺。狗在跑。我們回家吧。今天很開心。"
+
+[[modules.lessons]]
+id = "zh-hk_m3_l2"
+name = "中等句子"
+text = "快速的棕色狐狸跳過懶惰的狗，每一天都如此。"
+
+[[modules.lessons]]
+id = "zh-hk_m3_l3"
+name = "問句"
+text = "你叫什麼名字？你住在哪裡？你今天好嗎？天為什麼是藍色的？"
+
+[[modules.lessons]]
+id = "zh-hk_m3_l4"
+name = "複雜句子"
+text = "雖然下雨了，但我們決定去公園散步，因為空氣很清新。"
+
+[[modules.lessons]]
+id = "zh-hk_m3_l5"
+name = "段落"
+text = "熟能生巧。你打得越多，就會越快。手指放在基本鍵上，眼睛看着屏幕。"

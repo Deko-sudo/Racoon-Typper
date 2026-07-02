@@ -1,26 +1,27 @@
 <script lang="ts">
-  import type { FinalStats } from '../types/index';
+  import type { FinalStats } from '../lib/types/index';
   import KeyboardHeatmap from './KeyboardHeatmap.svelte';
+  import { t } from '../lib/i18n';
 
-  let { stats, onRestart }: { stats: FinalStats; onRestart: () => void } = $props();
+  let { stats, onRestart, uiLang = 'en' }: { stats: FinalStats; onRestart: () => void; uiLang?: string } = $props();
 </script>
 
 <div class="result-overlay">
-  <h2>Test Complete</h2>
+  <h2>{t(uiLang, 'result.complete')}</h2>
   <div class="stats-grid">
     <div class="stat-box"><span class="stat-value">{stats.wpm.toFixed(1)}</span><span class="stat-label">WPM</span></div>
-    <div class="stat-box"><span class="stat-value">{stats.raw_wpm.toFixed(1)}</span><span class="stat-label">Raw WPM</span></div>
-    <div class="stat-box"><span class="stat-value">{stats.accuracy.toFixed(1)}%</span><span class="stat-label">Accuracy</span></div>
-    <div class="stat-box"><span class="stat-value">{stats.raw_accuracy.toFixed(1)}%</span><span class="stat-label">Raw Acc</span></div>
+    <div class="stat-box"><span class="stat-value">{stats.raw_wpm.toFixed(1)}</span><span class="stat-label">{t(uiLang, 'result.raw_wpm')}</span></div>
+    <div class="stat-box"><span class="stat-value">{stats.accuracy.toFixed(1)}%</span><span class="stat-label">{t(uiLang, 'result.accuracy')}</span></div>
+    <div class="stat-box"><span class="stat-value">{stats.raw_accuracy.toFixed(1)}%</span><span class="stat-label">{t(uiLang, 'result.raw_acc')}</span></div>
   </div>
   <div class="stats-details">
-    <span>Correct: {stats.correct_chars}</span>
-    <span>Incorrect: {stats.incorrect_chars}</span>
-    <span>Backspaces: {stats.backspaces}</span>
-    <span>Duration: {(stats.duration_ms / 1000).toFixed(1)}s</span>
+    <span>{t(uiLang, 'result.correct')}: {stats.correct_chars}</span>
+    <span>{t(uiLang, 'result.incorrect')}: {stats.incorrect_chars}</span>
+    <span>{t(uiLang, 'result.backspaces')}: {stats.backspaces}</span>
+    <span>{t(uiLang, 'result.duration')}: {(stats.duration_ms / 1000).toFixed(1)}s</span>
   </div>
   <KeyboardHeatmap heatmap={stats.heatmap} />
-  <button onclick={onRestart}>Restart</button>
+  <button onclick={onRestart}>{t(uiLang, 'result.restart')}</button>
 </div>
 
 <style>

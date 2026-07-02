@@ -1,0 +1,146 @@
+# Racoon Typper Portuguese Course (QWERTY)
+
+[[modules]]
+id = "pt_m1"
+name = "Linha inicial"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "pt_m1_l1"
+name = "Mão esquerda: a s"
+text = "a s a s a s a s a s a s a s a s a s a s a s"
+
+[[modules.lessons]]
+id = "pt_m1_l2"
+name = "Mão esquerda: d f"
+text = "d f d f d f d f d f d f d f d f d f d f"
+
+[[modules.lessons]]
+id = "pt_m1_l3"
+name = "Linha inicial: g h j k l"
+text = "g h j k l g h j k l g h j k l ghjkl ghjkl"
+
+[[modules.lessons]]
+id = "pt_m1_l4"
+name = "Linha inicial completa"
+text = "a s d f g h j k l a s d f g h j k l asdfghjkl asdfghjkl"
+
+[[modules.lessons]]
+id = "pt_m1_l5"
+name = "Palavras da linha inicial"
+text = "ala lados dados fado hado lago salas"
+
+[[modules]]
+id = "pt_m2"
+name = "Linha superior"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "pt_m2_l1"
+name = "Linha superior: q w e r t"
+text = "q w e r t q w e r t q w e r t qwert qwert"
+
+[[modules.lessons]]
+id = "pt_m2_l2"
+name = "Linha superior: y u i o p"
+text = "y u i o p y u i o p y u i o p yuiop yuiop"
+
+[[modules.lessons]]
+id = "pt_m2_l3"
+name = "Linha superior completa"
+text = "q w e r t y u i o p qwertyuiop qwertyuiop"
+
+[[modules.lessons]]
+id = "pt_m2_l4"
+name = "Palavras da linha superior"
+text = "tipo pera poder piano pouca toque"
+
+[[modules.lessons]]
+id = "pt_m2_l5"
+name = "Linha superior e inicial"
+text = "o tipo toca o piano poucas vezes hoje"
+
+[[modules]]
+id = "pt_m3"
+name = "Linha inferior e acentos"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "pt_m3_l1"
+name = "Linha inferior: z x c v b n m"
+text = "z x c v b n m z x c v b n m zxcvbnm zxcvbnm"
+
+[[modules.lessons]]
+id = "pt_m3_l2"
+name = "Linha inferior + sinais"
+text = "z x c v b n m , . z x c v b n m , . zxcvbnm,. zxcvbnm,."
+
+[[modules.lessons]]
+id = "pt_m3_l3"
+name = "Palavras da linha inferior"
+text = "zangou zebra macaco veloz nascimento"
+
+[[modules.lessons]]
+id = "pt_m3_l4"
+name = "Três linhas"
+text = "a rápida raposa marrom salta sobre o cão preguiçoso"
+
+[[modules]]
+id = "pt_m4"
+name = "Acentos"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "pt_m4_l1"
+name = "Acentos agudos e circunflexos: á é í ó ú â ê ô"
+text = "á é í ó ú â ê ô áéíóú âêô áéíóú âêô"
+
+[[modules.lessons]]
+id = "pt_m4_l2"
+name = "Til e cedilha: ã õ ç"
+text = "ã õ ç ã õ ç ãõç ãõç ãõç ãõç ãõç"
+
+[[modules.lessons]]
+id = "pt_m4_l3"
+name = "Palavras acentuadas"
+text = "coração mãe avô manhã pingüim maçã"
+
+[[modules.lessons]]
+id = "pt_m4_l4"
+name = "Frases com acentos"
+text = "é fácil aprender português com prática e dedicação"
+
+[[modules]]
+id = "pt_m5"
+name = "Frases"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "pt_m5_l1"
+name = "Frases curtas"
+text = "o gato dorme. o cão corre. vamos a casa."
+
+[[modules.lessons]]
+id = "pt_m5_l2"
+name = "Frases médias"
+text = "a rápida raposa marrom salta sobre o cão preguiçoso todos os dias."
+
+[[modules.lessons]]
+id = "pt_m5_l3"
+name = "Perguntas"
+text = "como te chamas? onde moras? como estás? por que o céu é azul?"
+
+[[modules.lessons]]
+id = "pt_m5_l4"
+name = "Frases complexas"
+text = "apesar da chuva, decidimos ir ao parque porque o ar estava fresco."
+
+[[modules.lessons]]
+id = "pt_m5_l5"
+name = "Parágrafo"
+text = "a prática faz o mestre. quanto mais escreves, mais rápido te tornas. mantém os dedos na linha inicial."

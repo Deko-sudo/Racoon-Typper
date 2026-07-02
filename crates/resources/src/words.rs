@@ -40,16 +40,30 @@ impl WordPackLoader {
     pub fn new() -> Self {
         let mut packs = HashMap::new();
 
-        // Загружаем встроенные словари через include_str!
-        let en_words = load_txt(include_str!("../../../resources/words/en.txt"));
-        if !en_words.is_empty() {
-            packs.insert("en".to_string(), WordPack::new("en", en_words));
+        macro_rules! load_lang {
+            ($code:expr, $path:expr) => {
+                let words = load_txt(include_str!($path));
+                if !words.is_empty() {
+                    packs.insert($code.to_string(), WordPack::new($code, words));
+                }
+            };
         }
 
-        let ru_words = load_txt(include_str!("../../../resources/words/ru.txt"));
-        if !ru_words.is_empty() {
-            packs.insert("ru".to_string(), WordPack::new("ru", ru_words));
-        }
+        load_lang!("en", "../../../resources/words/en.txt");
+        load_lang!("ru", "../../../resources/words/ru.txt");
+        load_lang!("de", "../../../resources/words/de.txt");
+        load_lang!("uk", "../../../resources/words/uk.txt");
+        load_lang!("cs", "../../../resources/words/cs.txt");
+        load_lang!("pl", "../../../resources/words/pl.txt");
+        load_lang!("ro", "../../../resources/words/ro.txt");
+        load_lang!("it", "../../../resources/words/it.txt");
+        load_lang!("fr", "../../../resources/words/fr.txt");
+        load_lang!("es", "../../../resources/words/es.txt");
+        load_lang!("pt", "../../../resources/words/pt.txt");
+        load_lang!("ja", "../../../resources/words/ja.txt");
+        load_lang!("zh-hk", "../../../resources/words/zh-hk.txt");
+        load_lang!("zh-tw", "../../../resources/words/zh-tw.txt");
+        load_lang!("ko", "../../../resources/words/ko.txt");
 
         Self { packs }
     }

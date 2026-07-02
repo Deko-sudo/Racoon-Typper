@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
-  import type { ProgressPoint } from '../types/index';
+  import type { ProgressPoint } from '../lib/types/index';
 
   let points = $state<ProgressPoint[]>([]);
   let period = $state<7 | 30 | 90>(7);
@@ -20,9 +20,9 @@
   onMount(loadData);
 
   // SVG chart dimensions
-  const W = 800;
-  const H = 200;
-  const PADDING = 40;
+  const W = 1100;
+  const H = 400;
+  const PADDING = 50;
 
   let maxWpm = $derived(Math.max(...points.map(p => p.wpm), 1));
   let minWpm = $derived(0);
@@ -93,19 +93,19 @@
       <path d={accPath} fill="none" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="4 2" />
 
       <!-- Labels -->
-      <text x="{PADDING - 5}" y="{PADDING + 5}" fill="var(--main)" font-size="10" text-anchor="end">WPM</text>
-      <text x="{PADDING - 5}" y="{PADDING + 20}" fill="var(--text)" font-size="10" text-anchor="end">Acc</text>
+      <text x="{PADDING - 8}" y="{PADDING + 8}" fill="var(--main)" font-size="14" text-anchor="end">WPM</text>
+      <text x="{PADDING - 8}" y="{PADDING + 28}" fill="var(--text)" font-size="14" text-anchor="end">Acc</text>
 
       <!-- X-axis labels -->
       {#each points as p, i}
-        {#if i % Math.max(1, Math.floor(points.length / 6)) === 0}
-          <text x={xCoord(i)} y="{H - PADDING + 15}" fill="var(--sub)" font-size="9" text-anchor="middle">{formatDate(p.date)}</text>
+        {#if i % Math.max(1, Math.floor(points.length / 8)) === 0}
+          <text x={xCoord(i)} y="{H - PADDING + 20}" fill="var(--sub)" font-size="12" text-anchor="middle">{formatDate(p.date)}</text>
         {/if}
       {/each}
 
       <!-- Data points -->
       {#each points as p, i}
-        <circle cx={xCoord(i)} cy={yWpm(p.wpm)} r="2.5" fill="var(--main)" />
+        <circle cx={xCoord(i)} cy={yWpm(p.wpm)} r="4" fill="var(--main)" />
       {/each}
     </svg>
     <div class="chart-legend">
@@ -117,7 +117,7 @@
 </div>
 
 <style>
-  .progress-chart { max-width: 900px; width: 100%; }
+  .progress-chart { max-width: 1200px; width: 100%; }
   .chart-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
   h3 { color: var(--main); font-size: 1.1rem; }
   .period-selector { display: flex; gap: 0.25rem; }

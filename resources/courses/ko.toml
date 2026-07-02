@@ -1,0 +1,89 @@
+# Racoon Typper Korean Course
+
+[[modules]]
+id = "ko_m1"
+name = "기본 자음"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "ko_m1_l1"
+name = "기본 모음: ㅏ ㅓ ㅗ ㅜ"
+text = "ㅏ ㅓ ㅗ ㅜ ㅏ ㅓ ㅗ ㅜ ㅏㅓㅗㅜ ㅏㅓㅗㅜ"
+
+[[modules.lessons]]
+id = "ko_m1_l2"
+name = "기본 자음: ㄱ ㄴ ㄷ ㄹ"
+text = "ㄱ ㄴ ㄷ ㄹ ㄱ ㄴ ㄷ ㄹ ㄱㄴㄷㄹ ㄱㄴㄷㄹ"
+
+[[modules.lessons]]
+id = "ko_m1_l3"
+name = "기본 자음: ㅁ ㅂ ㅅ ㅇ"
+text = "ㅁ ㅂ ㅅ ㅇ ㅁ ㅂ ㅅ ㅇ ㅁㅂㅅㅇ ㅁㅂㅅㅇ"
+
+[[modules.lessons]]
+id = "ko_m1_l4"
+name = "기본 자음: ㅈ ㅊ ㅋ ㅌ"
+text = "ㅈ ㅊ ㅋ ㅌ ㅈ ㅊ ㅋ ㅌ ㅈㅊㅋㅌ ㅈㅊㅋㅌ"
+
+[[modules.lessons]]
+id = "ko_m1_l5"
+name = "기본 글자"
+text = "가 나 다 라 마 바 사 아 자 차 카 타 파 하"
+
+[[modules]]
+id = "ko_m2"
+name = "글자 연습"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "ko_m2_l1"
+name = "모음 조합: ㅐ ㅔ ㅚ ㅟ"
+text = "ㅐ ㅔ ㅚ ㅟ ㅐ ㅔ ㅚ ㅟ ㅐㅔㅚㅟ ㅐㅔㅚㅟ"
+
+[[modules.lessons]]
+id = "ko_m2_l2"
+name = "복모음: ㅒ ㅖ ㅙ ㅞ"
+text = "ㅒ ㅖ ㅙ ㅞ ㅒ ㅖ ㅙ ㅞ ㅒㅖㅙㅞ ㅒㅖㅙㅞ"
+
+[[modules.lessons]]
+id = "ko_m2_l3"
+name = "글자 만들기"
+text = "개 내 댜 뎌 됴 됴 뛰 떼 쾨 츄"
+
+[[modules.lessons]]
+id = "ko_m2_l4"
+name = "단어 연습"
+text = "학교 친구 선생 어머니 아버지 동생"
+
+[[modules]]
+id = "ko_m3"
+name = "문장 연습"
+difficulty = "intermediate"
+order = 3
+
+[[modules.lessons]]
+id = "ko_m3_l1"
+name = "짧은 문장"
+text = "고양이가 잠을 잔다. 개가 달린다. 집에 가자."
+
+[[modules.lessons]]
+id = "ko_m3_l2"
+name = "중간 문장"
+text = "빠른 갈색 여우가 게으른 개를 뛰어넘는다 매일 그렇다."
+
+[[modules.lessons]]
+id = "ko_m3_l3"
+name = "질문"
+text = "이름이 무엇인가요? 어디에 사나요? 오늘 어떤가요? 하늘은 왜 파란가요?"
+
+[[modules.lessons]]
+id = "ko_m3_l4"
+name = "복잡한 문장"
+text = "비가 왔음에도 불구하고 공기가 상쾌해서 공원에 가기로 했다."
+
+[[modules.lessons]]
+id = "ko_m3_l5"
+name = "단락"
+text = "연습이 완벽을 만든다. 더 많이 칠수록 더 빨라진다. 손가락을 기본 자리에 두고 화면을 보라."

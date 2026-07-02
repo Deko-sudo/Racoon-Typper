@@ -107,6 +107,8 @@ export interface AppSettings {
   sound_enabled: boolean;
   sound_volume: number;
   zen_mode_enabled: boolean;
+  ui_language: string;
+  vim_mode: boolean;
 }
 
 export interface ThemeInfo {
@@ -123,7 +125,7 @@ export interface ThemeInfo {
 
 export type ViewName = 'dashboard' | 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys' | 'analytics';
 export type ModeName = 'time' | 'words' | 'quote' | 'custom';
-export type LanguageCode = 'en' | 'ru';
+export type LanguageCode = 'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko';
 
 export interface ModuleResponse {
   id: string;

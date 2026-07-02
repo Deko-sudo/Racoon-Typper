@@ -1,57 +1,58 @@
 <script lang="ts">
-  import type { DashboardStatsResponse } from '../types/index';
+  import type { DashboardStatsResponse } from '../lib/types/index';
   import ProgressChart from './ProgressChart.svelte';
+  import { t } from '../lib/i18n';
 
-  let { stats, onNavigate }: { stats: DashboardStatsResponse | null; onNavigate: (v: string) => void } = $props();
+  let { stats, onNavigate, uiLang = 'en' }: { stats: DashboardStatsResponse | null; onNavigate: (v: string) => void; uiLang?: string } = $props();
 </script>
 
 <div class="dashboard">
-  <h2>Dashboard</h2>
+  <h2>{t(uiLang, 'dash.title')}</h2>
 
   {#if stats}
     <div class="cards-grid">
       <div class="card streak-card">
         <span class="card-value">{stats.current_streak}</span>
-        <span class="card-label">Current Streak</span>
-        {#if stats.current_streak > 0}<span class="card-badge active">🔥 Active</span>{/if}
+        <span class="card-label">{t(uiLang, 'dash.current_streak')}</span>
+        {#if stats.current_streak > 0}<span class="card-badge active">🔥</span>{/if}
       </div>
       <div class="card">
         <span class="card-value">{stats.longest_streak}</span>
-        <span class="card-label">Longest Streak</span>
+        <span class="card-label">{t(uiLang, 'dash.longest_streak')}</span>
       </div>
       <div class="card">
         <span class="card-value">{stats.avg_wpm.toFixed(0)}</span>
-        <span class="card-label">Avg WPM (7d)</span>
+        <span class="card-label">{t(uiLang, 'dash.avg_wpm')}</span>
       </div>
       <div class="card">
         <span class="card-value">{stats.avg_accuracy.toFixed(1)}%</span>
-        <span class="card-label">Avg Accuracy (7d)</span>
+        <span class="card-label">{t(uiLang, 'dash.avg_acc')}</span>
       </div>
       <div class="card">
         <span class="card-value">{stats.tests_today}</span>
-        <span class="card-label">Tests Today</span>
+        <span class="card-label">{t(uiLang, 'dash.tests_today')}</span>
       </div>
       <div class="card">
         <span class="card-value">{stats.tests_this_week}</span>
-        <span class="card-label">Tests This Week</span>
+        <span class="card-label">{t(uiLang, 'dash.tests_week')}</span>
       </div>
       <div class="card total-card">
         <span class="card-value">{stats.total_tests}</span>
-        <span class="card-label">Total Tests</span>
+        <span class="card-label">{t(uiLang, 'dash.total_tests')}</span>
       </div>
       <div class="card action-card" role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && onNavigate('test')} onclick={() => onNavigate('test')}>
-        <span class="card-action">Start Test →</span>
+        <span class="card-action">{t(uiLang, 'dash.start_test')}</span>
       </div>
     </div>
 
     <ProgressChart />
   {:else}
-    <p class="empty">Loading dashboard...</p>
+    <p class="empty">{t(uiLang, 'dash.loading')}</p>
   {/if}
 </div>
 
 <style>
-  .dashboard { max-width: 900px; width: 100%; }
+  .dashboard { max-width: 1200px; width: 100%; }
   h2 { color: var(--main); font-size: 1.5rem; margin-bottom: 1rem; }
   .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.75rem; margin-bottom: 2rem; }
   .card {

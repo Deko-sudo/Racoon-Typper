@@ -1,0 +1,146 @@
+# Racoon Typper German Course (QWERTZ)
+
+[[modules]]
+id = "de_m1"
+name = "Grundreihe"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "de_m1_l1"
+name = "Linke Hand: a s"
+text = "a s a s a s a s a s a s a s a s a s a s a s a s"
+
+[[modules.lessons]]
+id = "de_m1_l2"
+name = "Linke Hand: d f"
+text = "d f d f d f d f d f d f d f d f d f d f d f"
+
+[[modules.lessons]]
+id = "de_m1_l3"
+name = "Grundreihe: g h j k l"
+text = "g h j k l g h j k l g h j k l ghjkl ghjkl"
+
+[[modules.lessons]]
+id = "de_m1_l4"
+name = "Vollständige Grundreihe"
+text = "a s d f g h j k l a s d f g h j k l asdfghjkl asdfghjkl"
+
+[[modules.lessons]]
+id = "de_m1_l5"
+name = "Wörter der Grundreihe"
+text = "sad lad fall hall dad fad lass jalf glas had"
+
+[[modules]]
+id = "de_m2"
+name = "Oberreihe"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "de_m2_l1"
+name = "Oberreihe: q w e r t"
+text = "q w e r t q w e r t q w e r t qwert qwert"
+
+[[modules.lessons]]
+id = "de_m2_l2"
+name = "Oberreihe: z u i o p"
+text = "z u i o p z u i o p z u i o p zuiop zuiop"
+
+[[modules.lessons]]
+id = "de_m2_l3"
+name = "Vollständige Oberreihe"
+text = "q w e r t z u i o p qwertzuiop qwertzuiop"
+
+[[modules.lessons]]
+id = "de_m2_l4"
+name = "Wörter der Oberreihe"
+text = "quer tier werk peir rot port zeit wort"
+
+[[modules.lessons]]
+id = "de_m2_l5"
+name = "Oberreihe + Grundreihe"
+text = "das wort die zeit der test der port"
+
+[[modules]]
+id = "de_m3"
+name = "Unterreihe und Satzzeichen"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "de_m3_l1"
+name = "Unterreihe: y x c v b n m"
+text = "y x c v b n m y x c v b n m yxcvbnm yxcvbnm"
+
+[[modules.lessons]]
+id = "de_m3_l2"
+name = "Unterreihe + Satzzeichen"
+text = "y x c v b n m , . y x c v b n m , . yxcvbnm,. yxcvbnm,."
+
+[[modules.lessons]]
+id = "de_m3_l3"
+name = "Wörter der Unterreihe"
+text = "yxcvbnm cyb vym nbm cxv bnm vcx bnm vcx bnm"
+
+[[modules.lessons]]
+id = "de_m3_l4"
+name = "Alle Reihen"
+text = "der schnelle braune fuchs springt ueber den faulen hund"
+
+[[modules]]
+id = "de_m4"
+name = "Umlaute und Sonderzeichen"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "de_m4_l1"
+name = "Umlaute: ä ö ü"
+text = "ä ö ü ä ö ü ä ö ü ä ö ü äöü äöü äöü"
+
+[[modules.lessons]]
+id = "de_m4_l2"
+name = "Umlaut-Wörter"
+text = "mütter väter brüder schwestern häuser länder bücher"
+
+[[modules.lessons]]
+id = "de_m4_l3"
+name = "ß und Umlaute"
+text = "straße groß fuß groß straße fuß schließen"
+
+[[modules.lessons]]
+id = "de_m4_l4"
+name = "Gemischte Wörter mit Umlauten"
+text = "über schöne große länder älter müde hügel"
+
+[[modules]]
+id = "de_m5"
+name = "Sätze"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "de_m5_l1"
+name = "Kurze Sätze"
+text = "die katze schläft. der hund läuft. wir gehen."
+
+[[modules.lessons]]
+id = "de_m5_l2"
+name = "Mittlere Sätze"
+text = "der schnelle braune fuchs springt ueber den faulen hund jeden tag."
+
+[[modules.lessons]]
+id = "de_m5_l3"
+name = "Fragen"
+text = "wie heißt du? wo wohnst du? wie geht es dir? warum ist der himmel blau?"
+
+[[modules.lessons]]
+id = "de_m5_l4"
+name = "Komplexe Sätze"
+text = "obwohl es regnete, gingen wir in den park, weil die luft frisch war."
+
+[[modules.lessons]]
+id = "de_m5_l5"
+name = "Absatz"
+text = "uebung macht den meister. je mehr du schreibst, desto schneller wirst du. halte die finger auf der grundreihe und schaue auf den bildschirm."

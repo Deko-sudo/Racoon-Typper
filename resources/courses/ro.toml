@@ -1,0 +1,146 @@
+# Racoon Typper Romanian Course (QWERTY)
+
+[[modules]]
+id = "ro_m1"
+name = "Rândul principal"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "ro_m1_l1"
+name = "Mâna stângă: a s"
+text = "a s a s a s a s a s a s a s a s a s a s a s"
+
+[[modules.lessons]]
+id = "ro_m1_l2"
+name = "Mâna stângă: d f"
+text = "d f d f d f d f d f d f d f d f d f d f"
+
+[[modules.lessons]]
+id = "ro_m1_l3"
+name = "Rândul principal: g h j k l"
+text = "g h j k l g h j k l g h j k l ghjkl ghjkl"
+
+[[modules.lessons]]
+id = "ro_m1_l4"
+name = "Tot rândul principal"
+text = "a s d f g h j k l a s d f g h j k l asdfghjkl asdfghjkl"
+
+[[modules.lessons]]
+id = "ro_m1_l5"
+name = "Cuvinte din rândul principal"
+text = "sac lac fad dad fall las fad jaf glas"
+
+[[modules]]
+id = "ro_m2"
+name = "Rândul de sus"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "ro_m2_l1"
+name = "Rândul de sus: q w e r t"
+text = "q w e r t q w e r t q w e r t qwert qwert"
+
+[[modules.lessons]]
+id = "ro_m2_l2"
+name = "Rândul de sus: y u i o p"
+text = "y u i o p y u i o p y u i o p yuiop yuiop"
+
+[[modules.lessons]]
+id = "ro_m2_l3"
+name = "Tot rândul de sus"
+text = "q w e r t y u i o p qwertyuiop qwertyuiop"
+
+[[modules.lessons]]
+id = "ro_m2_l4"
+name = "Cuvinte din rândul de sus"
+text = "tip scrie raport putere întrebare"
+
+[[modules.lessons]]
+id = "ro_m2_l5"
+name = "Rândul de sus și principal"
+text = "tip repede raport putere întrebare"
+
+[[modules]]
+id = "ro_m3"
+name = "Rândul de jos și diacritice"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "ro_m3_l1"
+name = "Rândul de jos: z x c v b n m"
+text = "z x c v b n m z x c v b n m zxcvbnm zxcvbnm"
+
+[[modules.lessons]]
+id = "ro_m3_l2"
+name = "Rândul de jos + semne"
+text = "z x c v b n m , . z x c v b n m , . zxcvbnm,. zxcvbnm,."
+
+[[modules.lessons]]
+id = "ro_m3_l3"
+name = "Cuvinte din rândul de jos"
+text = "mâna muzeu copii bancă zimbru vânt"
+
+[[modules.lessons]]
+id = "ro_m3_l4"
+name = "Toate cele trei rânduri"
+text = "vulpea rapidă maro sare peste câinele leneș"
+
+[[modules]]
+id = "ro_m4"
+name = "Diacritice românești"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "ro_m4_l1"
+name = "Ă â î ş ţ"
+text = "ă â î ş ţ ă â î ş ţ ăâîşt ăâîşt ăâîşt"
+
+[[modules.lessons]]
+id = "ro_m4_l2"
+name = "Cuvinte cu diacritice"
+text = "mâna câine şcoală ţară început mâine frânt"
+
+[[modules.lessons]]
+id = "ro_m4_l3"
+name = "Cuvinte complexe"
+text = "întârziat ştiinţă înţelepţi ţânţar cântare"
+
+[[modules.lessons]]
+id = "ro_m4_l4"
+name = "Frază de practică"
+text = "vulpea rapidă maro sare peste câinele leneş azi"
+
+[[modules]]
+id = "ro_m5"
+name = "Propoziţii"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "ro_m5_l1"
+name = "Propoziţii scurte"
+text = "pisica doarme. câinele aleargă. mergem acasă."
+
+[[modules.lessons]]
+id = "ro_m5_l2"
+name = "Propoziţii medii"
+text = "vulpea rapidă maro sare peste câinele leneş în fiecare zi."
+
+[[modules.lessons]]
+id = "ro_m5_l3"
+name = "Întrebări"
+text = "cum te cheamă? unde locuieşti? cum eşti azi? de ce cerul e albastru?"
+
+[[modules.lessons]]
+id = "ro_m5_l4"
+name = "Propoziţii complexe"
+text = "în ciuda ploii, am decis să mergem în parc pentru că aerul era proaspăt."
+
+[[modules.lessons]]
+id = "ro_m5_l5"
+name = "Paragraf"
+text = "exerciţiul face pe maestru. cu cât scrii mai mult, cu atât devii mai rapid. ţine degetele pe rândul principal."

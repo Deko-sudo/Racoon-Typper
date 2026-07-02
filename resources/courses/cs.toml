@@ -1,0 +1,146 @@
+# Racoon Typper Czech Course (QWERTZ)
+
+[[modules]]
+id = "cs_m1"
+name = "Základní řada"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "cs_m1_l1"
+name = "Levá ruka: a s"
+text = "a s a s a s a s a s a s a s a s a s a s a s"
+
+[[modules.lessons]]
+id = "cs_m1_l2"
+name = "Levá ruka: d f"
+text = "d f d f d f d f d f d f d f d f d f d f"
+
+[[modules.lessons]]
+id = "cs_m1_l3"
+name = "Základní řada: g h j k l"
+text = "g h j k l g h j k l g h j k l ghjkl ghjkl"
+
+[[modules.lessons]]
+id = "cs_m1_l4"
+name = "Celá základní řada"
+text = "a s d f g h j k l a s d f g h j k l asdfghjkl asdfghjkl"
+
+[[modules.lessons]]
+id = "cs_m1_l5"
+name = "Slova ze základní řady"
+text = "dsa sad lad fad hall had lass das klad"
+
+[[modules]]
+id = "cs_m2"
+name = "Horní řada"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "cs_m2_l1"
+name = "Horní řada: q w e r t"
+text = "q w e r t q w e r t q w e r t qwert qwert"
+
+[[modules.lessons]]
+id = "cs_m2_l2"
+name = "Horní řada: z u i o p"
+text = "z u i o p z u i o p z u i o p zuiop zuiop"
+
+[[modules.lessons]]
+id = "cs_m2_l3"
+name = "Celá horní řada"
+text = "q w e r t z u i o p qwertzuiop qwertzuiop"
+
+[[modules.lessons]]
+id = "cs_m2_l4"
+name = "Slova z horní řady"
+text = "quer tier werk rot port zeit wort pero"
+
+[[modules.lessons]]
+id = "cs_m2_l5"
+name = "Horní + základní řada"
+text = "slovo hrad pole les dřevo kolo zima ticho"
+
+[[modules]]
+id = "cs_m3"
+name = "Dolní řada a diakritika"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "cs_m3_l1"
+name = "Dolní řada: y x c v b n m"
+text = "y x c v b n m y x c v b n m yxcvbnm yxcvbnm"
+
+[[modules.lessons]]
+id = "cs_m3_l2"
+name = "Dolní řada + čárky"
+text = "y x c v b n m , . y x c v b n m , . yxcvbnm,. yxcvbnm,."
+
+[[modules.lessons]]
+id = "cs_m3_l3"
+name = "Slova z dolní řady"
+text = "mnoho minuty muzeum cviky bodu vcely"
+
+[[modules.lessons]]
+id = "cs_m3_l4"
+name = "Všechny tři řady"
+text = "rychlá hnědá liška skáče přes líného psa"
+
+[[modules]]
+id = "cs_m4"
+name = "Diakritika"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "cs_m4_l1"
+name = "Háčky a čárky: á é í ó ú"
+text = "á é í ó ú á é í ó ú áéíóú áéíóú áéíóú"
+
+[[modules.lessons]]
+id = "cs_m4_l2"
+name = "Háčky: č š ž ř"
+text = "č š ž ř č š ž ř čšžř čšžř čšžř čšžř"
+
+[[modules.lessons]]
+id = "cs_m4_l3"
+name = "Slova s diakritikou"
+text = "čokoláda štěstí židle řeka jablko úkol dům"
+
+[[modules.lessons]]
+id = "cs_m4_l4"
+name = "Složitější slova"
+text = "příležitost nejdůležitější zodpovědnost"
+
+[[modules]]
+id = "cs_m5"
+name = "Věty"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "cs_m5_l1"
+name = "Krátké věty"
+text = "kočka spí. pes běží. jdeme domů. bylo to zábava."
+
+[[modules.lessons]]
+id = "cs_m5_l2"
+name = "Střední věty"
+text = "rychlá hnědá liška skáče přes líného psa každý den bez únavy."
+
+[[modules.lessons]]
+id = "cs_m5_l3"
+name = "Otázky"
+text = "jak se jmenuješ? kde bydlíš? jak se máš? proč je nebe modré?"
+
+[[modules.lessons]]
+id = "cs_m5_l4"
+name = "Složité věty"
+text = "navzdory dešti jsme se rozhodli jít do parku, protože byl vzduch čerstvý."
+
+[[modules.lessons]]
+id = "cs_m5_l5"
+name = "Odstavec"
+text = "cvičení dělá mistra. čím více píšeš, tím rychlejší jsi. drž prsty na základní řadě a dívej se na obrazovku."

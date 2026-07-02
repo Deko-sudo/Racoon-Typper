@@ -25,6 +25,14 @@ pub struct AppSettings {
     pub sound_enabled: bool,
     pub sound_volume: f64,
     pub zen_mode_enabled: bool,
+    #[serde(default = "default_ui_language")]
+    pub ui_language: String,
+    #[serde(default)]
+    pub vim_mode: bool,
+}
+
+fn default_ui_language() -> String {
+    "en".to_string()
 }
 
 impl Default for AppSettings {
@@ -42,6 +50,8 @@ impl Default for AppSettings {
             sound_enabled: false,
             sound_volume: 0.5,
             zen_mode_enabled: false,
+            ui_language: "en".to_string(),
+            vim_mode: false,
         }
     }
 }
@@ -154,6 +164,16 @@ impl SettingsStore {
             "zen_mode_enabled" => {
                 if let Some(v) = value.as_bool() {
                     settings.zen_mode_enabled = v;
+                }
+            }
+            "ui_language" => {
+                if let Some(v) = value.as_str() {
+                    settings.ui_language = v.to_string();
+                }
+            }
+            "vim_mode" => {
+                if let Some(v) = value.as_bool() {
+                    settings.vim_mode = v;
                 }
             }
             _ => {
@@ -312,6 +332,8 @@ mod tests {
             sound_enabled: false,
             sound_volume: 0.5,
             zen_mode_enabled: false,
+            ui_language: "ru".to_string(),
+            vim_mode: true,
         };
 
         let toml_str = toml::to_string(&settings).unwrap();
