@@ -302,7 +302,7 @@ fn large_db_streak_calculation() {
         .collect();
 
     let start = std::time::Instant::now();
-    let (current, longest) = StreakEngine::streak_from_dates(&dates);
+    let (_current, longest) = StreakEngine::streak_from_dates(&dates);
     let calc_time = start.elapsed();
 
     assert!(longest > 0);
