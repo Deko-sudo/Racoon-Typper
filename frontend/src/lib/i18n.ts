@@ -13,6 +13,7 @@ const en: Dict = {
   'nav.history': 'History',
   'nav.bests': 'Bests',
   'nav.texts': 'Texts',
+  'nav.achievements': 'Trophies',
   'nav.settings': 'Settings',
   'settings.title': 'Settings',
   'settings.theme': 'Theme',
@@ -55,6 +56,7 @@ const en: Dict = {
   'dash.tests_week': 'Tests This Week',
   'dash.total_tests': 'Total Tests',
   'dash.start_test': 'Start Test →',
+  'dash.daily_goal': 'Daily Goal',
   'dash.loading': 'Loading dashboard...',
   // History
   'history.title': 'Test History',
@@ -90,6 +92,12 @@ const en: Dict = {
   'analytics.empty_consistency': 'Not enough data for consistency analysis.',
   'analytics.empty_insights': 'No insights available yet.',
   'analytics.empty_achievements': 'No achievements yet.',
+  'settings.daily_goal_type': 'Daily Goal Type',
+  'settings.goal_time': 'Time (minutes)',
+  'settings.goal_wpm': 'WPM Target',
+  'settings.goal_accuracy': 'Accuracy Target',
+  'settings.daily_goal_wpm': 'Target WPM',
+  'settings.daily_goal_accuracy': 'Target Accuracy %',
 };
 
 const ru: Dict = {
@@ -101,6 +109,7 @@ const ru: Dict = {
   'nav.history': 'История',
   'nav.bests': 'Рекорды',
   'nav.texts': 'Тексты',
+  'nav.achievements': 'Достижения',
   'nav.settings': 'Настройки',
   'settings.title': 'Настройки',
   'settings.theme': 'Тема',
@@ -143,6 +152,7 @@ const ru: Dict = {
   'dash.tests_week': 'Тестов за неделю',
   'dash.total_tests': 'Всего тестов',
   'dash.start_test': 'Начать тест →',
+  'dash.daily_goal': 'Дневная цель',
   'dash.loading': 'Загрузка панели...',
   // History
   'history.title': 'История тестов',
@@ -178,12 +188,18 @@ const ru: Dict = {
   'analytics.empty_consistency': 'Недостаточно данных для анализа стабильности.',
   'analytics.empty_insights': 'Инсайты пока недоступны.',
   'analytics.empty_achievements': 'Достижений пока нет.',
+  'settings.daily_goal_type': 'Тип дневной цели',
+  'settings.goal_time': 'Время (минуты)',
+  'settings.goal_wpm': 'Цель по WPM',
+  'settings.goal_accuracy': 'Цель по точности',
+  'settings.daily_goal_wpm': 'Целевой WPM',
+  'settings.daily_goal_accuracy': 'Целевая точность %',
 };
 
 const de: Dict = {
   'nav.dashboard': 'Übersicht', 'nav.test': 'Test', 'nav.lessons': 'Lektionen',
   'nav.weakkeys': 'Schwache Tasten', 'nav.analytics': 'Analytik', 'nav.history': 'Verlauf',
-  'nav.bests': 'Bestleistungen', 'nav.texts': 'Texte', 'nav.settings': 'Einstellungen',
+  'nav.bests': 'Bestleistungen',   'nav.texts': 'Texte', 'nav.achievements': 'Erfolge', 'nav.settings': 'Einstellungen',
   'settings.title': 'Einstellungen', 'settings.theme': 'Design',
   'settings.font_size': 'Schriftgröße', 'settings.caret_style': 'Cursor-Stil',
   'settings.show_live_wpm': 'Live-WPM anzeigen', 'settings.show_accuracy': 'Genauigkeit anzeigen',
@@ -200,7 +216,7 @@ const de: Dict = {
 const uk: Dict = {
   'nav.dashboard': 'Панель', 'nav.test': 'Тест', 'nav.lessons': 'Уроки',
   'nav.weakkeys': 'Слабкі клавіші', 'nav.analytics': 'Аналітика', 'nav.history': 'Історія',
-  'nav.bests': 'Рекорди', 'nav.texts': 'Тексти', 'nav.settings': 'Налаштування',
+  'nav.bests': 'Рекорди',   'nav.texts': 'Тексти', 'nav.achievements': 'Досягнення', 'nav.settings': 'Налаштування',
   'settings.title': 'Налаштування', 'settings.theme': 'Тема',
   'settings.font_size': 'Розмір шрифту', 'settings.caret_style': 'Стиль курсору',
   'settings.show_live_wpm': 'Показувати WPM', 'settings.show_accuracy': 'Показувати точність',
@@ -217,7 +233,7 @@ const uk: Dict = {
 const es: Dict = {
   'nav.dashboard': 'Panel', 'nav.test': 'Test', 'nav.lessons': 'Lecciones',
   'nav.weakkeys': 'Teclas débiles', 'nav.analytics': 'Analítica', 'nav.history': 'Historial',
-  'nav.bests': 'Récords', 'nav.texts': 'Textos', 'nav.settings': 'Ajustes',
+  'nav.bests': 'Récords',   'nav.texts': 'Textos', 'nav.achievements': 'Logros', 'nav.settings': 'Ajustes',
   'settings.title': 'Ajustes', 'settings.theme': 'Tema',
   'settings.font_size': 'Tamaño de fuente', 'settings.caret_style': 'Estilo del cursor',
   'settings.show_live_wpm': 'Mostrar WPM en vivo', 'settings.show_accuracy': 'Mostrar precisión',
@@ -234,7 +250,7 @@ const es: Dict = {
 const fr: Dict = {
   'nav.dashboard': 'Tableau de bord', 'nav.test': 'Test', 'nav.lessons': 'Leçons',
   'nav.weakkeys': 'Touches faibles', 'nav.analytics': 'Analytique', 'nav.history': 'Historique',
-  'nav.bests': 'Records', 'nav.texts': 'Textes', 'nav.settings': 'Paramètres',
+  'nav.bests': 'Records',   'nav.texts': 'Textes', 'nav.achievements': 'Succès', 'nav.settings': 'Paramètres',
   'settings.title': 'Paramètres', 'settings.theme': 'Thème',
   'settings.font_size': 'Taille de police', 'settings.caret_style': 'Style du curseur',
   'settings.show_live_wpm': 'Afficher WPM en direct', 'settings.show_accuracy': 'Afficher la précision',
@@ -251,7 +267,7 @@ const fr: Dict = {
 const it: Dict = {
   'nav.dashboard': 'Cruscotto', 'nav.test': 'Test', 'nav.lessons': 'Lezioni',
   'nav.weakkeys': 'Tasti deboli', 'nav.analytics': 'Analisi', 'nav.history': 'Cronologia',
-  'nav.bests': 'Record', 'nav.texts': 'Testi', 'nav.settings': 'Impostazioni',
+  'nav.bests': 'Record',   'nav.texts': 'Testi', 'nav.achievements': 'Risultati', 'nav.settings': 'Impostazioni',
   'settings.title': 'Impostazioni', 'settings.theme': 'Tema',
   'settings.font_size': 'Dimensione carattere', 'settings.caret_style': 'Stile cursore',
   'settings.show_live_wpm': 'Mostra WPM live', 'settings.show_accuracy': 'Mostra precisione',
@@ -268,7 +284,7 @@ const it: Dict = {
 const pt: Dict = {
   'nav.dashboard': 'Painel', 'nav.test': 'Teste', 'nav.lessons': 'Lições',
   'nav.weakkeys': 'Teclas fracas', 'nav.analytics': 'Análise', 'nav.history': 'Histórico',
-  'nav.bests': 'Recordes', 'nav.texts': 'Textos', 'nav.settings': 'Configurações',
+  'nav.bests': 'Recordes',   'nav.texts': 'Textos', 'nav.achievements': 'Conquistas', 'nav.settings': 'Configurações',
   'settings.title': 'Configurações', 'settings.theme': 'Tema',
   'settings.font_size': 'Tamanho da fonte', 'settings.caret_style': 'Estilo do cursor',
   'settings.show_live_wpm': 'Mostrar WPM ao vivo', 'settings.show_accuracy': 'Mostrar precisão',
@@ -285,7 +301,7 @@ const pt: Dict = {
 const pl: Dict = {
   'nav.dashboard': 'Pulpit', 'nav.test': 'Test', 'nav.lessons': 'Lekcje',
   'nav.weakkeys': 'Słabe klawisze', 'nav.analytics': 'Analiza', 'nav.history': 'Historia',
-  'nav.bests': 'Rekordy', 'nav.texts': 'Teksty', 'nav.settings': 'Ustawienia',
+  'nav.bests': 'Rekordy',   'nav.texts': 'Teksty', 'nav.achievements': 'Osiągnięcia', 'nav.settings': 'Ustawienia',
   'settings.title': 'Ustawienia', 'settings.theme': 'Motyw',
   'settings.font_size': 'Rozmiar czcionki', 'settings.caret_style': 'Styl kursora',
   'settings.show_live_wpm': 'Pokaż WPM na żywo', 'settings.show_accuracy': 'Pokaż dokładność',
@@ -302,7 +318,7 @@ const pl: Dict = {
 const cs: Dict = {
   'nav.dashboard': 'Nástěnka', 'nav.test': 'Test', 'nav.lessons': 'Lekce',
   'nav.weakkeys': 'Slabé klávesy', 'nav.analytics': 'Analýza', 'nav.history': 'Historie',
-  'nav.bests': 'Rekordy', 'nav.texts': 'Texty', 'nav.settings': 'Nastavení',
+  'nav.bests': 'Rekordy',   'nav.texts': 'Texty', 'nav.achievements': 'Úspěchy', 'nav.settings': 'Nastavení',
   'settings.title': 'Nastavení', 'settings.theme': 'Motiv',
   'settings.font_size': 'Velikost písma', 'settings.caret_style': 'Styl kurzoru',
   'settings.show_live_wpm': 'Zobrazit WPM', 'settings.show_accuracy': 'Zobrazit přesnost',
@@ -319,7 +335,7 @@ const cs: Dict = {
 const ro: Dict = {
   'nav.dashboard': 'Tablou', 'nav.test': 'Test', 'nav.lessons': 'Lecții',
   'nav.weakkeys': 'Taste slabe', 'nav.analytics': 'Analiză', 'nav.history': 'Istoric',
-  'nav.bests': 'Recorduri', 'nav.texts': 'Texte', 'nav.settings': 'Setări',
+  'nav.bests': 'Recorduri',   'nav.texts': 'Texte', 'nav.achievements': 'Realizări', 'nav.settings': 'Setări',
   'settings.title': 'Setări', 'settings.theme': 'Temă',
   'settings.font_size': 'Mărime font', 'settings.caret_style': 'Stil cursor',
   'settings.show_live_wpm': 'Arată WPM live', 'settings.show_accuracy': 'Arată precizia',
@@ -336,7 +352,7 @@ const ro: Dict = {
 const ja: Dict = {
   'nav.dashboard': 'ダッシュボード', 'nav.test': 'テスト', 'nav.lessons': 'レッスン',
   'nav.weakkeys': '苦手キー', 'nav.analytics': '分析', 'nav.history': '履歴',
-  'nav.bests': 'ベスト', 'nav.texts': 'テキスト', 'nav.settings': '設定',
+  'nav.bests': 'ベスト',   'nav.texts': 'テキスト', 'nav.achievements': '実績', 'nav.settings': '設定',
   'settings.title': '設定', 'settings.theme': 'テーマ',
   'settings.font_size': 'フォントサイズ', 'settings.caret_style': 'カーソルスタイル',
   'settings.show_live_wpm': 'WPMを表示', 'settings.show_accuracy': '精度を表示',
@@ -353,7 +369,7 @@ const ja: Dict = {
 const ko: Dict = {
   'nav.dashboard': '대시보드', 'nav.test': '테스트', 'nav.lessons': '레슨',
   'nav.weakkeys': '약한 키', 'nav.analytics': '분석', 'nav.history': '기록',
-  'nav.bests': '최고 기록', 'nav.texts': '텍스트', 'nav.settings': '설정',
+  'nav.bests': '최고 기록',   'nav.texts': '텍스트', 'nav.achievements': '업적', 'nav.settings': '설정',
   'settings.title': '설정', 'settings.theme': '테마',
   'settings.font_size': '글꼴 크기', 'settings.caret_style': '커서 스타일',
   'settings.show_live_wpm': '실시간 WPM 표시', 'settings.show_accuracy': '정확도 표시',
@@ -387,7 +403,7 @@ const zhHK: Dict = {
 const zhTW: Dict = {
   'nav.dashboard': '儀表板', 'nav.test': '測試', 'nav.lessons': '課程',
   'nav.weakkeys': '弱鍵', 'nav.analytics': '分析', 'nav.history': '歷史',
-  'nav.bests': '最佳', 'nav.texts': '文本', 'nav.settings': '設定',
+  'nav.bests': '最佳', 'nav.texts': '文本', 'nav.achievements': '成就', 'nav.settings': '設定',
   'settings.title': '設定', 'settings.theme': '主題',
   'settings.font_size': '字體大小', 'settings.caret_style': '游標樣式',
   'settings.show_live_wpm': '顯示WPM', 'settings.show_accuracy': '顯示準確度',

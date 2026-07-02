@@ -18,6 +18,7 @@ use racoon_domain::{AppInfo, EngineOutput, TestRecord};
 use racoon_resources::{course_loader, quote_loader, word_pack_loader};
 use std::sync::Mutex;
 use tauri::State;
+use rusqlite::params;
 
 use crate::error::AppError;
 use crate::state::AppState;
@@ -189,6 +190,30 @@ pub fn process_key(
                 final_stats.wpm,
                 final_stats.accuracy,
             );
+
+            // Check daily goal
+            let settings_store = racoon_data::repository::SettingsStore::new(
+                dirs::config_dir()
+                    .unwrap_or_default()
+                    .join("racoon-typper")
+                    .join("settings.toml"),
+            );
+            if let Ok(settings) = settings_store.load() {
+                if let Ok(Some(day_stats)) = daily_repo.get_day(&today) {
+                    let goal_met = match settings.daily_goal_type.as_str() {
+                        "wpm" => settings.daily_goal_wpm > 0.0 && day_stats.best_wpm >= settings.daily_goal_wpm,
+                        "accuracy" => settings.daily_goal_accuracy > 0.0 && day_stats.avg_accuracy >= settings.daily_goal_accuracy,
+                        "time" => day_stats.total_time_ms >= (settings.daily_goal_wpm as i64 * 60_000).max(0),
+                        _ => false,
+                    };
+                    if goal_met {
+                        let _ = conn.execute(
+                            "UPDATE daily_stats SET daily_goal_met = 1 WHERE date = ?1",
+                            params![today],
+                        );
+                    }
+                }
+            }
         }
     }
 
@@ -737,6 +762,7 @@ pub struct DashboardStatsResponse {
     pub tests_today: i64,
     pub tests_this_week: i64,
     pub total_tests: i64,
+    pub daily_goal_met: bool,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -812,6 +838,16 @@ pub fn get_dashboard_stats(state: State<'_, AppState>) -> Result<DashboardStatsR
         .collect();
     let (current_streak, longest_streak) = racoon_core::StreakEngine::streak_from_dates(&dates);
 
+    let daily_goal_met = if today_stats.is_some() {
+        conn.query_row(
+            "SELECT daily_goal_met FROM daily_stats WHERE date = ?1",
+            params![today],
+            |row| row.get::<_, i64>(0),
+        ).unwrap_or(0) == 1
+    } else {
+        false
+    };
+
     Ok(DashboardStatsResponse {
         current_streak,
         longest_streak,
@@ -820,6 +856,7 @@ pub fn get_dashboard_stats(state: State<'_, AppState>) -> Result<DashboardStatsR
         tests_today,
         tests_this_week,
         total_tests: total,
+        daily_goal_met,
     })
 }
 

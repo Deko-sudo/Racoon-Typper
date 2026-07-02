@@ -22,6 +22,7 @@
   import NotificationStack from './components/NotificationStack.svelte';
   import DashboardView from './components/DashboardView.svelte';
   import AnalyticsView from './components/AnalyticsView.svelte';
+  import AchievementGallery from './components/AchievementGallery.svelte';
 
   // Navigation
   let view = $state<ViewName>('test');
@@ -84,6 +85,9 @@
   // Zen mode — hide everything except text
   let zenActive = $state(false);
 
+  // Achievement tracking — snapshot before test for auto-toast
+  let preTestAchievements = $state<Array<{ id: string; unlocked: boolean }>>([]);
+
   // Typing warnings
   let lastTypedChar = $state('');
   let capsLockOn = $state(false);
@@ -100,10 +104,36 @@
     }, 5000);
   }
 
+  async function snapshotAchievements() {
+    try {
+      const data = await ipc.getAchievements() as any;
+      const arr = Array.isArray(data) ? (data.length === 1 && Array.isArray(data[0]) ? data[0] : data) : [];
+      preTestAchievements = arr.map((a: any) => ({ id: a.id, unlocked: a.unlocked }));
+    } catch {
+      preTestAchievements = [];
+    }
+  }
+
+  async function checkNewAchievements() {
+    try {
+      const data = await ipc.getAchievements() as any;
+      const arr = Array.isArray(data) ? (data.length === 1 && Array.isArray(data[0]) ? data[0] : data) : [];
+      const after: Array<{ id: string; unlocked: boolean; name: string; description: string }> = arr;
+      for (const a of after) {
+        if (a.unlocked && !preTestAchievements.find(p => p.id === a.id && p.unlocked)) {
+          addNotification('SUCCESS', `🏆 ${a.name} — ${a.description}`);
+        }
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   async function startTest() {
     errorMsg = '';
     finalStats = null;
     if (settings?.zen_mode_enabled) zenActive = true;
+    await snapshotAchievements();
     const params: Record<string, unknown> = {
       mode: selectedMode,
       language: selectedLanguage,
@@ -127,7 +157,7 @@
   async function handleKeydown(e: KeyboardEvent) {
     // Vim mode navigation (only when not actively typing a test)
     if (settings?.vim_mode && !isRunning) {
-      const views: ViewName[] = ['dashboard', 'test', 'lessons', 'weakkeys', 'analytics', 'history', 'bests', 'custom', 'settings'];
+      const views: ViewName[] = ['dashboard', 'test', 'lessons', 'weakkeys', 'analytics', 'achievements', 'history', 'bests', 'custom', 'settings'];
       const currentIdx = views.indexOf(view);
       if (e.key === 'h' && currentIdx > 0) { e.preventDefault(); switchView(views[currentIdx - 1]); return; }
       if (e.key === 'l' && currentIdx < views.length - 1) { e.preventDefault(); switchView(views[currentIdx + 1]); return; }
@@ -183,6 +213,7 @@
         if (finalStats.accuracy >= 95) {
           addNotification('SUCCESS', 'Отличный результат!');
         }
+        await checkNewAchievements();
       }
     } catch (err) {
       errorMsg = `Error: ${err}`;
@@ -531,6 +562,8 @@
     />
   {:else if view === 'analytics'}
     <AnalyticsView uiLang={uiLang} />
+  {:else if view === 'achievements'}
+    <AchievementGallery uiLang={uiLang} />
   {/if}
 </main>
 

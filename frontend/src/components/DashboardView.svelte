@@ -40,6 +40,10 @@
         <span class="card-value">{stats.total_tests}</span>
         <span class="card-label">{t(uiLang, 'dash.total_tests')}</span>
       </div>
+      <div class="card goal-card" class:goal-met={stats.daily_goal_met}>
+        <span class="card-value">{stats.daily_goal_met ? '✓' : '○'}</span>
+        <span class="card-label">{t(uiLang, 'dash.daily_goal')}</span>
+      </div>
       <div class="card action-card" role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && onNavigate('test')} onclick={() => onNavigate('test')}>
         <span class="card-action">{t(uiLang, 'dash.start_test')}</span>
       </div>
@@ -67,6 +71,9 @@
   .card-badge { font-size: 0.65rem; color: var(--main); }
   .card-badge.active { color: #ff6b35; }
   .total-card { border-color: var(--sub); }
+  .goal-card { border-color: var(--sub); }
+  .goal-card.goal-met { border-color: #6c8; }
+  .goal-card.goal-met .card-value { color: #6c8; }
   .action-card { cursor: pointer; justify-content: center; }
   .action-card:hover { border-color: var(--main); background: var(--bg); }
   .card-action { color: var(--main); font-size: 0.875rem; }

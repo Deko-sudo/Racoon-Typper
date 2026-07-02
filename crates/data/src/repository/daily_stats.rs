@@ -15,6 +15,7 @@ pub struct DailyStats {
     pub avg_wpm: f64,
     pub avg_accuracy: f64,
     pub lessons_completed: i64,
+    pub daily_goal_met: bool,
 }
 
 pub trait DailyStatsRepository {
@@ -81,7 +82,7 @@ impl<'a> DailyStatsRepository for SqliteDailyStatsRepository<'a> {
 
     fn get_day(&self, date: &str) -> Result<Option<DailyStats>, DbError> {
         let result = self.conn.query_row(
-            "SELECT date, total_tests, total_time_ms, total_chars, best_wpm, avg_wpm, avg_accuracy, lessons_completed
+            "SELECT date, total_tests, total_time_ms, total_chars, best_wpm, avg_wpm, avg_accuracy, lessons_completed, daily_goal_met
              FROM daily_stats WHERE date = ?1",
             params![date],
             |row| {
@@ -94,6 +95,7 @@ impl<'a> DailyStatsRepository for SqliteDailyStatsRepository<'a> {
                     avg_wpm: row.get(5)?,
                     avg_accuracy: row.get(6)?,
                     lessons_completed: row.get(7)?,
+                    daily_goal_met: row.get::<_, i64>(8)? == 1,
                 })
             },
         );
@@ -108,7 +110,7 @@ impl<'a> DailyStatsRepository for SqliteDailyStatsRepository<'a> {
         let mut stmt = self
             .conn
             .prepare(
-                "SELECT date, total_tests, total_time_ms, total_chars, best_wpm, avg_wpm, avg_accuracy, lessons_completed
+                "SELECT date, total_tests, total_time_ms, total_chars, best_wpm, avg_wpm, avg_accuracy, lessons_completed, daily_goal_met
                  FROM daily_stats WHERE date >= ?1 AND date <= ?2 ORDER BY date",
             )
             .map_err(|e| DbError::Query(e.to_string()))?;
@@ -124,6 +126,7 @@ impl<'a> DailyStatsRepository for SqliteDailyStatsRepository<'a> {
                     avg_wpm: row.get(5)?,
                     avg_accuracy: row.get(6)?,
                     lessons_completed: row.get(7)?,
+                    daily_goal_met: row.get::<_, i64>(8)? == 1,
                 })
             })
             .map_err(|e| DbError::Query(e.to_string()))?;

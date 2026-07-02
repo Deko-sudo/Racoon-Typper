@@ -16,6 +16,7 @@
   <button class:active={view === 'lessons'} onclick={() => onNavigate('lessons')}>{t(uiLang, 'nav.lessons')}</button>
   <button class:active={view === 'weakkeys'} onclick={() => onNavigate('weakkeys')}>{t(uiLang, 'nav.weakkeys')}</button>
   <button class:active={view === 'analytics'} onclick={() => onNavigate('analytics')}>{t(uiLang, 'nav.analytics')}</button>
+  <button class:active={view === 'achievements'} onclick={() => onNavigate('achievements')}>{t(uiLang, 'nav.achievements')}</button>
   <button class:active={view === 'history'} onclick={() => onNavigate('history')}>{t(uiLang, 'nav.history')} ({historyTotal})</button>
   <button class:active={view === 'bests'} onclick={() => onNavigate('bests')}>{t(uiLang, 'nav.bests')}</button>
   <button class:active={view === 'custom'} onclick={() => onNavigate('custom')}>{t(uiLang, 'nav.texts')}</button>

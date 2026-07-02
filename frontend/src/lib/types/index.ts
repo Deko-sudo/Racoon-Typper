@@ -109,6 +109,9 @@ export interface AppSettings {
   zen_mode_enabled: boolean;
   ui_language: string;
   vim_mode: boolean;
+  daily_goal_type: string;
+  daily_goal_wpm: number;
+  daily_goal_accuracy: number;
 }
 
 export interface ThemeInfo {
@@ -123,7 +126,7 @@ export interface ThemeInfo {
   };
 }
 
-export type ViewName = 'dashboard' | 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys' | 'analytics';
+export type ViewName = 'dashboard' | 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys' | 'analytics' | 'achievements';
 export type ModeName = 'time' | 'words' | 'quote' | 'custom';
 export type LanguageCode = 'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko';
 
@@ -154,6 +157,7 @@ export interface DashboardStatsResponse {
   tests_today: number;
   tests_this_week: number;
   total_tests: number;
+  daily_goal_met: boolean;
 }
 
 export interface StreakInfoResponse {

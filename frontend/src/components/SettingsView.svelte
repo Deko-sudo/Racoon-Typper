@@ -92,6 +92,26 @@
         <label for="setting-vim">{t(uiLang, 'settings.vim_mode')}</label>
         <input id="setting-vim" type="checkbox" checked={settings.vim_mode} onchange={(e) => onUpdateSetting('vim_mode', e.currentTarget.checked)} />
       </div>
+      <div class="setting-row">
+        <label for="setting-goal-type">{t(uiLang, 'settings.daily_goal_type')}</label>
+        <select id="setting-goal-type" value={settings.daily_goal_type || 'time'} onchange={(e) => onUpdateSetting('daily_goal_type', e.currentTarget.value)}>
+          <option value="time">{t(uiLang, 'settings.goal_time')}</option>
+          <option value="wpm">{t(uiLang, 'settings.goal_wpm')}</option>
+          <option value="accuracy">{t(uiLang, 'settings.goal_accuracy')}</option>
+        </select>
+      </div>
+      {#if settings.daily_goal_type === 'wpm'}
+        <div class="setting-row">
+          <label for="setting-goal-wpm">{t(uiLang, 'settings.daily_goal_wpm')}</label>
+          <input id="setting-goal-wpm" type="number" min="0" max="300" value={settings.daily_goal_wpm || 0} onchange={(e) => onUpdateSetting('daily_goal_wpm', parseFloat(e.currentTarget.value))} />
+        </div>
+      {/if}
+      {#if settings.daily_goal_type === 'accuracy'}
+        <div class="setting-row">
+          <label for="setting-goal-acc">{t(uiLang, 'settings.daily_goal_accuracy')}</label>
+          <input id="setting-goal-acc" type="number" min="0" max="100" step="0.1" value={settings.daily_goal_accuracy || 0} onchange={(e) => onUpdateSetting('daily_goal_accuracy', parseFloat(e.currentTarget.value))} />
+        </div>
+      {/if}
     </div>
     <h3>{t(uiLang, 'settings.theme_preview')}</h3>
     <div class="theme-cards">

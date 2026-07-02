@@ -29,10 +29,20 @@ pub struct AppSettings {
     pub ui_language: String,
     #[serde(default)]
     pub vim_mode: bool,
+    #[serde(default = "default_daily_goal_type")]
+    pub daily_goal_type: String,
+    #[serde(default)]
+    pub daily_goal_wpm: f64,
+    #[serde(default)]
+    pub daily_goal_accuracy: f64,
 }
 
 fn default_ui_language() -> String {
     "en".to_string()
+}
+
+fn default_daily_goal_type() -> String {
+    "time".to_string()
 }
 
 impl Default for AppSettings {
@@ -52,6 +62,9 @@ impl Default for AppSettings {
             zen_mode_enabled: false,
             ui_language: "en".to_string(),
             vim_mode: false,
+            daily_goal_type: "time".to_string(),
+            daily_goal_wpm: 0.0,
+            daily_goal_accuracy: 0.0,
         }
     }
 }
@@ -174,6 +187,21 @@ impl SettingsStore {
             "vim_mode" => {
                 if let Some(v) = value.as_bool() {
                     settings.vim_mode = v;
+                }
+            }
+            "daily_goal_type" => {
+                if let Some(v) = value.as_str() {
+                    settings.daily_goal_type = v.to_string();
+                }
+            }
+            "daily_goal_wpm" => {
+                if let Some(v) = value.as_float() {
+                    settings.daily_goal_wpm = v;
+                }
+            }
+            "daily_goal_accuracy" => {
+                if let Some(v) = value.as_float() {
+                    settings.daily_goal_accuracy = v;
                 }
             }
             _ => {
@@ -334,6 +362,9 @@ mod tests {
             zen_mode_enabled: false,
             ui_language: "ru".to_string(),
             vim_mode: true,
+            daily_goal_type: "time".to_string(),
+            daily_goal_wpm: 0.0,
+            daily_goal_accuracy: 0.0,
         };
 
         let toml_str = toml::to_string(&settings).unwrap();
