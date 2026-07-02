@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { TestSummary } from '../types/index';
+  import type { TestSummary } from '../lib/types/index';
+  import { t } from '../lib/i18n';
 
-  let { history, total }: { history: TestSummary[]; total: number } = $props();
+  let { history, total, uiLang = 'en' }: { history: TestSummary[]; total: number; uiLang?: string } = $props();
 
   function formatDate(iso: string): string {
     try { return new Date(iso).toLocaleString(); } catch { return iso; }
@@ -9,21 +10,21 @@
 </script>
 
 <div class="list-view">
-  <h2>Test History ({total})</h2>
+  <h2>{t(uiLang, 'history.title')} ({total})</h2>
   {#if history.length === 0}
-    <p class="empty">No tests yet.</p>
+    <p class="empty">{t(uiLang, 'history.empty')}</p>
   {:else}
     <table>
-      <thead><tr><th>Date</th><th>Mode</th><th>WPM</th><th>Accuracy</th><th>Duration</th><th>PB</th></tr></thead>
+      <thead><tr><th>{t(uiLang, 'history.date')}</th><th>{t(uiLang, 'history.mode')}</th><th>{t(uiLang, 'history.wpm')}</th><th>{t(uiLang, 'history.accuracy')}</th><th>{t(uiLang, 'history.duration')}</th><th>{t(uiLang, 'history.pb')}</th></tr></thead>
       <tbody>
-        {#each history as t}
+        {#each history as h}
           <tr>
-            <td>{formatDate(t.created_at)}</td>
-            <td>{t.mode_type}</td>
-            <td>{t.wpm.toFixed(1)}</td>
-            <td>{t.accuracy.toFixed(1)}%</td>
-            <td>{(t.duration_ms / 1000).toFixed(1)}s</td>
-            <td>{t.is_pb ? '★' : ''}</td>
+            <td>{formatDate(h.created_at)}</td>
+            <td>{h.mode_type}</td>
+            <td>{h.wpm.toFixed(1)}</td>
+            <td>{h.accuracy.toFixed(1)}%</td>
+            <td>{(h.duration_ms / 1000).toFixed(1)}s</td>
+            <td>{h.is_pb ? '★' : ''}</td>
           </tr>
         {/each}
       </tbody>

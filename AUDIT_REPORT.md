@@ -34,7 +34,7 @@
 
 ### Licenses
 
-All workspace crates: MIT. Transitive dependencies: standard open-source (MIT, Apache-2.0, MPL-2.0). No GPL contamination.
+All workspace crates: Apache-2.0. Transitive dependencies: standard open-source (MIT, Apache-2.0, MPL-2.0). No GPL contamination.
 
 ---
 

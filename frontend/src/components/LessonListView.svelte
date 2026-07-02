@@ -1,17 +1,25 @@
 <script lang="ts">
-  import type { ModuleResponse, LessonResponse } from '../types/index';
+  import type { ModuleResponse, LessonResponse } from '../lib/types/index';
+  import { t, UI_LANGUAGES } from '../lib/i18n';
 
   let {
     modules,
     progress,
     language,
     onSelectLesson,
+    uiLang = 'en',
   }: {
     modules: ModuleResponse[];
     progress: Record<string, { status: string; best_wpm: number; best_accuracy: number }>;
     language: string;
     onSelectLesson: (lessonId: string, language: string) => void;
+    uiLang?: string;
   } = $props();
+
+  function langName(code: string): string {
+    const entry = UI_LANGUAGES.find(([c]) => c === code);
+    return entry ? entry[1] : code;
+  }
 
   function getStatus(lessonId: string): string {
     return progress[lessonId]?.status || 'not_started';
@@ -23,7 +31,10 @@
 </script>
 
 <div class="list-view">
-  <h2>Course — {language === 'en' ? 'English' : 'Русский'}</h2>
+  <h2>{t(uiLang, 'lessons.course')} — {langName(language)}</h2>
+  {#if modules.length === 0}
+    <p class="empty">{t(uiLang, 'lessons.empty')}</p>
+  {/if}
   {#each modules as m}
     <div class="module">
       <h3>{m.name} <span class="difficulty">{m.difficulty}</span></h3>

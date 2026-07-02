@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { invoke } from '@tauri-apps/api/core';
   import * as ipc from './lib/api/ipc';
+  import { t } from './lib/i18n';
   import type {
     CharStatus, TestSessionResponse, FinalStats, TestSummary,
     StatsHistoryResponse, PersonalBest, CustomText, AppSettings,
@@ -62,6 +63,7 @@
 
   // Settings
   let settings = $state<AppSettings | null>(null);
+  let uiLang = $state('en');
 
   // Themes
   let themes = $state<ThemeInfo[]>([]);
@@ -70,7 +72,7 @@
   // Lessons
   let courseModules = $state<ModuleResponse[]>([]);
   let lessonProgress = $state<Record<string, { status: string; best_wpm: number; best_accuracy: number }>>({});
-  let lessonLang = $state<'en' | 'ru'>('en');
+  let lessonLang = $state<'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko'>('en');
 
   // Weak Keys
   let weakKeysData = $state<Array<{ ch: string; error_count: number; accuracy: number; rank: number }>>([]);
@@ -123,6 +125,16 @@
   }
 
   async function handleKeydown(e: KeyboardEvent) {
+    // Vim mode navigation (only when not actively typing a test)
+    if (settings?.vim_mode && !isRunning) {
+      const views: ViewName[] = ['dashboard', 'test', 'lessons', 'weakkeys', 'analytics', 'history', 'bests', 'custom', 'settings'];
+      const currentIdx = views.indexOf(view);
+      if (e.key === 'h' && currentIdx > 0) { e.preventDefault(); switchView(views[currentIdx - 1]); return; }
+      if (e.key === 'l' && currentIdx < views.length - 1) { e.preventDefault(); switchView(views[currentIdx + 1]); return; }
+      if (e.key === 'k') { e.preventDefault(); window.scrollBy(0, -100); return; }
+      if (e.key === 'j') { e.preventDefault(); window.scrollBy(0, 100); return; }
+    }
+
     if (!isRunning || isComplete) return;
 
     // Caps Lock detection
@@ -202,6 +214,7 @@
   async function loadSettings() {
     settings = await ipc.getSettings();
     activeTheme = settings.theme;
+    uiLang = settings.ui_language || 'en';
     await applyTheme(activeTheme);
   }
 
@@ -228,8 +241,18 @@
   }
 
   async function updateSetting(key: string, value: unknown) {
-    await ipc.setSetting(key, value);
-    settings = await ipc.getSettings();
+    try {
+      await ipc.setSetting(key, value);
+      settings = await ipc.getSettings();
+    } catch (e) {
+      // IPC not available (browser or error) — update locally
+      if (settings) {
+        (settings as unknown as Record<string, unknown>)[key] = value;
+      }
+    }
+    if (key === 'ui_language') {
+      uiLang = (value as string) || 'en';
+    }
   }
 
   function openEditor(ct: CustomText | null) {
@@ -369,9 +392,40 @@
   }
 
   onMount(async () => {
-    await loadThemes();
-    await loadSettings();
-    await startTest();
+    try {
+      await loadThemes();
+    } catch (e) {
+      console.warn('loadThemes failed, using defaults:', e);
+      themes = [
+        { name: 'serika_dark', display_name: 'Serika Dark', is_dark: true, preview_colors: { bg: '#323437', main: '#e2b714', text: '#999999', error: '#ca4754' } },
+        { name: 'serika_light', display_name: 'Serika Light', is_dark: false, preview_colors: { bg: '#f0f0f0', main: '#e2b714', text: '#333333', error: '#ca4754' } },
+        { name: 'racoon_dark', display_name: 'Racoon Dark', is_dark: true, preview_colors: { bg: '#1a1b26', main: '#7aa2f7', text: '#a9b1d6', error: '#f7768e' } },
+      ];
+    }
+    try {
+      await loadSettings();
+    } catch (e) {
+      console.warn('loadSettings failed, using defaults:', e);
+      settings = {
+        theme: 'serika_dark', font_size: 24, caret_style: 'block',
+        show_live_wpm: true, show_accuracy: true, show_keyboard_trainer: false,
+        show_hand_guide: false, show_layout_warnings: false, show_capslock_warnings: true,
+        sound_enabled: false, sound_volume: 0.5, zen_mode_enabled: false,
+        ui_language: 'en', vim_mode: false,
+      };
+      uiLang = 'en';
+      await applyTheme('serika_dark');
+    }
+    try {
+      await startTest();
+    } catch (e) {
+      console.warn('startTest failed, using fallback text:', e);
+      text = 'The quick brown fox jumps over the lazy dog and runs through the forest while the sun sets slowly behind the mountains';
+      charStatuses = text.split('').map((ch) => ({ expected: ch, typed: null, status: 'pending' as const }));
+      isRunning = true;
+      sessionModeType = 'time';
+      sessionLanguage = 'en';
+    }
   });
 </script>
 
@@ -379,7 +433,7 @@
 
 <main>
   {#if !zenActive}
-    <NavigationBar {view} {historyTotal} onNavigate={switchView} />
+    <NavigationBar {view} {historyTotal} {uiLang} onNavigate={switchView} />
   {/if}
 
   {#if errorMsg}
@@ -387,7 +441,7 @@
   {/if}
 
   {#if view === 'dashboard'}
-    <DashboardView stats={dashboardStats} onNavigate={(v) => switchView(v as ViewName)} />
+    <DashboardView stats={dashboardStats} onNavigate={(v) => switchView(v as ViewName)} uiLang={uiLang} />
   {:else if view === 'test'}
     {#if isRunning && settings?.show_layout_warnings}
       <TypingWarnings
@@ -421,11 +475,12 @@
       onLanguageChange={onLanguageChange}
       onAbort={abortTest}
       onRestart={startTest}
+      uiLang={uiLang}
     />
   {:else if view === 'history'}
-    <HistoryView {history} total={historyTotal} />
+    <HistoryView {history} total={historyTotal} uiLang={uiLang} />
   {:else if view === 'bests'}
-    <BestsView {bests} />
+    <BestsView {bests} uiLang={uiLang} />
   {:else if view === 'custom'}
     <CustomTextsView
       {customTexts}
@@ -439,34 +494,43 @@
       onSearch={searchCustom}
       onOpenEditor={openEditor}
       onCloseEditor={() => { showEditor = false; }}
+      uiLang={uiLang}
     />
   {:else if view === 'settings'}
     <SettingsView
       {settings}
       {themes}
       {activeTheme}
+      {uiLang}
       onSelectTheme={selectTheme}
       onUpdateSetting={updateSetting}
     />
   {:else if view === 'lessons'}
     <div class="lesson-lang-selector">
-      <button class:active={lessonLang === 'en'} onclick={() => { lessonLang = 'en'; loadLessons(); }}>EN</button>
-      <button class:active={lessonLang === 'ru'} onclick={() => { lessonLang = 'ru'; loadLessons(); }}>RU</button>
+      {#each [['en','EN'],['ru','RU'],['de','DE'],['uk','UK'],['cs','CS'],['pl','PL'],['ro','RO'],['it','IT'],['fr','FR'],['es','ES'],['pt','PT'],['ja','JA'],['zh-hk','繁HK'],['zh-tw','繁TW'],['ko','KO']] as [code, label]}
+        <button class:active={lessonLang === code} onclick={() => { lessonLang = code as typeof lessonLang; loadLessons(); }}>{label}</button>
+      {/each}
     </div>
     <LessonListView
       modules={courseModules}
       progress={lessonProgress}
       language={lessonLang}
       onSelectLesson={onSelectLesson}
+      uiLang={uiLang}
     />
   {:else if view === 'weakkeys'}
     <WeakKeysPanel
       weakKeys={weakKeysData}
       charStats={weakKeysCharStats}
       onGenerateTraining={onGenerateTraining}
+      {uiLang}
+      trainingText={text}
+      trainingCharStatuses={charStatuses}
+      trainingCaretPos={caretPos}
+      trainingRunning={isRunning}
     />
   {:else if view === 'analytics'}
-    <AnalyticsView />
+    <AnalyticsView uiLang={uiLang} />
   {/if}
 </main>
 

@@ -1,7 +1,8 @@
 <script lang="ts">
-  import type { PersonalBest } from '../types/index';
+  import type { PersonalBest } from '../lib/types/index';
+  import { t } from '../lib/i18n';
 
-  let { bests }: { bests: PersonalBest[] } = $props();
+  let { bests, uiLang = 'en' }: { bests: PersonalBest[]; uiLang?: string } = $props();
 
   function formatDate(iso: string): string {
     try { return new Date(iso).toLocaleString(); } catch { return iso; }
@@ -9,12 +10,12 @@
 </script>
 
 <div class="list-view">
-  <h2>Personal Bests</h2>
+  <h2>{t(uiLang, 'bests.title')}</h2>
   {#if bests.length === 0}
-    <p class="empty">No records yet.</p>
+    <p class="empty">{t(uiLang, 'bests.empty')}</p>
   {:else}
     <table>
-      <thead><tr><th>Mode</th><th>Best WPM</th><th>Best Accuracy</th><th>Updated</th></tr></thead>
+      <thead><tr><th>{t(uiLang, 'bests.mode')}</th><th>{t(uiLang, 'bests.best_wpm')}</th><th>{t(uiLang, 'bests.best_acc')}</th><th>{t(uiLang, 'bests.updated')}</th></tr></thead>
       <tbody>
         {#each bests as b}
           <tr>

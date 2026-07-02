@@ -1,5 +1,6 @@
 <script lang="ts">
-  import type { CustomText } from '../types/index';
+  import type { CustomText } from '../lib/types/index';
+  import { t } from '../lib/i18n';
 
   let {
     customTexts,
@@ -13,6 +14,7 @@
     onSearch,
     onOpenEditor,
     onCloseEditor,
+    uiLang = 'en',
   }: {
     customTexts: CustomText[];
     searchText: string;
@@ -25,27 +27,28 @@
     onSearch: (q: string) => void;
     onOpenEditor: (ct: CustomText | null) => void;
     onCloseEditor: () => void;
+    uiLang?: string;
   } = $props();
 </script>
 
 <div class="list-view">
-  <h2>Custom Texts</h2>
+  <h2>{t(uiLang, 'custom.title')}</h2>
   <div class="custom-actions">
-    <input type="text" placeholder="Search..." value={searchText} oninput={(e) => onSearch(e.currentTarget.value)} />
-    <button onclick={() => onOpenEditor(null)}>+ New</button>
+    <input type="text" placeholder={t(uiLang, 'custom.search')} value={searchText} oninput={(e) => onSearch(e.currentTarget.value)} />
+    <button onclick={() => onOpenEditor(null)}>+ {t(uiLang, 'custom.create')}</button>
   </div>
   {#if showEditor}
     <div class="editor">
-      <input type="text" placeholder="Name" value={newName} oninput={(e) => { newName = e.currentTarget.value; }} />
-      <textarea placeholder="Text content" value={newTextContent} oninput={(e) => { newTextContent = e.currentTarget.value; }} rows="5"></textarea>
+      <input type="text" placeholder={t(uiLang, 'custom.name')} value={newName} oninput={(e) => { newName = e.currentTarget.value; }} />
+      <textarea placeholder={t(uiLang, 'custom.text')} value={newTextContent} oninput={(e) => { newTextContent = e.currentTarget.value; }} rows="5"></textarea>
       <div class="editor-btns">
-        <button onclick={onSave}>Save</button>
-        <button class="abort-btn" onclick={onCloseEditor}>Cancel</button>
+        <button onclick={onSave}>{t(uiLang, 'custom.save')}</button>
+        <button class="abort-btn" onclick={onCloseEditor}>{t(uiLang, 'custom.cancel')}</button>
       </div>
     </div>
   {/if}
   {#if customTexts.length === 0}
-    <p class="empty">No custom texts. Create one!</p>
+    <p class="empty">{t(uiLang, 'custom.empty')}</p>
   {:else}
     <div class="text-cards">
       {#each customTexts as ct}
@@ -53,10 +56,10 @@
           <h3>{ct.name}</h3>
           <p class="text-preview">{ct.text.substring(0, 80)}{ct.text.length > 80 ? '...' : ''}</p>
           <div class="card-actions">
-            <span class="use-count">Used: {ct.use_count}</span>
-            <button onclick={() => onStart(ct.id)}>Start</button>
-            <button onclick={() => onOpenEditor(ct)}>Edit</button>
-            <button class="abort-btn" onclick={() => onDelete(ct.id)}>Delete</button>
+            <span class="use-count">{t(uiLang, 'custom.used')}: {ct.use_count}</span>
+            <button onclick={() => onStart(ct.id)}>{t(uiLang, 'custom.start')}</button>
+            <button onclick={() => onOpenEditor(ct)}>{t(uiLang, 'custom.edit')}</button>
+            <button class="abort-btn" onclick={() => onDelete(ct.id)}>{t(uiLang, 'custom.delete')}</button>
           </div>
         </div>
       {/each}

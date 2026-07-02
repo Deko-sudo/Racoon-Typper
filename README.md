@@ -90,4 +90,4 @@ See `ARCHITECTURE.md` for full specification.
 
 ## License
 
-MIT
+Apache-2.0

@@ -1,0 +1,12 @@
+:root {
+  --bg: #eef2f5;
+  --bg-main: #eef2f5;
+  --bg-sub: #dde4ea;
+  --main: #4fc3a1;
+  --caret: #4fc3a1;
+  --sub: #dde4ea;
+  --text: #37474f;
+  --error: #e57373;
+  --error-extra: #e57373;
+  --colorful-error: #e57373;
+}

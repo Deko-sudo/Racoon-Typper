@@ -1,10 +1,11 @@
 <script lang="ts">
-  import type { CharStatus, AppSettings } from '../types/index';
+  import type { CharStatus, AppSettings } from '../lib/types/index';
   import ModeSelector from './ModeSelector.svelte';
   import ResultOverlay from './ResultOverlay.svelte';
   import KeyboardTrainer from './KeyboardTrainer.svelte';
   import HandPositionGuide from './HandPositionGuide.svelte';
-  import type { ModeName, LanguageCode, FinalStats } from '../types/index';
+  import type { ModeName, LanguageCode, FinalStats } from '../lib/types/index';
+  import { t } from '../lib/i18n';
 
   let {
     text,
@@ -29,6 +30,7 @@
     onLanguageChange,
     onAbort,
     onRestart,
+    uiLang = 'en',
   }: {
     text: string;
     caretPos: number;
@@ -52,10 +54,11 @@
     onLanguageChange: (l: LanguageCode) => void;
     onAbort: () => void;
     onRestart: () => void;
+    uiLang?: string;
   } = $props();
 
   // Viewport: окно из N символов вокруг курсора
-  const VIEWPORT_CHARS = 80;
+  const VIEWPORT_CHARS = 120;
   const VIEWPORT_PADDING = 30;
 
   let viewportStart = $derived(Math.max(0, caretPos - VIEWPORT_PADDING));
@@ -78,7 +81,7 @@
 </script>
 
 {#if isComplete && finalStats}
-  <ResultOverlay stats={finalStats} onRestart={onRestart} />
+  <ResultOverlay stats={finalStats} onRestart={onRestart} {uiLang} />
 {:else if text}
   <ModeSelector
     {selectedMode}
@@ -89,11 +92,12 @@
     onSelectDuration={onDurationChange}
     onSelectWordCount={onWordCountChange}
     onSelectLanguage={onLanguageChange}
+    {uiLang}
   />
   <div class="live-stats">
-    {#if settings?.show_live_wpm}<span class="stat">WPM: {liveWpm.toFixed(0)}</span>{/if}
-    {#if settings?.show_accuracy}<span class="stat">Acc: {liveAccuracy.toFixed(1)}%</span>{/if}
-    <span class="stat">Time: {(elapsedMs / 1000).toFixed(1)}s</span>
+    {#if settings?.show_live_wpm}<span class="stat">{t(uiLang, 'test.wpm')}: {liveWpm.toFixed(0)}</span>{/if}
+    {#if settings?.show_accuracy}<span class="stat">{t(uiLang, 'test.acc')}: {liveAccuracy.toFixed(1)}%</span>{/if}
+    <span class="stat">{t(uiLang, 'test.time')}: {(elapsedMs / 1000).toFixed(1)}s</span>
     <span class="stat mode-badge">{sessionModeType}/{sessionLanguage}</span>
   </div>
 
@@ -110,8 +114,8 @@
   </div>
 
   <div class="info">
-    <span>Position: {caretPos}/{text.length}</span>
-    <button class="abort-btn" onclick={onAbort}>Abort</button>
+    <span>{t(uiLang, 'test.position')}: {caretPos}/{text.length}</span>
+    <button class="abort-btn" onclick={onAbort}>{t(uiLang, 'test.abort')}</button>
   </div>
 
   {#if settings?.show_keyboard_trainer && isRunning}
@@ -128,7 +132,7 @@
   .stat { color: var(--sub); }
   .mode-badge { font-size: 0.75rem; color: var(--main); }
   .text-viewport {
-    max-width: 900px; width: 100%; overflow: hidden;
+    max-width: 1200px; width: 100%; overflow: hidden;
     background-color: var(--bg-sub); border-radius: 8px;
     padding: 2rem 1.5rem; position: relative;
   }

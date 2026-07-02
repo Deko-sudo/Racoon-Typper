@@ -1,0 +1,151 @@
+# Racoon Typper Ukrainian Course
+
+[[modules]]
+id = "uk_m1"
+name = "Основний ряд"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "uk_m1_l1"
+name = "Ліва рука: а о"
+text = "а о а о а о а о а о а о а о а о а о а о а о"
+
+[[modules.lessons]]
+id = "uk_m1_l2"
+name = "Ліва рука: в л"
+text = "в л в л в л в л в л в л в л в л в л в л"
+
+[[modules.lessons]]
+id = "uk_m1_l3"
+name = "Основний ряд: ф і д ж"
+text = "ф і д ж ф і д ж ф і д ж ф і д ж ф і д ж"
+
+[[modules.lessons]]
+id = "uk_m1_l4"
+name = "Повний основний ряд"
+text = "ф і в а п р о л д ж е фівапролджє фівапролджє"
+
+[[modules.lessons]]
+id = "uk_m1_l5"
+name = "Слова з основного ряду"
+text = "вода слон вовк завод повід одвів провід"
+
+[[modules]]
+id = "uk_m2"
+name = "Верхній ряд"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "uk_m2_l1"
+name = "Верхній ряд: й ц к н"
+text = "й ц к н й ц к н й ц к н й ц к н й ц к н"
+
+[[modules.lessons]]
+id = "uk_m2_l2"
+name = "Верхній ряд: у е г ш щ з х ї"
+text = "у е г ш щ з х ї уегшщзхї уегшщзхї"
+
+[[modules.lessons]]
+id = "uk_m2_l3"
+name = "Повний верхній ряд"
+text = "й ц у к е н г ш щ з х ї йцукєнгшщзхї йцукєнгшщзхї"
+
+[[modules.lessons]]
+id = "uk_m2_l4"
+name = "Слова з верхнього ряду"
+text = "ціна щит каша шуба шинка ущелина гуща щока"
+
+[[modules.lessons]]
+id = "uk_m2_l5"
+name = "Верхній + основний ряд"
+text = "куриця кінь корова собака кішка барабан капусти"
+
+[[modules]]
+id = "uk_m3"
+name = "Нижній ряд"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "uk_m3_l1"
+name = "Нижній ряд: я ч с м"
+text = "я ч с м я ч с м я ч с м я ч с м я ч с м"
+
+[[modules.lessons]]
+id = "uk_m3_l2"
+name = "Нижній ряд: и т ь б"
+text = "и т ь б и т ь б и т ь б и т ь б и т ь б"
+
+[[modules.lessons]]
+id = "uk_m3_l3"
+name = "Нижній ряд: ю . ,"
+text = "я ч с м и т ь б ю ячсмитьбю ячсмитьбю ячсмитьбю"
+
+[[modules.lessons]]
+id = "uk_m3_l4"
+name = "Слова з нижнього ряду"
+text = "меч мечта мріяти місяць хвилина музика машина"
+
+[[modules.lessons]]
+id = "uk_m3_l5"
+name = "Усі три ряди"
+text = "швидка лисиця стрибає через ледачого пса фівапролдж"
+
+[[modules]]
+id = "uk_m4"
+name = "Спеціальні символи"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "uk_m4_l1"
+name = "Апостроф і є"
+text = "єдність м'ясо п'ять м'якуш європа в'язати"
+
+[[modules.lessons]]
+id = "uk_m4_l2"
+name = "Слова з і та ї"
+text = "їжа їсти мій твій їхній їздити Україна"
+
+[[modules.lessons]]
+id = "uk_m4_l3"
+name = "Складні слова"
+text = "швидкість якість радість м'язовий об'єднаний"
+
+[[modules.lessons]]
+id = "uk_m4_l4"
+name = "Вправа зі всіма літерами"
+text = "практика — це ключ до успіху продовжуй і ти досягнеш мети"
+
+[[modules]]
+id = "uk_m5"
+name = "Речення"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "uk_m5_l1"
+name = "Короткі речення"
+text = "кіт спить на килимку. собака біжить швидко. ми пішли додому."
+
+[[modules.lessons]]
+id = "uk_m5_l2"
+name = "Середні речення"
+text = "швидка руда лисиця стрибає через ледачого пса щодня без втоми."
+
+[[modules.lessons]]
+id = "uk_m5_l3"
+name = "Питання"
+text = "як тебе звати? де ти живеш? як сьогодні справи? чому небо блакитне?"
+
+[[modules.lessons]]
+id = "uk_m5_l4"
+name = "Складні речення"
+text = "незважаючи на дощ, ми вирішили піти гуляти в парк, тому що повітря було свіжим."
+
+[[modules.lessons]]
+id = "uk_m5_l5"
+name = "Абзац"
+text = "повторення — мати навчання. чим більше друкуєш, тим швидше стаєш. тримай пальці на основному ряду й дивись на екран."

@@ -95,4 +95,4 @@ yay -S racoon-typper
 
 ## License
 
-MIT
+Apache-2.0

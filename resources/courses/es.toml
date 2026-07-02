@@ -1,0 +1,146 @@
+# Racoon Typper Spanish Course (QWERTY)
+
+[[modules]]
+id = "es_m1"
+name = "Fila inicial"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "es_m1_l1"
+name = "Mano izquierda: a s"
+text = "a s a s a s a s a s a s a s a s a s a s a s"
+
+[[modules.lessons]]
+id = "es_m1_l2"
+name = "Mano izquierda: d f"
+text = "d f d f d f d f d f d f d f d f d f d f"
+
+[[modules.lessons]]
+id = "es_m1_l3"
+name = "Fila inicial: g h j k l"
+text = "g h j k l g h j k l g h j k l ghjkl ghjkl"
+
+[[modules.lessons]]
+id = "es_m1_l4"
+name = "Fila inicial completa"
+text = "a s d f g h j k l a s d f g h j k l asdfghjkl asdfghjkl"
+
+[[modules.lessons]]
+id = "es_m1_l5"
+name = "Palabras de la fila inicial"
+text = "dos los ala hado flaco lados hadas flota"
+
+[[modules]]
+id = "es_m2"
+name = "Fila superior"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "es_m2_l1"
+name = "Fila superior: q w e r t"
+text = "q w e r t q w e r t q w e r t qwert qwert"
+
+[[modules.lessons]]
+id = "es_m2_l2"
+name = "Fila superior: y u i o p"
+text = "y u i o p y u i o p y u i o p yuiop yuiop"
+
+[[modules.lessons]]
+id = "es_m2_l3"
+name = "Fila superior completa"
+text = "q w e r t y u i o p qwertyuiop qwertyuiop"
+
+[[modules.lessons]]
+id = "es_m2_l4"
+name = "Palabras de la fila superior"
+text = "tipo poder pera pueblo patio piano"
+
+[[modules.lessons]]
+id = "es_m2_l5"
+name = "Fila superior y fila inicial"
+text = "el tipo toca el piano en el pueblo hoy"
+
+[[modules]]
+id = "es_m3"
+name = "Fila inferior y acentos"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "es_m3_l1"
+name = "Fila inferior: z x c v b n m"
+text = "z x c v b n m z x c v b n m zxcvbnm zxcvbnm"
+
+[[modules.lessons]]
+id = "es_m3_l2"
+name = "Fila inferior + signos"
+text = "z x c v b n m , . z x c v b n m , . zxcvbnm,. zxcvbnm,."
+
+[[modules.lessons]]
+id = "es_m3_l3"
+name = "Palabras de la fila inferior"
+text = "zorro zapato zumbido manzana vaso nube"
+
+[[modules.lessons]]
+id = "es_m3_l4"
+name = "Tres filas"
+text = "el veloz zorro marrón salta sobre el perro perezoso"
+
+[[modules]]
+id = "es_m4"
+name = "Acentos y ñ"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "es_m4_l1"
+name = "Vocales acentuadas: á é í ó ú"
+text = "á é í ó ú á é í ó ú áéíóú áéíóú áéíóú"
+
+[[modules.lessons]]
+id = "es_m4_l2"
+name = "Letra ñ"
+text = "ñ ñ ñ ñ ñ ñ ñ ñ ñ ñ niño niños mañana mañana"
+
+[[modules.lessons]]
+id = "es_m4_l3"
+name = "Palabras con acentos y ñ"
+text = "niño canción corazón día último año español"
+
+[[modules.lessons]]
+id = "es_m4_l4"
+name = "Palabras difíciles"
+text = "murciélago pingüino ojalá comunicación música"
+
+[[modules]]
+id = "es_m5"
+name = "Oraciones"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "es_m5_l1"
+name = "Oraciones cortas"
+text = "el gato duerme. el perro corre. vamos a casa."
+
+[[modules.lessons]]
+id = "es_m5_l2"
+name = "Oraciones medianas"
+text = "el veloz zorro marrón salta sobre el perro perezoso cada día."
+
+[[modules.lessons]]
+id = "es_m5_l3"
+name = "Preguntas"
+text = "¿cómo te llamas? ¿dónde vives? ¿cómo estás? ¿por qué el cielo es azul?"
+
+[[modules.lessons]]
+id = "es_m5_l4"
+name = "Oraciones complejas"
+text = "a pesar de la lluvia, decidimos ir al parque porque el aire era fresco."
+
+[[modules.lessons]]
+id = "es_m5_l5"
+name = "Párrafo"
+text = "la práctica hace al maestro. cuanto más escribes, más rápido te vuelves. mantén los dedos en la fila inicial."

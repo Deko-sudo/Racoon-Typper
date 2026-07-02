@@ -1,0 +1,146 @@
+# Racoon Typper Polish Course (QWERTY)
+
+[[modules]]
+id = "pl_m1"
+name = "Rząd podstawowy"
+difficulty = "beginner"
+order = 1
+
+[[modules.lessons]]
+id = "pl_m1_l1"
+name = "Lewa ręka: a s"
+text = "a s a s a s a s a s a s a s a s a s a s a s"
+
+[[modules.lessons]]
+id = "pl_m1_l2"
+name = "Lewa ręka: d f"
+text = "d f d f d f d f d f d f d f d f d f d f"
+
+[[modules.lessons]]
+id = "pl_m1_l3"
+name = "Rząd podstawowy: g h j k l"
+text = "g h j k l g h j k l g h j k l ghjkl ghjkl"
+
+[[modules.lessons]]
+id = "pl_m1_l4"
+name = "Pełny rząd podstawowy"
+text = "a s d f g h j k l a s d f g h j k l asdfghjkl asdfghjkl"
+
+[[modules.lessons]]
+id = "pl_m1_l5"
+name = "Słowa z rzędu podstawowego"
+text = "sad dad lad fad fall hall had lass dash glass"
+
+[[modules]]
+id = "pl_m2"
+name = "Górny rząd"
+difficulty = "beginner"
+order = 2
+
+[[modules.lessons]]
+id = "pl_m2_l1"
+name = "Górny rząd: q w e r t"
+text = "q w e r t q w e r t q w e r t qwert qwert"
+
+[[modules.lessons]]
+id = "pl_m2_l2"
+name = "Górny rząd: y u i o p"
+text = "y u i o p y u i o p y u i o p yuiop yuiop"
+
+[[modules.lessons]]
+id = "pl_m2_l3"
+name = "Pełny górny rząd"
+text = "q w e r t y u i o p qwertyuiop qwertyuiop"
+
+[[modules.lessons]]
+id = "pl_m2_l4"
+name = "Słowa z górnego rzędu"
+text = "typ pisać raport moc porywisty pytanie quit"
+
+[[modules.lessons]]
+id = "pl_m2_l5"
+name = "Górny i podstawowy rząd"
+text = "słowo ptak pole las dębowy kino zima dom"
+
+[[modules]]
+id = "pl_m3"
+name = "Dolny rząd i polskie znaki"
+difficulty = "beginner"
+order = 3
+
+[[modules.lessons]]
+id = "pl_m3_l1"
+name = "Dolny rząd: z x c v b n m"
+text = "z x c v b n m z x c v b n m zxcvbnm zxcvbnm"
+
+[[modules.lessons]]
+id = "pl_m3_l2"
+name = "Dolny rząd + znaki"
+text = "z x c v b n m , . z x c v b n m , . zxcvbnm,. zxcvbnm,."
+
+[[modules.lessons]]
+id = "pl_m3_l3"
+name = "Słowa z dolnego rzędu"
+text = "mucha kino nocny zbiór zbiorze zbocze"
+
+[[modules.lessons]]
+id = "pl_m3_l4"
+name = "Wszystkie trzy rzędy"
+text = "szybki brązowy lis skacze przez leniwego psa"
+
+[[modules]]
+id = "pl_m4"
+name = "Polskie znaki diakrytyczne"
+difficulty = "intermediate"
+order = 4
+
+[[modules.lessons]]
+id = "pl_m4_l1"
+name = "Znaki: ą ę ó"
+text = "ą ę ó ą ę ó ąęó ąęó ąęó ąęó ąęó"
+
+[[modules.lessons]]
+id = "pl_m4_l2"
+name = "Znaki: ć ś ż ź"
+text = "ć ś ż ź ć ś ż ź ćśżź ćśżź ćśżź ćśżź"
+
+[[modules.lessons]]
+id = "pl_m4_l3"
+name = "Znaki: ł ń"
+text = "ł ń ł ń ł ń ł ń łń łń łń łń"
+
+[[modules.lessons]]
+id = "pl_m4_l4"
+name = "Słowa z polskimi znakami"
+text = "żaba łąka źródło śnieg ćma mały książka"
+
+[[modules]]
+id = "pl_m5"
+name = "Zdania"
+difficulty = "intermediate"
+order = 5
+
+[[modules.lessons]]
+id = "pl_m5_l1"
+name = "Krótkie zdania"
+text = "kot śpi na dywanie. pies biegnie szybko. idziemy do domu."
+
+[[modules.lessons]]
+id = "pl_m5_l2"
+name = "Średnie zdania"
+text = "szybki brązowy lis skacze przez leniwego psa każdego dnia bez zmęczenia."
+
+[[modules.lessons]]
+id = "pl_m5_l3"
+name = "Pytania"
+text = "jak masz na imię? gdzie mieszkasz? jak się dzisiaj masz? dlaczego niebo jest niebieskie?"
+
+[[modules.lessons]]
+id = "pl_m5_l4"
+name = "Trudne zdania"
+text = "mimo deszczu zdecydowaliśmy się iść na spacer do parku, bo powietrze było świeże."
+
+[[modules.lessons]]
+id = "pl_m5_l5"
+name = "Akapit"
+text = "ćwiczenie czyni mistrza. im więcej piszesz, tym szybciej się stajesz. trzymaj palce na rzędzie podstawowym i patrz na ekran."

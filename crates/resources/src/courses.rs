@@ -62,15 +62,30 @@ impl CourseLoader {
     pub fn new() -> Self {
         let mut courses = HashMap::new();
 
-        let en_toml = include_str!("../../../resources/courses/en.toml");
-        if let Ok(course) = toml::from_str::<Course>(en_toml) {
-            courses.insert("en".to_string(), course);
+        macro_rules! load_lang {
+            ($code:expr, $path:expr) => {
+                let toml_str = include_str!($path);
+                if let Ok(course) = toml::from_str::<Course>(toml_str) {
+                    courses.insert($code.to_string(), course);
+                }
+            };
         }
 
-        let ru_toml = include_str!("../../../resources/courses/ru.toml");
-        if let Ok(course) = toml::from_str::<Course>(ru_toml) {
-            courses.insert("ru".to_string(), course);
-        }
+        load_lang!("en", "../../../resources/courses/en.toml");
+        load_lang!("ru", "../../../resources/courses/ru.toml");
+        load_lang!("de", "../../../resources/courses/de.toml");
+        load_lang!("uk", "../../../resources/courses/uk.toml");
+        load_lang!("cs", "../../../resources/courses/cs.toml");
+        load_lang!("pl", "../../../resources/courses/pl.toml");
+        load_lang!("ro", "../../../resources/courses/ro.toml");
+        load_lang!("it", "../../../resources/courses/it.toml");
+        load_lang!("fr", "../../../resources/courses/fr.toml");
+        load_lang!("es", "../../../resources/courses/es.toml");
+        load_lang!("pt", "../../../resources/courses/pt.toml");
+        load_lang!("ja", "../../../resources/courses/ja.toml");
+        load_lang!("zh-hk", "../../../resources/courses/zh-hk.toml");
+        load_lang!("zh-tw", "../../../resources/courses/zh-tw.toml");
+        load_lang!("ko", "../../../resources/courses/ko.toml");
 
         Self { courses }
     }

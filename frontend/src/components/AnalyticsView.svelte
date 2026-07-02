@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
+  import { t } from '../lib/i18n';
+
+  let { uiLang = 'en' }: { uiLang?: string } = $props();
 
   let achievements = $state<Array<{ id: string; name: string; description: string; unlocked: boolean }>>([]);
   let insights = $state<Array<{ level: string; title: string; message: string }>>([]);
@@ -44,28 +47,30 @@
 </script>
 
 <div class="analytics-view">
-  <h2>Analytics</h2>
+  <h2>{t(uiLang, 'analytics.title')}</h2>
 
   {#if errorMsg}<p class="error">{errorMsg}</p>{/if}
 
   {#if consistency}
     <div class="consistency-card">
-      <h3>Consistency</h3>
+      <h3>{t(uiLang, 'analytics.consistency')}</h3>
       <div class="consistency-score" style="color: {consistency.score > 80 ? 'var(--main)' : consistency.score > 60 ? 'var(--text)' : 'var(--error)'}">
         {consistency.score.toFixed(0)}%
       </div>
       <div class="consistency-details">
-        <span>Mean WPM: {consistency.mean_wpm.toFixed(1)}</span>
-        <span>Std Dev: {consistency.std_dev.toFixed(1)}</span>
+        <span>{t(uiLang, 'analytics.mean_wpm')}: {consistency.mean_wpm.toFixed(1)}</span>
+        <span>{t(uiLang, 'analytics.std_dev')}: {consistency.std_dev.toFixed(1)}</span>
         <span>CV: {(consistency.cv * 100).toFixed(1)}%</span>
-        <span>Samples: {consistency.samples}</span>
+        <span>{t(uiLang, 'analytics.samples')}: {consistency.samples}</span>
       </div>
     </div>
+  {:else}
+    <p class="empty">{t(uiLang, 'analytics.empty_consistency')}</p>
   {/if}
 
   {#if insights.length > 0}
     <div class="insights-section">
-      <h3>Insights</h3>
+      <h3>{t(uiLang, 'analytics.insights')}</h3>
       {#each insights as ins}
         <div class="insight-card {ins.level}">
           <strong>{ins.title}</strong>
@@ -73,11 +78,13 @@
         </div>
       {/each}
     </div>
+  {:else}
+    <p class="empty">{t(uiLang, 'analytics.empty_insights')}</p>
   {/if}
 
   {#if achievements.length > 0}
     <div class="achievements-section">
-      <h3>Achievements</h3>
+      <h3>{t(uiLang, 'analytics.achievements')}</h3>
       <div class="achievements-grid">
         {#each achievements as ach}
           <div class="achievement-card" class:locked={!ach.unlocked}>
@@ -88,17 +95,19 @@
         {/each}
       </div>
     </div>
+  {:else}
+    <p class="empty">{t(uiLang, 'analytics.empty_achievements')}</p>
   {/if}
 
   <div class="export-section">
-    <h3>Export Data</h3>
+    <h3>{t(uiLang, 'analytics.export')}</h3>
     <div class="export-controls">
       <select bind:value={exportFormat}>
         <option value="json">JSON</option>
         <option value="csv">CSV</option>
       </select>
-      <button onclick={doExport}>Generate</button>
-      {#if exportResult}<button onclick={downloadExport}>Download</button>{/if}
+      <button onclick={doExport}>{t(uiLang, 'analytics.generate')}</button>
+      {#if exportResult}<button onclick={downloadExport}>{t(uiLang, 'analytics.download')}</button>{/if}
     </div>
     {#if exportResult}
       <pre class="export-preview">{exportResult.substring(0, 500)}{exportResult.length > 500 ? '...' : ''}</pre>

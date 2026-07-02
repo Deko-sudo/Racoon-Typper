@@ -62,15 +62,30 @@ impl QuoteLoader {
     pub fn new() -> Self {
         let mut packs = HashMap::new();
 
-        let en_quotes = load_toml(include_str!("../../../resources/quotes/en.toml"));
-        if !en_quotes.is_empty() {
-            packs.insert("en".to_string(), QuotePack::new("en", en_quotes));
+        macro_rules! load_lang {
+            ($code:expr, $path:expr) => {
+                let quotes = load_toml(include_str!($path));
+                if !quotes.is_empty() {
+                    packs.insert($code.to_string(), QuotePack::new($code, quotes));
+                }
+            };
         }
 
-        let ru_quotes = load_toml(include_str!("../../../resources/quotes/ru.toml"));
-        if !ru_quotes.is_empty() {
-            packs.insert("ru".to_string(), QuotePack::new("ru", ru_quotes));
-        }
+        load_lang!("en", "../../../resources/quotes/en.toml");
+        load_lang!("ru", "../../../resources/quotes/ru.toml");
+        load_lang!("de", "../../../resources/quotes/de.toml");
+        load_lang!("uk", "../../../resources/quotes/uk.toml");
+        load_lang!("cs", "../../../resources/quotes/cs.toml");
+        load_lang!("pl", "../../../resources/quotes/pl.toml");
+        load_lang!("ro", "../../../resources/quotes/ro.toml");
+        load_lang!("it", "../../../resources/quotes/it.toml");
+        load_lang!("fr", "../../../resources/quotes/fr.toml");
+        load_lang!("es", "../../../resources/quotes/es.toml");
+        load_lang!("pt", "../../../resources/quotes/pt.toml");
+        load_lang!("ja", "../../../resources/quotes/ja.toml");
+        load_lang!("zh-hk", "../../../resources/quotes/zh-hk.toml");
+        load_lang!("zh-tw", "../../../resources/quotes/zh-tw.toml");
+        load_lang!("ko", "../../../resources/quotes/ko.toml");
 
         Self { packs }
     }
