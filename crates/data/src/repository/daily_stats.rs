@@ -27,6 +27,7 @@ pub trait DailyStatsRepository {
         wpm: f64,
         accuracy: f64,
     ) -> Result<(), DbError>;
+    fn increment_lessons_completed(&self, date: &str) -> Result<(), DbError>;
     fn get_day(&self, date: &str) -> Result<Option<DailyStats>, DbError>;
     fn get_range(&self, from: &str, to: &str) -> Result<Vec<DailyStats>, DbError>;
     fn get_last_30_days(&self) -> Result<Vec<DailyStats>, DbError>;
@@ -77,6 +78,21 @@ impl<'a> DailyStatsRepository for SqliteDailyStatsRepository<'a> {
                 )
                 .map_err(|e| DbError::Write(e.to_string()))?;
         }
+        Ok(())
+    }
+
+    fn increment_lessons_completed(&self, date: &str) -> Result<(), DbError> {
+        self.conn
+            .execute(
+                "INSERT INTO daily_stats (
+                    date, total_tests, total_time_ms, total_chars, best_wpm,
+                    avg_wpm, avg_accuracy, lessons_completed, daily_goal_met
+                 ) VALUES (?1, 0, 0, 0, 0, 0, 0, 1, 0)
+                 ON CONFLICT(date) DO UPDATE SET
+                    lessons_completed = lessons_completed + 1",
+                params![date],
+            )
+            .map_err(|e| DbError::Write(e.to_string()))?;
         Ok(())
     }
 
@@ -180,6 +196,31 @@ mod tests {
         assert!((s.best_wpm - 40.0).abs() < 0.01);
         assert!((s.avg_wpm - 40.0).abs() < 0.01);
         assert!((s.avg_accuracy - 95.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn lesson_completions_are_counted_with_or_without_tests() {
+        let repo = setup();
+        repo.increment_lessons_completed("2026-01-01").unwrap();
+        repo.increment_lessons_completed("2026-01-01").unwrap();
+        assert_eq!(
+            repo.get_day("2026-01-01")
+                .unwrap()
+                .unwrap()
+                .lessons_completed,
+            2
+        );
+
+        repo.update_after_test("2026-01-02", 30_000, 100, 40.0, 95.0)
+            .unwrap();
+        repo.increment_lessons_completed("2026-01-02").unwrap();
+        assert_eq!(
+            repo.get_day("2026-01-02")
+                .unwrap()
+                .unwrap()
+                .lessons_completed,
+            1
+        );
     }
 
     #[test]

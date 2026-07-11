@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite --port 1420 --strictPort",
     "build": "vite build",
+    "check": "svelte-check --tsconfig ./tsconfig.json",
     "preview": "vite preview"
   },
   "devDependencies": {

@@ -183,7 +183,7 @@ mod tests {
     #[test]
     fn get_quote_nonexistent_language() {
         let loader = QuoteLoader::new();
-        assert!(loader.get_pack("fr").is_none());
+        assert!(loader.get_pack("xx").is_none());
     }
 
     #[test]

@@ -2,6 +2,8 @@
   // KeyboardViz — полная клавиатура с heatmap intensity.
   // QWERTY layout + все клавиши + numpad.
 
+  import { FINGERS } from '../lib/keyboard';
+
   let { heatmap = {}, charStats = {} }: {
     heatmap?: Record<string, { total_attempts: number; correct: number; incorrect: number }>;
     charStats?: Record<string, { correct: number; incorrect: number; total: number }>;
@@ -40,17 +42,6 @@
     'shift': '96px', 'ctrl': '56px', 'win': '48px', 'alt': '48px',
     'space': '200px', 'fn': '40px', 'menu': '40px', 'del': '56px',
     'num': '48px',
-  };
-
-  const FINGERS: Record<string, string> = {
-    q: 'LP', a: 'LP', z: 'LP',
-    w: 'LR', s: 'LR', x: 'LR',
-    e: 'LM', d: 'LM', c: 'LM',
-    r: 'LI', f: 'LI', v: 'LI', t: 'LI', g: 'LI', b: 'LI',
-    y: 'RI', h: 'RI', n: 'RI', u: 'RI', j: 'RI', m: 'RI',
-    i: 'RM', k: 'RM', ',': 'RM',
-    o: 'RR', l: 'RR', '.': 'RR',
-    p: 'RP', ';': 'RP', '/': 'RP',
   };
 
   function getKeyData(key: string): { correct: number; incorrect: number; total: number } {

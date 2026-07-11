@@ -129,7 +129,7 @@ impl ReplayEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::analytics::{ReplayEvent, SessionReplay};
+    use crate::analytics::SessionReplay;
 
     fn make_replay() -> SessionReplay {
         let mut r = SessionReplay::new("hello".to_string());

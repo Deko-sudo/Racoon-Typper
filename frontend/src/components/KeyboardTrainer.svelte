@@ -2,6 +2,8 @@
   // KeyboardTrainer — постоянная клавиатура под текстом.
   // Подсвечивает следующую клавишу, палец, Home Row.
 
+  import { FINGERS, HOME_ROW_EN, HOME_ROW_RU, ROWS, RU_FINGERS, RU_ROWS } from '../lib/keyboard';
+
   let {
     nextChar = '',
     isRussian = false,
@@ -11,46 +13,6 @@
     isRussian?: boolean;
     lastErrorChar?: string;
   } = $props();
-
-  // QWERTY layout
-  const ROWS = [
-    ['q','w','e','r','t','y','u','i','o','p'],
-    ['a','s','d','f','g','h','j','k','l',';'],
-    ['z','x','c','v','b','n','m',',','.','/'],
-  ];
-
-  // JCUKEN layout
-  const RU_ROWS = [
-    ['й','ц','у','к','е','н','г','ш','щ','з','х','ъ'],
-    ['ф','ы','в','а','п','р','о','л','д','ж','э'],
-    ['я','ч','с','м','и','т','ь','б','ю','.'],
-  ];
-
-  const HOME_ROW_EN = new Set(['a','s','d','f','g','h','j','k','l',';']);
-  const HOME_ROW_RU = new Set(['ф','ы','в','а','п','р','о','л','д','ж','э']);
-
-  // Finger mapping
-  const FINGERS: Record<string, string> = {
-    q:'LP', a:'LP', z:'LP',
-    w:'LR', s:'LR', x:'LR',
-    e:'LM', d:'LM', c:'LM',
-    r:'LI', f:'LI', v:'LI', t:'LI', g:'LI', b:'LI',
-    y:'RI', h:'RI', n:'RI', u:'RI', j:'RI', m:'RI',
-    i:'RM', k:'RM', ',':'RM',
-    o:'RR', l:'RR', '.':'RR',
-    p:'RP', ';':'RP', '/':'RP',
-  };
-
-  const RU_FINGERS: Record<string, string> = {
-    ф:'LP', я:'LP',
-    ы:'LR', ч:'LR', ц:'LR',
-    в:'LM', с:'LM', у:'LM',
-    а:'LI', п:'LI', к:'LI', м:'LI',
-    о:'RI', л:'RI', д:'RI', р:'RI', т:'RI',
-    е:'RM', г:'RM', ш:'RM',
-    н:'RR', щ:'RR', з:'RR',
-    ь:'RP', б:'RP', ю:'RP', ъ:'RP',
-  };
 
   const rows = $derived(isRussian ? RU_ROWS : ROWS);
   const homeRow = $derived(isRussian ? HOME_ROW_RU : HOME_ROW_EN);

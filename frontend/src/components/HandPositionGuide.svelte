@@ -1,6 +1,8 @@
 <script lang="ts">
   // HandPositionGuide — схема рук с подсветкой нужного пальца.
 
+  import { FINGERS, RU_FINGERS } from '../lib/keyboard';
+
   let {
     nextChar = '',
     isRussian = false,
@@ -8,28 +10,6 @@
     nextChar?: string;
     isRussian?: boolean;
   } = $props();
-
-  const FINGERS: Record<string, string> = {
-    q:'LP', a:'LP', z:'LP',
-    w:'LR', s:'LR', x:'LR',
-    e:'LM', d:'LM', c:'LM',
-    r:'LI', f:'LI', v:'LI', t:'LI', g:'LI', b:'LI',
-    y:'RI', h:'RI', n:'RI', u:'RI', j:'RI', m:'RI',
-    i:'RM', k:'RM', ',':'RM',
-    o:'RR', l:'RR', '.':'RR',
-    p:'RP', ';':'RP', '/':'RP',
-  };
-
-  const RU_FINGERS: Record<string, string> = {
-    ф:'LP', я:'LP', ё:'LP',
-    ы:'LR', ч:'LR', ц:'LR',
-    в:'LM', с:'LM', у:'LM',
-    а:'LI', п:'LI', к:'LI', м:'LI',
-    о:'RI', л:'RI', д:'RI', р:'RI', т:'RI',
-    е:'RM', г:'RM', ш:'RM',
-    н:'RR', щ:'RR', з:'RR',
-    ь:'RP', б:'RP', ю:'RP', ъ:'RP',
-  };
 
   const labels: Record<string, string> = {
     LP: 'Pinky', LR: 'Ring', LM: 'Middle', LI: 'Index',

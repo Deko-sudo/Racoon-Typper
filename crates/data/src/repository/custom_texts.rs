@@ -10,6 +10,7 @@ pub struct CustomText {
     pub id: i64,
     pub name: String,
     pub text: String,
+    pub language: String,
     pub created_at: String,
     pub last_used_at: Option<String>,
     pub use_count: i64,
@@ -19,8 +20,18 @@ pub struct CustomText {
 pub trait CustomTextRepository {
     fn get_all(&self, limit: usize) -> Result<Vec<CustomText>, DbError>;
     fn get_by_id(&self, id: i64) -> Result<CustomText, DbError>;
-    fn save(&self, name: &str, text: &str) -> Result<i64, DbError>;
+    fn save(&self, name: &str, text: &str) -> Result<i64, DbError> {
+        self.save_with_language(name, text, "en")
+    }
+    fn save_with_language(&self, name: &str, text: &str, language: &str) -> Result<i64, DbError>;
     fn update(&self, id: i64, name: &str, text: &str) -> Result<(), DbError>;
+    fn update_with_language(
+        &self,
+        id: i64,
+        name: &str,
+        text: &str,
+        language: &str,
+    ) -> Result<(), DbError>;
     fn delete(&self, id: i64) -> Result<(), DbError>;
     fn increment_use(&self, id: i64) -> Result<(), DbError>;
     fn search(&self, query: &str, limit: usize) -> Result<Vec<CustomText>, DbError>;
@@ -68,9 +79,10 @@ fn map_custom_text_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<CustomText> 
         id: row.get(0)?,
         name: row.get(1)?,
         text: row.get(2)?,
-        created_at: row.get(3)?,
-        last_used_at: row.get(4)?,
-        use_count: row.get(5)?,
+        language: row.get(3)?,
+        created_at: row.get(4)?,
+        last_used_at: row.get(5)?,
+        use_count: row.get(6)?,
     })
 }
 
@@ -79,7 +91,7 @@ impl<'a> CustomTextRepository for SqliteCustomTextRepository<'a> {
         let mut stmt = self
             .conn
             .prepare(
-                "SELECT id, name, text, created_at, last_used_at, use_count
+                "SELECT id, name, text, language, created_at, last_used_at, use_count
                  FROM custom_texts ORDER BY last_used_at DESC NULLS LAST LIMIT ?1",
             )
             .map_err(|e| DbError::Query(e.to_string()))?;
@@ -100,7 +112,7 @@ impl<'a> CustomTextRepository for SqliteCustomTextRepository<'a> {
         let mut stmt = self
             .conn
             .prepare(
-                "SELECT id, name, text, created_at, last_used_at, use_count
+                "SELECT id, name, text, language, created_at, last_used_at, use_count
                  FROM custom_texts WHERE id = ?1",
             )
             .map_err(|e| DbError::Query(e.to_string()))?;
@@ -112,14 +124,15 @@ impl<'a> CustomTextRepository for SqliteCustomTextRepository<'a> {
         Ok(row)
     }
 
-    fn save(&self, name: &str, text: &str) -> Result<i64, DbError> {
+    fn save_with_language(&self, name: &str, text: &str, language: &str) -> Result<i64, DbError> {
         validate_text(name, text).map_err(DbError::Write)?;
 
         let now = chrono::Utc::now().to_rfc3339();
         self.conn
             .execute(
-                "INSERT INTO custom_texts (name, text, created_at, use_count) VALUES (?1, ?2, ?3, 0)",
-                params![name, text, now],
+                "INSERT INTO custom_texts (name, text, language, created_at, use_count)
+                 VALUES (?1, ?2, ?3, ?4, 0)",
+                params![name, text, language, now],
             )
             .map_err(|e| DbError::Write(e.to_string()))?;
 
@@ -134,6 +147,29 @@ impl<'a> CustomTextRepository for SqliteCustomTextRepository<'a> {
             .execute(
                 "UPDATE custom_texts SET name = ?1, text = ?2 WHERE id = ?3",
                 params![name, text, id],
+            )
+            .map_err(|e| DbError::Write(e.to_string()))?;
+
+        if affected == 0 {
+            return Err(DbError::NotFound(format!("CustomText id={}", id)));
+        }
+        Ok(())
+    }
+
+    fn update_with_language(
+        &self,
+        id: i64,
+        name: &str,
+        text: &str,
+        language: &str,
+    ) -> Result<(), DbError> {
+        validate_text(name, text).map_err(DbError::Write)?;
+
+        let affected = self
+            .conn
+            .execute(
+                "UPDATE custom_texts SET name = ?1, text = ?2, language = ?3 WHERE id = ?4",
+                params![name, text, language, id],
             )
             .map_err(|e| DbError::Write(e.to_string()))?;
 
@@ -171,7 +207,7 @@ impl<'a> CustomTextRepository for SqliteCustomTextRepository<'a> {
         let mut stmt = self
             .conn
             .prepare(
-                "SELECT id, name, text, created_at, last_used_at, use_count
+                "SELECT id, name, text, language, created_at, last_used_at, use_count
                  FROM custom_texts WHERE name LIKE ?1 OR text LIKE ?2
                  ORDER BY last_used_at DESC NULLS LAST LIMIT ?3",
             )
@@ -209,6 +245,22 @@ mod tests {
         assert_eq!(texts[0].name, "Test 1");
         assert_eq!(texts[0].text, "Hello world");
         assert_eq!(texts[0].use_count, 0);
+    }
+
+    #[test]
+    fn custom_text_language_roundtrips() {
+        let db = Database::open_in_memory().unwrap();
+        let conn = db.conn();
+        let repo = SqliteCustomTextRepository::new(&conn);
+
+        let id = repo
+            .save_with_language("Русский", "Привет мир", "ru")
+            .unwrap();
+        assert_eq!(repo.get_by_id(id).unwrap().language, "ru");
+
+        repo.update_with_language(id, "Deutsch", "Guten Tag", "de")
+            .unwrap();
+        assert_eq!(repo.get_by_id(id).unwrap().language, "de");
     }
 
     #[test]

@@ -2,6 +2,7 @@
   import KeyboardVizComponent from './KeyboardVizComponent.svelte';
   import type { CharStatus } from '../lib/types/index';
   import { t } from '../lib/i18n';
+  import { VIEWPORT_CHARS, VIEWPORT_PADDING } from '../lib/keyboard';
 
   let {
     weakKeys = [],
@@ -22,10 +23,6 @@
     trainingCaretPos?: number;
     trainingRunning?: boolean;
   } = $props();
-
-  // Viewport — same as TestView
-  const VIEWPORT_CHARS = 120;
-  const VIEWPORT_PADDING = 30;
 
   let viewportStart = $derived(Math.max(0, trainingCaretPos - VIEWPORT_PADDING));
   let viewportEnd = $derived(Math.min(trainingCharStatuses.length, viewportStart + VIEWPORT_CHARS));

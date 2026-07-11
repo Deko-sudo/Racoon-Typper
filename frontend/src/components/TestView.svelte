@@ -6,6 +6,7 @@
   import HandPositionGuide from './HandPositionGuide.svelte';
   import type { ModeName, LanguageCode, FinalStats } from '../lib/types/index';
   import { t } from '../lib/i18n';
+  import { VIEWPORT_CHARS, VIEWPORT_PADDING } from '../lib/keyboard';
 
   let {
     text,
@@ -57,10 +58,6 @@
     uiLang?: string;
   } = $props();
 
-  // Viewport: окно из N символов вокруг курсора
-  const VIEWPORT_CHARS = 120;
-  const VIEWPORT_PADDING = 30;
-
   let viewportStart = $derived(Math.max(0, caretPos - VIEWPORT_PADDING));
   let viewportEnd = $derived(Math.min(charStatuses.length, viewportStart + VIEWPORT_CHARS));
   let viewportChars = $derived(charStatuses.slice(viewportStart, viewportEnd));
@@ -69,6 +66,7 @@
   // Next character for keyboard trainer
   let nextChar = $derived(isRunning && !isComplete && caretPos < text.length ? text[caretPos] : '');
   let isRussian = $derived(sessionLanguage === 'ru');
+  let caretStyle = $derived(settings?.caret_style ?? 'solid');
 
   // Character focus classes
   function charClass(char: CharStatus, idx: number): string {
@@ -105,7 +103,12 @@
     <div class="text-display">
       {#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}
       {#each viewportChars as char, i}
-        <span class="char {charClass(char, i)}" class:caret={i === viewportOffset}>
+        <span
+          class="char {charClass(char, i)}"
+          class:caret-solid={i === viewportOffset && caretStyle === 'solid'}
+          class:caret-underline={i === viewportOffset && caretStyle === 'underline'}
+          class:caret-block={i === viewportOffset && caretStyle === 'block'}
+        >
           {char.expected === ' ' ? '\u00A0' : char.expected}
         </span>
       {/each}
@@ -137,7 +140,7 @@
     padding: 2rem 1.5rem; position: relative;
   }
   .text-display {
-    font-size: 2rem; line-height: 1.8; text-align: center;
+    font-size: 1.333em; line-height: 1.8; text-align: center;
     user-select: none; white-space: pre-wrap; word-wrap: break-word;
     min-height: 3.6em; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
     transition: transform 0.15s ease-out;
@@ -152,10 +155,16 @@
   .char.past { opacity: 0.5; }
   .char.current { opacity: 1; font-weight: 600; }
   .char.future { opacity: 0.35; }
-  .char.caret::before {
-    content: '|'; position: absolute; left: -0.5ch; color: var(--caret);
+  .char.caret-solid::before {
+    content: ''; position: absolute; left: -0.12em; top: 0.1em; bottom: 0.1em;
+    border-left: 0.08em solid var(--caret);
     animation: blink 1s infinite;
   }
+  .char.caret-underline::after {
+    content: ''; position: absolute; left: 0; right: 0; bottom: -0.08em;
+    border-bottom: 0.08em solid var(--caret); animation: blink 1s infinite;
+  }
+  .char.caret-block { background: var(--caret); color: var(--bg); animation: blink 1s infinite; }
   @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
   .char.correct { transition: color 0.1s ease; }
   .char.incorrect { animation: shake 0.2s; }

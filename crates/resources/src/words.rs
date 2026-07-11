@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn generate_words_nonexistent_language() {
         let loader = WordPackLoader::new();
-        assert!(loader.generate_words("fr", 10).is_none());
+        assert!(loader.generate_words("xx", 10).is_none());
     }
 
     #[test]

@@ -228,7 +228,7 @@ mod tests {
             "2026-06-02".to_string(),
             "2026-06-03".to_string(),
         ];
-        let (curr, longest) = StreakEngine::streak_from_dates(&dates);
+        let (_curr, longest) = StreakEngine::streak_from_dates(&dates);
         // Если последние даты не сегодня, current = 0
         // Но longest должен быть 3
         assert_eq!(longest, 3);
@@ -241,7 +241,7 @@ mod tests {
             "2026-06-02".to_string(),
             "2026-06-05".to_string(),
         ];
-        let (curr, longest) = StreakEngine::streak_from_dates(&dates);
+        let (_curr, longest) = StreakEngine::streak_from_dates(&dates);
         assert_eq!(longest, 2);
     }
 

@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn validate_nonexistent_course() {
         let loader = CourseLoader::new();
-        assert!(loader.validate_course("fr").is_err());
+        assert!(loader.validate_course("xx").is_err());
     }
 
     #[test]

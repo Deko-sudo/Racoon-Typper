@@ -407,7 +407,7 @@ fn stress_10k_tests_replay_loading() {
                 test_id,
                 frame_index: f,
                 timestamp_ms: f * 100,
-                position: f as i64,
+                position: f,
                 expected_char: "a".to_string(),
                 typed_char: Some("a".to_string()),
                 correct: true,

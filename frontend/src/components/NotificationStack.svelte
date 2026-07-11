@@ -16,8 +16,8 @@
   let visible = $derived(notifications.slice(-3));
 </script>
 
-{#if visible.length > 0}
-  <div class="notification-stack">
+<div class="notification-stack" aria-live="polite" aria-relevant="additions text">
+  {#if visible.length > 0}
     {#each visible as n (n.id)}
       <div class="notification {n.type.toLowerCase()}">
         <span class="notification-icon">
@@ -26,8 +26,8 @@
         <span class="notification-msg">{n.message}</span>
       </div>
     {/each}
-  </div>
-{/if}
+  {/if}
+</div>
 
 <style>
   .notification-stack {

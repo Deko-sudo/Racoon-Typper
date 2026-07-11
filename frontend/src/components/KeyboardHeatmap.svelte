@@ -1,24 +1,8 @@
 <script lang="ts">
-  // QWERTY keyboard layout rows
-  const ROWS = [
-    ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'],
-    ['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', 'l'],
-    ['z', 'x', 'c', 'v', 'b', 'n', 'm'],
-  ];
+  import { FINGERS, ROWS } from '../lib/keyboard';
 
   let { heatmap = {} }: { heatmap?: Record<string, { total_attempts: number; correct: number; incorrect: number; avg_wpm_at_key: number }> } = $props();
-
-  // Finger assignments (simplified)
-  const FINGERS: Record<string, string> = {
-    q: 'LP', a: 'LP', z: 'LP',
-    w: 'LR', s: 'LR', x: 'LR',
-    e: 'LM', d: 'LM', c: 'LM',
-    r: 'LI', f: 'LI', v: 'LI', t: 'LI', g: 'LI', b: 'LI',
-    y: 'RI', h: 'RI', n: 'RI', u: 'RI', j: 'RI', m: 'RI',
-    i: 'RM', k: 'RM',
-    o: 'RR', l: 'RR',
-    p: 'RP',
-  };
+  const heatmapRows = ROWS.map((row) => row.filter((key) => /^[a-z]$/.test(key)));
 
   function getFinger(key: string): string {
     return FINGERS[key] || '';
@@ -51,7 +35,7 @@
 <div class="heatmap-container">
   <h3>Heatmap</h3>
   <div class="keyboard">
-    {#each ROWS as row, rowIdx}
+    {#each heatmapRows as row, rowIdx}
       <div class="keyboard-row" style="margin-left: {rowIdx * 20}px;">
         {#each row as key}
           <div

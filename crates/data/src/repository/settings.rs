@@ -259,9 +259,11 @@ mod tests {
         let path = temp_settings_path();
         let store = SettingsStore::new(path.clone());
 
-        let mut settings = AppSettings::default();
-        settings.theme = "racoon_dark".to_string();
-        settings.font_size = 28;
+        let settings = AppSettings {
+            theme: "racoon_dark".to_string(),
+            font_size: 28,
+            ..AppSettings::default()
+        };
         store.save(&settings).unwrap();
 
         let loaded = store.load().unwrap();

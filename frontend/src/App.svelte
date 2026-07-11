@@ -1,11 +1,10 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { invoke } from '@tauri-apps/api/core';
   import * as ipc from './lib/api/ipc';
   import { t } from './lib/i18n';
   import type {
-    CharStatus, TestSessionResponse, FinalStats, TestSummary,
-    StatsHistoryResponse, PersonalBest, CustomText, AppSettings,
+    CharStatus, EngineOutput, TestSessionResponse, FinalStats, TestSummary,
+    PersonalBest, CustomText, AppSettings,
     ThemeInfo, ViewName, ModeName, LanguageCode, ModuleResponse,
     DashboardStatsResponse,
   } from './lib/types/index';
@@ -46,6 +45,8 @@
   let selectedLanguage = $state<LanguageCode>('en');
   let sessionModeType = $state('time');
   let sessionLanguage = $state('en');
+  let sessionDurationMs = $state(0);
+  let testStartedAt = $state<number | null>(null);
 
   // History
   let history = $state<TestSummary[]>([]);
@@ -59,12 +60,14 @@
   let editingText = $state<CustomText | null>(null);
   let newName = $state('');
   let newTextContent = $state('');
+  let customTextLanguage = $state<LanguageCode>('en');
   let showEditor = $state(false);
   let searchText = $state('');
 
   // Settings
   let settings = $state<AppSettings | null>(null);
   let uiLang = $state('en');
+  let mainFontSize = $derived(`${settings?.font_size ?? 24}px`);
 
   // Themes
   let themes = $state<ThemeInfo[]>([]);
@@ -74,6 +77,7 @@
   let courseModules = $state<ModuleResponse[]>([]);
   let lessonProgress = $state<Record<string, { status: string; best_wpm: number; best_accuracy: number }>>({});
   let lessonLang = $state<'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko'>('en');
+  let currentLessonId = $state<string | null>(null);
 
   // Weak Keys
   let weakKeysData = $state<Array<{ ch: string; error_count: number; accuracy: number; rank: number }>>([]);
@@ -95,6 +99,19 @@
   // Notifications
   let notifications = $state<Array<{ id: number; type: string; message: string; timestamp: number }>>([]);
   let notifId = 0;
+
+  interface QueuedKey {
+    key: string;
+    code: string;
+    generation: number;
+    synthetic: boolean;
+  }
+
+  let queuedKeys: QueuedKey[] = [];
+  let processingKeys = false;
+  let sessionGeneration = 0;
+  let timeCompletionQueued = false;
+  let audioContext: AudioContext | null = null;
 
   function addNotification(type: string, message: string) {
     const id = ++notifId;
@@ -129,6 +146,32 @@
     }
   }
 
+  function startTestFromResponse(resp: TestSessionResponse, lessonId: string | null = null) {
+    sessionGeneration += 1;
+    queuedKeys = [];
+    timeCompletionQueued = false;
+    text = resp.text;
+    caretPos = 0;
+    isComplete = false;
+    isRunning = true;
+    finalStats = null;
+    sessionModeType = resp.mode_type;
+    sessionLanguage = resp.language;
+    sessionDurationMs = resp.mode_type === 'time'
+      ? Math.max(0, Number(resp.mode_config.duration ?? 0) * 1000)
+      : 0;
+    currentLessonId = lessonId;
+    testStartedAt = null;
+    liveWpm = 0;
+    liveAccuracy = 100;
+    elapsedMs = 0;
+    charStatuses = Array.from(resp.text, (ch) => ({
+      expected: ch,
+      typed: null,
+      status: 'pending' as const,
+    }));
+  }
+
   async function startTest() {
     errorMsg = '';
     finalStats = null;
@@ -142,19 +185,145 @@
     if (selectedMode === 'words') params.wordCount = selectedWordCount;
 
     const resp = await ipc.startTest(params as any);
-    text = resp.text;
-    caretPos = 0;
-    isComplete = false;
-    isRunning = true;
-    sessionModeType = resp.mode_type;
-    sessionLanguage = resp.language;
-    liveWpm = 0;
-    liveAccuracy = 100;
-    elapsedMs = 0;
-    charStatuses = text.split('').map((ch) => ({ expected: ch, typed: null, status: 'pending' as const }));
+    startTestFromResponse(resp);
   }
 
-  async function handleKeydown(e: KeyboardEvent) {
+  async function playSound(event: 'key_press' | 'error' | 'lesson_complete') {
+    if (!settings?.sound_enabled || settings.sound_volume <= 0) return;
+    try {
+      audioContext ??= new AudioContext();
+      if (audioContext.state === 'suspended') await audioContext.resume();
+      const sound = await ipc.getSoundEvent(event);
+      if (!sound) return;
+
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.frequency.value = sound.frequency;
+      gain.gain.value = Math.min(sound.volume, settings.sound_volume);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.onended = () => {
+        oscillator.disconnect();
+        gain.disconnect();
+      };
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + sound.duration_ms / 1000);
+    } catch (error) {
+      console.warn('Sound playback failed:', error);
+    }
+  }
+
+  async function finishTest(stats: FinalStats) {
+    finalStats = stats;
+    isComplete = true;
+    zenActive = false;
+    isRunning = false;
+    testStartedAt = null;
+    elapsedMs = stats.duration_ms;
+
+    if (stats.accuracy >= 95) {
+      addNotification('SUCCESS', 'Отличный результат!');
+    }
+
+    const lessonId = currentLessonId;
+    if (sessionModeType === 'lesson' && lessonId) {
+      try {
+        await ipc.completeLesson(lessonId, stats.wpm, stats.accuracy);
+        lessonProgress = {
+          ...lessonProgress,
+          [lessonId]: {
+            status: 'completed',
+            best_wpm: Math.max(lessonProgress[lessonId]?.best_wpm ?? 0, stats.wpm),
+            best_accuracy: Math.max(lessonProgress[lessonId]?.best_accuracy ?? 0, stats.accuracy),
+          },
+        };
+      } catch (error) {
+        errorMsg = `Lesson completion error: ${error}`;
+      }
+      void playSound('lesson_complete');
+    }
+    currentLessonId = null;
+    await checkNewAchievements();
+  }
+
+  async function applyEngineOutput(output: EngineOutput, key: string, synthetic: boolean) {
+    caretPos = output.caret_pos;
+    if (output.live_stats) {
+      liveWpm = output.live_stats.wpm;
+      liveAccuracy = output.live_stats.accuracy;
+      elapsedMs = output.live_stats.elapsed_ms;
+      testStartedAt = Date.now() - output.live_stats.elapsed_ms;
+
+      if (liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05) {
+        addNotification('SUCCESS', 'Точность выше 95%');
+      }
+    }
+
+    if (output.key_result === 'correct' && caretPos > 0) {
+      charStatuses[caretPos - 1] = {
+        ...charStatuses[caretPos - 1],
+        typed: charStatuses[caretPos - 1].expected,
+        status: 'correct',
+      };
+    } else if (output.key_result === 'incorrect' && caretPos < charStatuses.length) {
+      charStatuses[caretPos] = { ...charStatuses[caretPos], typed: key, status: 'incorrect' };
+    } else if (output.key_result === 'undone_correct' && caretPos < charStatuses.length) {
+      charStatuses[caretPos] = { ...charStatuses[caretPos], typed: null, status: 'backspaced' };
+    } else if (output.key_result === 'undone_incorrect' && caretPos < charStatuses.length) {
+      charStatuses[caretPos] = { ...charStatuses[caretPos], typed: null, status: 'pending' };
+    }
+
+    if (!synthetic && output.key_result === 'incorrect') {
+      void playSound('error');
+    } else if (!synthetic && !['noop', 'test_ended'].includes(output.key_result)) {
+      void playSound('key_press');
+    }
+
+    if (output.test_complete) {
+      await finishTest(output.test_complete);
+    }
+  }
+
+  async function drainKeyQueue() {
+    if (processingKeys) return;
+    processingKeys = true;
+    try {
+      while (queuedKeys.length > 0) {
+        const queued = queuedKeys.shift();
+        if (!queued || queued.generation !== sessionGeneration) continue;
+        if (!isRunning || isComplete) continue;
+        try {
+          const output = await ipc.processKey(queued.key, queued.code);
+          if (queued.generation !== sessionGeneration) continue;
+          await applyEngineOutput(output, queued.key, queued.synthetic);
+          if (queued.synthetic && !output.test_complete) timeCompletionQueued = false;
+        } catch (error) {
+          if (queued.synthetic) timeCompletionQueued = false;
+          queuedKeys = [];
+          errorMsg = `Error: ${error}`;
+        }
+      }
+    } finally {
+      processingKeys = false;
+      if (queuedKeys.length > 0) void drainKeyQueue();
+    }
+  }
+
+  function enqueueKey(key: string, code: string, synthetic = false) {
+    queuedKeys.push({ key, code, generation: sessionGeneration, synthetic });
+    void drainKeyQueue();
+  }
+
+  function handleKeydown(e: KeyboardEvent) {
+    const activeElement = document.activeElement;
+    if (
+      activeElement instanceof HTMLInputElement
+      || activeElement instanceof HTMLTextAreaElement
+      || (activeElement instanceof HTMLElement && activeElement.isContentEditable)
+    ) {
+      return;
+    }
+
     // Vim mode navigation (only when not actively typing a test)
     if (settings?.vim_mode && !isRunning) {
       const views: ViewName[] = ['dashboard', 'test', 'lessons', 'weakkeys', 'analytics', 'achievements', 'history', 'bests', 'custom', 'settings'];
@@ -181,49 +350,54 @@
     // Track last typed char for layout detection
     if (e.key.length === 1) {
       lastTypedChar = e.key;
+      testStartedAt ??= Date.now();
     }
-
-    try {
-      const output = await ipc.processKey(e.key, e.code);
-      caretPos = output.caret_pos;
-      if (output.live_stats) {
-        liveWpm = output.live_stats.wpm;
-        liveAccuracy = output.live_stats.accuracy;
-        elapsedMs = output.live_stats.elapsed_ms;
-
-        // Smart notifications
-        if (liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05) {
-          addNotification('SUCCESS', 'Точность выше 95%');
-        }
-      }
-      if (output.key_result === 'correct' && caretPos > 0) {
-        charStatuses[caretPos - 1] = { ...charStatuses[caretPos - 1], typed: charStatuses[caretPos - 1].expected, status: 'correct' };
-      } else if (output.key_result === 'incorrect' && caretPos < charStatuses.length) {
-        charStatuses[caretPos] = { ...charStatuses[caretPos], typed: e.key, status: 'incorrect' };
-      } else if (output.key_result === 'undone_correct' && caretPos < charStatuses.length) {
-        charStatuses[caretPos] = { ...charStatuses[caretPos], typed: null, status: 'backspaced' };
-      } else if (output.key_result === 'undone_incorrect' && caretPos < charStatuses.length) {
-        charStatuses[caretPos] = { ...charStatuses[caretPos], typed: null, status: 'pending' };
-      }
-      if (output.test_complete) {
-        finalStats = output.test_complete;
-        isComplete = true;
-        zenActive = false;
-        isRunning = false;
-        if (finalStats.accuracy >= 95) {
-          addNotification('SUCCESS', 'Отличный результат!');
-        }
-        await checkNewAchievements();
-      }
-    } catch (err) {
-      errorMsg = `Error: ${err}`;
-    }
+    enqueueKey(e.key, e.code);
   }
 
+  $effect(() => {
+    const startedAt = testStartedAt;
+    const running = isRunning;
+    const complete = isComplete;
+    const mode = sessionModeType;
+    const durationMs = sessionDurationMs;
+    if (!running || complete || startedAt === null) return;
+
+    const updateClock = () => {
+      const currentElapsed = Math.max(0, Date.now() - startedAt);
+      elapsedMs = mode === 'time' && durationMs > 0
+        ? Math.min(currentElapsed, durationMs)
+        : currentElapsed;
+      if (
+        mode === 'time'
+        && durationMs > 0
+        && currentElapsed >= durationMs
+        && !timeCompletionQueued
+      ) {
+        timeCompletionQueued = true;
+        enqueueKey('', '', true);
+      }
+    };
+
+    updateClock();
+    const interval = window.setInterval(updateClock, 50);
+    return () => window.clearInterval(interval);
+  });
+
   function abortTest() {
-    if (isRunning) ipc.abortSession().catch(() => {});
+    if (isRunning) {
+      ipc.abortSession().catch((error) => {
+        errorMsg = `Abort error: ${error}`;
+      });
+    }
+    sessionGeneration += 1;
+    queuedKeys = [];
+    timeCompletionQueued = false;
     isRunning = false;
     isComplete = false;
+    currentLessonId = null;
+    testStartedAt = null;
+    elapsedMs = 0;
     caretPos = 0;
     charStatuses = [];
   }
@@ -290,15 +464,16 @@
     editingText = ct;
     newName = ct ? ct.name : '';
     newTextContent = ct ? ct.text : '';
+    customTextLanguage = ct?.language ?? selectedLanguage;
     showEditor = true;
   }
 
   async function saveCustomText() {
     try {
       if (editingText) {
-        await ipc.updateCustomText(editingText.id, newName, newTextContent);
+        await ipc.updateCustomText(editingText.id, newName, newTextContent, customTextLanguage);
       } else {
-        await ipc.saveCustomText(newName, newTextContent);
+        await ipc.saveCustomText(newName, newTextContent, customTextLanguage);
       }
       showEditor = false;
       await loadCustomTexts();
@@ -313,16 +488,14 @@
   }
 
   async function startCustomTest(id: number) {
-    const resp = await ipc.startCustomTextTest(id);
-    text = resp.text;
-    caretPos = 0;
-    isComplete = false;
-    isRunning = true;
-    finalStats = null;
-    sessionModeType = resp.mode_type;
-    sessionLanguage = resp.language;
-    charStatuses = text.split('').map((ch) => ({ expected: ch, typed: null, status: 'pending' as const }));
-    view = 'test';
+    try {
+      await snapshotAchievements();
+      const resp = await ipc.startCustomTextTest(id);
+      startTestFromResponse(resp);
+      view = 'test';
+    } catch (error) {
+      errorMsg = `Start custom text error: ${error}`;
+    }
   }
 
   async function searchCustom(q: string) {
@@ -363,10 +536,14 @@
 
   async function onGenerateTraining() {
     try {
-      const text = await ipc.generateWeakKeysTraining(selectedLanguage, 25);
-      // Start a test with this text
-      const resp = await ipc.startTest({ mode: 'custom', language: selectedLanguage, text });
-      // ... use resp to start test
+      await snapshotAchievements();
+      const generatedText = await ipc.generateWeakKeysTraining(selectedLanguage, 25);
+      const resp = await ipc.startTest({
+        mode: 'custom',
+        language: selectedLanguage,
+        text: generatedText,
+      });
+      startTestFromResponse(resp);
       view = 'test';
     } catch (e) {
       errorMsg = `Training error: ${e}`;
@@ -377,9 +554,14 @@
     try {
       const course = await ipc.getCourse(lessonLang);
       courseModules = course.modules;
-      const p = await ipc.getLessonProgress(lessonLang) as { modules: Array<{ module_id: string; completed_lessons: number }> };
-      // Progress is course-level, we need per-lesson. For now, use empty.
-      lessonProgress = {};
+      const progress = await ipc.getLessonProgress(lessonLang);
+      lessonProgress = Object.fromEntries(
+        progress.map((lesson) => [lesson.lesson_id, {
+          status: lesson.status,
+          best_wpm: lesson.best_wpm,
+          best_accuracy: lesson.best_accuracy,
+        }]),
+      );
     } catch (e) {
       errorMsg = `Lessons error: ${e}`;
     }
@@ -387,15 +569,9 @@
 
   async function onSelectLesson(lessonId: string, language: string) {
     try {
+      await snapshotAchievements();
       const resp = await ipc.startLesson(lessonId, language);
-      text = resp.text;
-      caretPos = 0;
-      isComplete = false;
-      isRunning = true;
-      finalStats = null;
-      sessionModeType = resp.mode_type;
-      sessionLanguage = resp.language;
-      charStatuses = text.split('').map((ch) => ({ expected: ch, typed: null, status: 'pending' as const }));
+      startTestFromResponse(resp, lessonId);
       view = 'test';
     } catch (e) {
       errorMsg = `Start lesson error: ${e}`;
@@ -443,6 +619,7 @@
         show_hand_guide: false, show_layout_warnings: false, show_capslock_warnings: true,
         sound_enabled: false, sound_volume: 0.5, zen_mode_enabled: false,
         ui_language: 'en', vim_mode: false,
+        daily_goal_type: 'time', daily_goal_wpm: 0, daily_goal_accuracy: 0,
       };
       uiLang = 'en';
       await applyTheme('serika_dark');
@@ -452,17 +629,18 @@
     } catch (e) {
       console.warn('startTest failed, using fallback text:', e);
       text = 'The quick brown fox jumps over the lazy dog and runs through the forest while the sun sets slowly behind the mountains';
-      charStatuses = text.split('').map((ch) => ({ expected: ch, typed: null, status: 'pending' as const }));
+      charStatuses = Array.from(text, (ch) => ({ expected: ch, typed: null, status: 'pending' as const }));
       isRunning = true;
       sessionModeType = 'time';
       sessionLanguage = 'en';
+      sessionDurationMs = selectedDuration * 1000;
     }
   });
 </script>
 
-<svelte:window on:keydown={handleKeydown} />
+<svelte:window onkeydown={handleKeydown} />
 
-<main>
+<main style:font-size={mainFontSize}>
   {#if !zenActive}
     <NavigationBar {view} {historyTotal} {uiLang} onNavigate={switchView} />
   {/if}
@@ -519,12 +697,16 @@
       {showEditor}
       {newName}
       {newTextContent}
+      newLanguage={customTextLanguage}
       onSave={saveCustomText}
       onDelete={deleteCustomText}
       onStart={startCustomTest}
       onSearch={searchCustom}
       onOpenEditor={openEditor}
       onCloseEditor={() => { showEditor = false; }}
+      onNameChange={(name) => { newName = name; }}
+      onTextChange={(content) => { newTextContent = content; }}
+      onLanguageChange={(language) => { customTextLanguage = language; }}
       uiLang={uiLang}
     />
   {:else if view === 'settings'}
@@ -579,7 +761,7 @@
     display: flex; flex-direction: column; align-items: center;
     min-height: 100vh; gap: 1.5rem; padding: 1rem;
     background-color: var(--bg); color: var(--text);
-    font-family: 'JetBrains Mono', monospace; font-size: 24px;
+    font-family: 'JetBrains Mono', monospace;
   }
   .error { color: var(--error); font-size: 0.875rem; }
   .lesson-lang-selector { display: flex; gap: 0.25rem; }

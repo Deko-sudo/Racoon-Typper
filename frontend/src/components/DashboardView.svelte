@@ -4,6 +4,14 @@
   import { t } from '../lib/i18n';
 
   let { stats, onNavigate, uiLang = 'en' }: { stats: DashboardStatsResponse | null; onNavigate: (v: string) => void; uiLang?: string } = $props();
+
+  function handleActionKeydown(event: KeyboardEvent) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      event.stopPropagation();
+      onNavigate('test');
+    }
+  }
 </script>
 
 <div class="dashboard">
@@ -44,7 +52,7 @@
         <span class="card-value">{stats.daily_goal_met ? '✓' : '○'}</span>
         <span class="card-label">{t(uiLang, 'dash.daily_goal')}</span>
       </div>
-      <div class="card action-card" role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && onNavigate('test')} onclick={() => onNavigate('test')}>
+      <div class="card action-card" role="button" tabindex="0" onkeydown={handleActionKeydown} onclick={() => onNavigate('test')}>
         <span class="card-action">{t(uiLang, 'dash.start_test')}</span>
       </div>
     </div>

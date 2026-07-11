@@ -9,6 +9,7 @@ use racoon_domain::{TestDetail, TestRecord, TestSummary};
 /// Trait для тестового репозитория.
 pub trait TestRepository {
     fn save_test(&self, record: TestRecord) -> Result<i64, DbError>;
+    fn mark_as_pb(&self, id: i64) -> Result<(), DbError>;
     fn get_history(
         &self,
         limit: usize,
@@ -86,6 +87,17 @@ impl<'a> TestRepository for SqliteTestRepository<'a> {
             .map_err(|e| DbError::Write(e.to_string()))?;
 
         Ok(self.conn.last_insert_rowid())
+    }
+
+    fn mark_as_pb(&self, id: i64) -> Result<(), DbError> {
+        let updated = self
+            .conn
+            .execute("UPDATE tests SET is_pb = 1 WHERE id = ?1", params![id])
+            .map_err(|e| DbError::Write(e.to_string()))?;
+        if updated == 0 {
+            return Err(DbError::NotFound(format!("Test id={id}")));
+        }
+        Ok(())
     }
 
     fn get_history(
@@ -229,7 +241,7 @@ fn map_test_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TestRow> {
 }
 
 #[cfg(test)]
-mod tests {
+mod repository_tests {
     use super::*;
     use crate::db::Database;
     use racoon_domain::keyboard::CharStatsMap;
@@ -250,7 +262,7 @@ mod tests {
             correct_chars: 95,
             incorrect_chars: 5,
             backspaces: 2,
-            char_stats: serde_json::to_value(&CharStatsMap::new()).unwrap(),
+            char_stats: serde_json::to_value(CharStatsMap::new()).unwrap(),
             heatmap_data: serde_json::json!({"a": {"total_attempts": 10, "correct": 9, "incorrect": 1, "avg_wpm_at_key": 40.0}}),
             graph_data: None,
             is_pb: false,
@@ -283,6 +295,20 @@ mod tests {
         assert_eq!(detail.id, id);
         assert!((detail.wpm - 50.0).abs() < 0.01);
         assert_eq!(detail.correct_chars, 95);
+        assert_eq!(detail.text_length, 100);
+    }
+
+    #[test]
+    fn mark_as_pb_updates_saved_test() {
+        let db = Database::open_in_memory().unwrap();
+        let conn = db.conn();
+        let repo = SqliteTestRepository::new(&conn);
+
+        let id = repo.save_test(make_test_record(50.0, 95.0)).unwrap();
+        repo.mark_as_pb(id).unwrap();
+
+        let detail = repo.get_by_id(id).unwrap();
+        assert!(detail.is_pb);
     }
 
     #[test]

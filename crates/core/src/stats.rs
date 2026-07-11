@@ -212,18 +212,59 @@ impl HeatmapBuilder {
 /// Statistics Engine — связывает LiveTracker, WPM, Accuracy, Heatmap.
 pub struct StatisticsEngine {
     pub tracker: LiveTracker,
+    first_key_timestamp_ms: Option<u64>,
+    graph_points: Vec<WpmGraphPoint>,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+struct WpmGraphPoint {
+    timestamp_ms: u64,
+    wpm: f64,
 }
 
 impl StatisticsEngine {
     pub fn new() -> Self {
         Self {
             tracker: LiveTracker::new(),
+            first_key_timestamp_ms: None,
+            graph_points: Vec::new(),
         }
     }
 
     /// Обновляет статистику на каждое нажатие.
     pub fn on_key_processed(&mut self, result: &crate::typing::TypingResult, buf: &TextBuffer) {
+        let timestamp_ms = buf
+            .typed_chars
+            .iter()
+            .filter_map(|typed| typed.timestamp_ms)
+            .max()
+            .unwrap_or(0);
+        self.on_key_processed_at(result, buf, timestamp_ms);
+    }
+
+    /// Updates statistics and records a WPM sample using the authoritative key timestamp.
+    pub fn on_key_processed_at(
+        &mut self,
+        result: &crate::typing::TypingResult,
+        buf: &TextBuffer,
+        timestamp_ms: u64,
+    ) {
         self.tracker.on_key_processed(result, buf);
+
+        if matches!(
+            result,
+            crate::typing::TypingResult::Noop | crate::typing::TypingResult::TestEnded
+        ) {
+            return;
+        }
+
+        let first_timestamp = *self.first_key_timestamp_ms.get_or_insert(timestamp_ms);
+        let elapsed_ms = timestamp_ms.saturating_sub(first_timestamp);
+        let wpm = WpmCalculator::net_wpm(self.tracker.correct_chars, elapsed_ms as f64 / 60_000.0);
+        self.graph_points.push(WpmGraphPoint {
+            timestamp_ms: elapsed_ms,
+            wpm,
+        });
     }
 
     /// Возвращает live статистику (WPM, Raw WPM, Accuracy, elapsed_ms).
@@ -273,25 +314,39 @@ impl StatisticsEngine {
 
         let char_stats = HeatmapBuilder::build_char_stats(buf);
         let heatmap = HeatmapBuilder::build(buf);
+        let mut wpm_samples: Vec<f64> = self
+            .graph_points
+            .iter()
+            .filter(|point| point.timestamp_ms > 0)
+            .map(|point| point.wpm)
+            .collect();
+        if wpm_samples.is_empty() {
+            wpm_samples.push(wpm);
+        }
+        let consistency = crate::consistency::calc_consistency(&wpm_samples).score;
+        let graph_data = serde_json::to_value(&self.graph_points)
+            .unwrap_or_else(|_| serde_json::Value::Array(Vec::new()));
 
         racoon_domain::FinalStats {
             wpm,
             raw_wpm,
             accuracy,
             raw_accuracy,
-            consistency: None, // v0.2
+            consistency: Some(consistency),
             correct_chars: correct,
             incorrect_chars: incorrect,
             backspaces,
             char_stats: serde_json::to_value(&char_stats).unwrap_or(serde_json::Value::Null),
             heatmap: serde_json::to_value(&heatmap).unwrap_or(serde_json::Value::Null),
-            graph_data: None, // v0.2
+            graph_data: Some(graph_data),
             duration_ms,
         }
     }
 
     pub fn reset(&mut self) {
         self.tracker.reset();
+        self.first_key_timestamp_ms = None;
+        self.graph_points.clear();
     }
 }
 
@@ -486,6 +541,31 @@ mod tests {
         assert!((final_stats.wpm - 6.0).abs() < 0.1); // 5/5 / (10s/60s) = 1/ (1/6) = 6 WPM
         assert!((final_stats.accuracy - 100.0).abs() < 0.01);
         assert_eq!(final_stats.backspaces, 0);
+        assert!(final_stats.consistency.is_some());
+        assert_eq!(
+            final_stats
+                .graph_data
+                .as_ref()
+                .and_then(serde_json::Value::as_array)
+                .map(Vec::len),
+            Some(5)
+        );
+    }
+
+    #[test]
+    fn finalize_computes_consistency_from_wpm_samples() {
+        let mut buf = TextBuffer::new("abcd");
+        let mut engine = StatisticsEngine::new();
+
+        for (character, timestamp) in [('a', 1_000), ('b', 2_000), ('c', 4_000), ('d', 5_000)] {
+            let result = buf.process_print(character, timestamp);
+            engine.on_key_processed_at(&result, &buf, timestamp);
+        }
+
+        let final_stats = engine.finalize(&buf, 4_000);
+        let consistency = final_stats.consistency.expect("consistency should be set");
+        assert!((0.0..=100.0).contains(&consistency));
+        assert!(final_stats.graph_data.is_some());
     }
 
     #[test]

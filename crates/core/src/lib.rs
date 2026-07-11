@@ -23,7 +23,7 @@ pub mod viewport;
 pub mod weak_keys;
 
 pub use adaptive::{AdaptiveTextGenerator, FrequencyAdaptiveGenerator, WeakChar};
-pub use engine::{CoreEngine, TestSession, TestSessionInfo};
+pub use engine::{CoreEngine, ReplayFrame, TestSession, TestSessionInfo};
 pub use finger_map::{
     finger_for_char, finger_for_key_jcuken, finger_for_key_qwerty, is_home_row, Finger,
 };

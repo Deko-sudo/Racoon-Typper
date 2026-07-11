@@ -176,8 +176,10 @@ mod tests {
 
     #[test]
     fn sound_config_volume_clamped() {
-        let mut c = SoundConfig::default();
-        c.volume = 1.5;
+        let mut c = SoundConfig {
+            volume: 1.5,
+            ..SoundConfig::default()
+        };
         assert!((c.effective_volume() - 1.0).abs() < 0.01);
         c.volume = -0.5;
         assert!((c.effective_volume() - 0.0).abs() < 0.01);

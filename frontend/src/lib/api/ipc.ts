@@ -6,19 +6,15 @@ import type {
   CourseResponse,
   CustomText,
   DashboardStatsResponse,
-  FinalStats,
+  EngineOutput,
+  LessonProgressRecord,
   PersonalBest,
   ProgressPoint,
+  ReplayFrame,
   StatsHistoryResponse,
-  StreakInfoResponse,
-  TestDetail,
   TestSessionResponse,
   ThemeInfo,
 } from '../types/index';
-
-export async function ping(): Promise<string> {
-  return invoke<string>('ping');
-}
 
 export async function startTest(params: {
   mode: string;
@@ -31,11 +27,8 @@ export async function startTest(params: {
   return invoke<TestSessionResponse>('start_test', params);
 }
 
-export async function processKey(key: string, code: string) {
-  return invoke<{ key_result: string; caret_pos: number; live_stats: { wpm: number; accuracy: number; elapsed_ms: number } | null; test_complete: FinalStats | null }>(
-    'process_key',
-    { key, code }
-  );
+export async function processKey(key: string, code: string): Promise<EngineOutput> {
+  return invoke<EngineOutput>('process_key', { key, code });
 }
 
 export async function abortSession(): Promise<void> {
@@ -46,10 +39,6 @@ export async function getStatsHistory(limit: number, offset = 0): Promise<StatsH
   return invoke<StatsHistoryResponse>('get_stats_history', { limit, offset });
 }
 
-export async function getTestDetail(id: number): Promise<TestDetail> {
-  return invoke<TestDetail>('get_test_detail', { id });
-}
-
 export async function getPersonalBests(): Promise<PersonalBest[]> {
   return invoke<PersonalBest[]>('get_personal_bests', {});
 }
@@ -58,12 +47,12 @@ export async function getCustomTexts(limit = 50): Promise<CustomText[]> {
   return invoke<CustomText[]>('get_custom_texts', { limit });
 }
 
-export async function saveCustomText(name: string, text: string): Promise<number> {
-  return invoke<number>('save_custom_text', { name, text });
+export async function saveCustomText(name: string, text: string, language: string): Promise<number> {
+  return invoke<number>('save_custom_text', { name, text, language });
 }
 
-export async function updateCustomText(id: number, name: string, text: string): Promise<void> {
-  return invoke('update_custom_text', { id, name, text });
+export async function updateCustomText(id: number, name: string, text: string, language: string): Promise<void> {
+  return invoke('update_custom_text', { id, name, text, language });
 }
 
 export async function deleteCustomText(id: number): Promise<void> {
@@ -99,8 +88,8 @@ export async function getCourse(language: string): Promise<CourseResponse> {
   return invoke<CourseResponse>('get_course', { language });
 }
 
-export async function getLessonProgress(language: string): Promise<unknown> {
-  return invoke('get_lesson_progress', { language });
+export async function getLessonProgress(language: string): Promise<LessonProgressRecord[]> {
+  return invoke<LessonProgressRecord[]>('get_lesson_progress', { language });
 }
 
 export async function startLesson(lessonId: string, language: string): Promise<TestSessionResponse> {
@@ -125,10 +114,6 @@ export async function getDashboardStats(): Promise<DashboardStatsResponse> {
   return invoke<DashboardStatsResponse>('get_dashboard_stats');
 }
 
-export async function getStreakInfo(): Promise<StreakInfoResponse> {
-  return invoke<StreakInfoResponse>('get_streak_info');
-}
-
 export async function getProgressHistory(days?: number): Promise<ProgressPoint[]> {
   return invoke<ProgressPoint[]>('get_progress_history', { days });
 }
@@ -151,8 +136,8 @@ export async function exportData(format: 'json' | 'csv'): Promise<string> {
 }
 
 // Replay
-export async function getReplay(testId: number): Promise<unknown> {
-  return invoke('get_replay', { testId });
+export async function getReplay(testId: number): Promise<ReplayFrame[]> {
+  return invoke<ReplayFrame[]>('get_replay', { testId });
 }
 
 export async function hasReplay(testId: number): Promise<boolean> {
@@ -162,27 +147,4 @@ export async function hasReplay(testId: number): Promise<boolean> {
 // Sound
 export async function getSoundEvent(event: string): Promise<{ frequency: number; duration_ms: number; volume: number; event: string } | null> {
   return invoke('get_sound_event', { event });
-}
-
-// Session Recovery
-export async function saveSessionState(session: { text: string; typed_chars: boolean[]; mode_type: string; language: string; elapsed_ms: number; saved_at: string }): Promise<void> {
-  return invoke('save_session_state', { session });
-}
-
-export async function loadSessionState(): Promise<{ text: string; typed_chars: boolean[]; mode_type: string; language: string; elapsed_ms: number; saved_at: string } | null> {
-  return invoke('load_session_state');
-}
-
-export async function clearSessionState(): Promise<void> {
-  return invoke('clear_session_state');
-}
-
-// Extended Stats
-export async function getExtendedStats(): Promise<{ best_day_wpm: number; best_day_date: string; most_active_hour: number; avg_session_duration_ms: number; total_chars: number; total_words: number }> {
-  return invoke('get_extended_stats');
-}
-
-// Profile Export
-export async function exportProfile(): Promise<string> {
-  return invoke<string>('export_profile');
 }

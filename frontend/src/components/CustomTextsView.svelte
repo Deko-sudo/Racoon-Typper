@@ -1,6 +1,6 @@
 <script lang="ts">
-  import type { CustomText } from '../lib/types/index';
-  import { t } from '../lib/i18n';
+  import type { CustomText, LanguageCode } from '../lib/types/index';
+  import { t, UI_LANGUAGES } from '../lib/i18n';
 
   let {
     customTexts,
@@ -8,12 +8,16 @@
     showEditor,
     newName,
     newTextContent,
+    newLanguage,
     onSave,
     onDelete,
     onStart,
     onSearch,
     onOpenEditor,
     onCloseEditor,
+    onNameChange,
+    onTextChange,
+    onLanguageChange,
     uiLang = 'en',
   }: {
     customTexts: CustomText[];
@@ -21,12 +25,16 @@
     showEditor: boolean;
     newName: string;
     newTextContent: string;
+    newLanguage: LanguageCode;
     onSave: () => void;
     onDelete: (id: number) => void;
     onStart: (id: number) => void;
     onSearch: (q: string) => void;
     onOpenEditor: (ct: CustomText | null) => void;
     onCloseEditor: () => void;
+    onNameChange: (name: string) => void;
+    onTextChange: (text: string) => void;
+    onLanguageChange: (language: LanguageCode) => void;
     uiLang?: string;
   } = $props();
 </script>
@@ -39,8 +47,13 @@
   </div>
   {#if showEditor}
     <div class="editor">
-      <input type="text" placeholder={t(uiLang, 'custom.name')} value={newName} oninput={(e) => { newName = e.currentTarget.value; }} />
-      <textarea placeholder={t(uiLang, 'custom.text')} value={newTextContent} oninput={(e) => { newTextContent = e.currentTarget.value; }} rows="5"></textarea>
+      <input type="text" placeholder={t(uiLang, 'custom.name')} value={newName} oninput={(e) => onNameChange(e.currentTarget.value)} />
+      <select value={newLanguage} onchange={(e) => onLanguageChange(e.currentTarget.value as LanguageCode)} aria-label="Text language">
+        {#each UI_LANGUAGES as [code, name]}
+          <option value={code}>{name}</option>
+        {/each}
+      </select>
+      <textarea placeholder={t(uiLang, 'custom.text')} value={newTextContent} oninput={(e) => onTextChange(e.currentTarget.value)} rows="5"></textarea>
       <div class="editor-btns">
         <button onclick={onSave}>{t(uiLang, 'custom.save')}</button>
         <button class="abort-btn" onclick={onCloseEditor}>{t(uiLang, 'custom.cancel')}</button>
@@ -53,7 +66,7 @@
     <div class="text-cards">
       {#each customTexts as ct}
         <div class="text-card">
-          <h3>{ct.name}</h3>
+          <h3>{ct.name} <span class="language">{ct.language.toUpperCase()}</span></h3>
           <p class="text-preview">{ct.text.substring(0, 80)}{ct.text.length > 80 ? '...' : ''}</p>
           <div class="card-actions">
             <span class="use-count">{t(uiLang, 'custom.used')}: {ct.use_count}</span>
@@ -74,11 +87,12 @@
   .custom-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
   .custom-actions input { flex: 1; background: var(--bg-sub); border: 1px solid var(--sub); color: var(--text); padding: 0.5rem; font-family: inherit; border-radius: 4px; }
   .editor { background: var(--bg-sub); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
-  .editor input, .editor textarea { background: var(--bg); border: 1px solid var(--sub); color: var(--text); padding: 0.5rem; font-family: inherit; border-radius: 4px; font-size: 0.875rem; }
+  .editor input, .editor textarea, .editor select { background: var(--bg); border: 1px solid var(--sub); color: var(--text); padding: 0.5rem; font-family: inherit; border-radius: 4px; font-size: 0.875rem; }
   .editor-btns { display: flex; gap: 0.5rem; }
   .text-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
   .text-card { background: var(--bg-sub); padding: 1rem; border-radius: 8px; }
   .text-card h3 { color: var(--main); font-size: 1rem; margin: 0 0 0.5rem; }
+  .language { color: var(--sub); font-size: 0.6rem; }
   .text-preview { color: var(--sub); font-size: 0.75rem; margin-bottom: 0.5rem; }
   .card-actions { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
   .use-count { font-size: 0.75rem; color: var(--sub); margin-right: auto; }

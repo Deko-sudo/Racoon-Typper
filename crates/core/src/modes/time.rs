@@ -63,13 +63,10 @@ impl TestMode for TimeMode {
     }
 
     fn on_key_press(&mut self, ch: char, timestamp: u64, buf: &mut TextBuffer) -> ModeResult {
-        if self.start_ms.is_none() {
-            if let Some(start) = buf.start_time {
-                self.start_ms = Some(start.elapsed().as_millis() as u64);
-            }
-        }
-
         let result = buf.process_print(ch, timestamp);
+        if self.start_ms.is_none() && buf.start_time.is_some() {
+            self.start_ms = Some(timestamp);
+        }
 
         if self.time_expired(buf) {
             return ModeResult::Complete;

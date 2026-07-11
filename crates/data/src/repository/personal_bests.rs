@@ -1,6 +1,6 @@
 //! PersonalBestsRepository — check_and_update, get_bests.
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 
 use crate::error::DbError;
 use crate::models::{config_hash, PersonalBestRow};
@@ -9,7 +9,7 @@ use racoon_domain::PersonalBest;
 /// Результат проверки рекорда.
 #[derive(Debug, Clone)]
 pub struct PbUpdate {
-    pub metric: String, // "wpm" | "accuracy"
+    pub metric: String, // "wpm" | "accuracy" | "consistency"
     pub previous: Option<f64>,
     pub new: f64,
     pub test_id: i64,
@@ -90,6 +90,16 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
     ) -> Result<Vec<PbUpdate>, DbError> {
         let hash = config_hash(mode_type, mode_config);
         let now = chrono::Utc::now().to_rfc3339();
+        let consistency = self
+            .conn
+            .query_row(
+                "SELECT consistency FROM tests WHERE id = ?1",
+                params![test_id],
+                |row| row.get::<_, Option<f64>>(0),
+            )
+            .optional()
+            .map_err(|e| DbError::Query(e.to_string()))?
+            .flatten();
 
         let mut updates = Vec::new();
 
@@ -102,15 +112,12 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
                 params![mode_type, hash],
                 |row| Ok((row.get(0)?, row.get(1)?, row.get::<_, Option<f64>>(2)?)),
             )
-            .ok();
+            .optional()
+            .map_err(|e| DbError::Query(e.to_string()))?;
 
         match existing {
-            Some((prev_wpm, prev_acc, _)) => {
+            Some((prev_wpm, prev_acc, prev_consistency)) => {
                 // Обновляем если превзойдён
-                let mut need_update = false;
-                let mut new_best_wpm = prev_wpm;
-                let mut new_best_wpm_test_id: Option<i64> = None;
-
                 if wpm > prev_wpm {
                     updates.push(PbUpdate {
                         metric: "wpm".to_string(),
@@ -118,9 +125,6 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
                         new: wpm,
                         test_id,
                     });
-                    new_best_wpm = wpm;
-                    new_best_wpm_test_id = Some(test_id);
-                    need_update = true;
                 }
 
                 if accuracy > prev_acc {
@@ -130,24 +134,40 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
                         new: accuracy,
                         test_id,
                     });
-                    need_update = true;
                 }
 
-                if need_update {
+                if let Some(value) = consistency {
+                    if prev_consistency.is_none_or(|previous| value > previous) {
+                        updates.push(PbUpdate {
+                            metric: "consistency".to_string(),
+                            previous: prev_consistency,
+                            new: value,
+                            test_id,
+                        });
+                    }
+                }
+
+                if !updates.is_empty() {
                     self.conn
                         .execute(
-                            "UPDATE personal_bests SET best_wpm = ?1, best_wpm_test_id = ?2,
-                         best_accuracy = ?3, best_accuracy_test_id = ?4, updated_at = ?5
-                         WHERE mode_type = ?6 AND mode_config_hash = ?7",
+                            "UPDATE personal_bests SET
+                                best_wpm = CASE WHEN ?1 > best_wpm THEN ?1 ELSE best_wpm END,
+                                best_wpm_test_id = CASE WHEN ?1 > best_wpm THEN ?4 ELSE best_wpm_test_id END,
+                                best_accuracy = CASE WHEN ?2 > best_accuracy THEN ?2 ELSE best_accuracy END,
+                                best_accuracy_test_id = CASE WHEN ?2 > best_accuracy THEN ?4 ELSE best_accuracy_test_id END,
+                                best_consistency = CASE
+                                    WHEN ?3 IS NOT NULL AND (best_consistency IS NULL OR ?3 > best_consistency)
+                                    THEN ?3 ELSE best_consistency END,
+                                best_consistency_test_id = CASE
+                                    WHEN ?3 IS NOT NULL AND (best_consistency IS NULL OR ?3 > best_consistency)
+                                    THEN ?4 ELSE best_consistency_test_id END,
+                                updated_at = ?5
+                             WHERE mode_type = ?6 AND mode_config_hash = ?7",
                             params![
-                                new_best_wpm,
-                                new_best_wpm_test_id,
-                                accuracy.max(prev_acc),
-                                if accuracy > prev_acc {
-                                    Some(test_id)
-                                } else {
-                                    None
-                                },
+                                wpm,
+                                accuracy,
+                                consistency,
+                                test_id,
                                 now,
                                 mode_type,
                                 hash,
@@ -163,7 +183,7 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
                         "INSERT INTO personal_bests (mode_type, mode_config_hash, mode_config,
                      best_wpm, best_wpm_test_id, best_accuracy, best_accuracy_test_id,
                      best_consistency, best_consistency_test_id, updated_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, NULL, NULL, ?8)",
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                         params![
                             mode_type,
                             hash,
@@ -172,6 +192,8 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
                             test_id,
                             accuracy,
                             test_id,
+                            consistency,
+                            consistency.map(|_| test_id),
                             now,
                         ],
                     )
@@ -183,6 +205,14 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
                     new: wpm,
                     test_id,
                 });
+                if let Some(value) = consistency {
+                    updates.push(PbUpdate {
+                        metric: "consistency".to_string(),
+                        previous: None,
+                        new: value,
+                        test_id,
+                    });
+                }
                 updates.push(PbUpdate {
                     metric: "accuracy".to_string(),
                     previous: None,
@@ -220,6 +250,15 @@ mod tests {
     use racoon_domain::TestRecord;
 
     fn save_test_with_repo(conn: &Connection, wpm: f64, acc: f64) -> i64 {
+        save_test_with_consistency(conn, wpm, acc, None)
+    }
+
+    fn save_test_with_consistency(
+        conn: &Connection,
+        wpm: f64,
+        acc: f64,
+        consistency: Option<f64>,
+    ) -> i64 {
         let test_repo = SqliteTestRepository::new(conn);
         let record = TestRecord {
             created_at: chrono::Utc::now().to_rfc3339(),
@@ -232,7 +271,7 @@ mod tests {
             raw_wpm: wpm + 2.0,
             accuracy: acc,
             raw_accuracy: acc - 5.0,
-            consistency: None,
+            consistency,
             correct_chars: 95,
             incorrect_chars: 5,
             backspaces: 2,
@@ -354,5 +393,27 @@ mod tests {
 
         let bests = pb_repo.get_bests(None).unwrap();
         assert_eq!(bests.len(), 2); // разные config → разные PB
+    }
+
+    #[test]
+    fn consistency_personal_best_is_populated_and_updated() {
+        let db = Database::open_in_memory().unwrap();
+        let conn = db.conn();
+        let pb_repo = SqlitePersonalBestsRepository::new(&conn);
+
+        let first_id = save_test_with_consistency(&conn, 45.0, 95.0, Some(72.0));
+        pb_repo
+            .check_and_update("time", r#"{"duration":30}"#, 45.0, 95.0, first_id)
+            .unwrap();
+        let second_id = save_test_with_consistency(&conn, 44.0, 94.0, Some(88.0));
+        let updates = pb_repo
+            .check_and_update("time", r#"{"duration":30}"#, 44.0, 94.0, second_id)
+            .unwrap();
+
+        assert_eq!(updates.len(), 1);
+        assert_eq!(updates[0].metric, "consistency");
+        let best = pb_repo.get_bests(None).unwrap().pop().unwrap();
+        assert_eq!(best.best_consistency, Some(88.0));
+        assert_eq!(best.best_consistency_test_id, Some(second_id));
     }
 }

@@ -9,15 +9,13 @@ use std::sync::Mutex;
 pub struct AppState {
     pub db: Mutex<Database>,
     settings_path: PathBuf,
-    pub data_dir: PathBuf,
 }
 
 impl AppState {
-    pub fn new(db: Database, settings_path: PathBuf, data_dir: PathBuf) -> Self {
+    pub fn new(db: Database, settings_path: PathBuf) -> Self {
         Self {
             db: Mutex::new(db),
             settings_path,
-            data_dir,
         }
     }
 

@@ -12,13 +12,12 @@ use racoon_data::repository::{
     SqliteReplayRepository, SqliteTestRepository, TestRepository,
 };
 use racoon_domain::PersonalBest;
-use racoon_domain::TestDetail;
 use racoon_domain::TestSummary;
-use racoon_domain::{AppInfo, EngineOutput, TestRecord};
+use racoon_domain::{AppInfo, EngineOutput, FinalStats, TestRecord};
 use racoon_resources::{course_loader, quote_loader, word_pack_loader};
+use rusqlite::{params, Connection, OptionalExtension};
 use std::sync::Mutex;
 use tauri::State;
-use rusqlite::params;
 
 use crate::error::AppError;
 use crate::state::AppState;
@@ -108,7 +107,7 @@ pub fn process_key(
     key: String,
     code: String,
 ) -> Result<EngineOutput, AppError> {
-    let (output, mode_info) = {
+    let (output, completed_session) = {
         let mut engine = engine_state.lock()?;
         // Timestamp генерируется в Rust, не передаётся из frontend
         let timestamp = std::time::SystemTime::now()
@@ -122,96 +121,99 @@ pub fn process_key(
         };
         let output = engine.process_key(&key_event);
 
-        let mode_info = if output.test_complete.is_some() {
-            let mt = engine
-                .current_mode_type()
-                .map(|m| m.to_string())
-                .unwrap_or_else(|| "time".to_string());
-            let mc = engine
-                .current_mode_config()
-                .unwrap_or(serde_json::json!({}));
-            let lang = engine.current_language().unwrap_or("en").to_string();
-            Some((mt, mc, lang))
-        } else {
-            None
-        };
+        let completed_session = output
+            .test_complete
+            .as_ref()
+            .map(|final_stats| CompletedSession {
+                final_stats: final_stats.clone(),
+                mode_type: engine
+                    .current_mode_type()
+                    .map(|mode| mode.to_string())
+                    .unwrap_or_else(|| "time".to_string()),
+                mode_config: engine
+                    .current_mode_config()
+                    .unwrap_or_else(|| serde_json::json!({})),
+                language: engine.current_language().unwrap_or("en").to_string(),
+                text_length: engine.current_text().map_or(0, |text| text.chars().count()),
+                replay_frames: engine.replay_frames().to_vec(),
+            });
 
-        (output, mode_info)
+        (output, completed_session)
     };
 
-    if let Some((mode_type, mode_config, language)) = mode_info {
-        if let Some(ref final_stats) = output.test_complete {
-            let db = app_state.db.lock()?;
-            let conn = db.conn();
-            let repo = SqliteTestRepository::new(&conn);
+    if let Some(completed) = completed_session {
+        let db = app_state.db.lock()?;
+        let conn = db.conn();
+        let test_repo = SqliteTestRepository::new(&conn);
+        let test_id = test_repo.save_test(test_record_from_completion(&completed))?;
 
-            let record = TestRecord {
-                created_at: chrono::Utc::now().to_rfc3339(),
-                mode_type: mode_type.clone(),
-                mode_config: mode_config.clone(),
-                language: language.clone(),
-                text_length: 0,
-                duration_ms: final_stats.duration_ms,
-                wpm: final_stats.wpm,
-                raw_wpm: final_stats.raw_wpm,
-                accuracy: final_stats.accuracy,
-                raw_accuracy: final_stats.raw_accuracy,
-                consistency: final_stats.consistency,
-                correct_chars: final_stats.correct_chars,
-                incorrect_chars: final_stats.incorrect_chars,
-                backspaces: final_stats.backspaces,
-                char_stats: final_stats.char_stats.clone(),
-                heatmap_data: final_stats.heatmap.clone(),
-                graph_data: final_stats.graph_data.clone(),
-                is_pb: false,
-                tags: "".to_string(),
-            };
-
-            let test_id = repo.save_test(record)?;
-
-            let pb_repo = SqlitePersonalBestsRepository::new(&conn);
-            let mode_config_str = serde_json::to_string(&mode_config).unwrap_or_default();
-
-            let _ = pb_repo.check_and_update(
-                &mode_type,
-                &mode_config_str,
-                final_stats.wpm,
-                final_stats.accuracy,
+        let replay_frames = completed
+            .replay_frames
+            .iter()
+            .enumerate()
+            .map(|(index, frame)| racoon_data::repository::ReplayFrame {
+                id: 0,
                 test_id,
-            )?;
+                frame_index: index as i64,
+                timestamp_ms: frame.timestamp_ms.min(i64::MAX as u64) as i64,
+                position: frame.caret_pos.min(i64::MAX as usize) as i64,
+                expected_char: frame.expected_char.to_string(),
+                typed_char: Some(
+                    frame
+                        .typed_char
+                        .map_or_else(|| frame.key.clone(), |character| character.to_string()),
+                ),
+                correct: frame.char_status == racoon_domain::CharStatus::Correct,
+            })
+            .collect::<Vec<_>>();
+        SqliteReplayRepository::new(&conn).save_replay(test_id, &replay_frames)?;
 
-            // Update daily stats
-            let daily_repo = SqliteDailyStatsRepository::new(&conn);
-            let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-            let _ = daily_repo.update_after_test(
-                &today,
-                final_stats.duration_ms as i64,
-                (final_stats.correct_chars + final_stats.incorrect_chars) as i64,
-                final_stats.wpm,
-                final_stats.accuracy,
-            );
+        let mode_config_string = serde_json::to_string(&completed.mode_config)?;
+        let pb_updates = SqlitePersonalBestsRepository::new(&conn).check_and_update(
+            &completed.mode_type,
+            &mode_config_string,
+            completed.final_stats.wpm,
+            completed.final_stats.accuracy,
+            test_id,
+        )?;
+        if !pb_updates.is_empty() {
+            test_repo.mark_as_pb(test_id)?;
+        }
 
-            // Check daily goal
-            let settings_store = racoon_data::repository::SettingsStore::new(
-                dirs::config_dir()
-                    .unwrap_or_default()
-                    .join("racoon-typper")
-                    .join("settings.toml"),
-            );
-            if let Ok(settings) = settings_store.load() {
-                if let Ok(Some(day_stats)) = daily_repo.get_day(&today) {
-                    let goal_met = match settings.daily_goal_type.as_str() {
-                        "wpm" => settings.daily_goal_wpm > 0.0 && day_stats.best_wpm >= settings.daily_goal_wpm,
-                        "accuracy" => settings.daily_goal_accuracy > 0.0 && day_stats.avg_accuracy >= settings.daily_goal_accuracy,
-                        "time" => day_stats.total_time_ms >= (settings.daily_goal_wpm as i64 * 60_000).max(0),
-                        _ => false,
-                    };
-                    if goal_met {
-                        let _ = conn.execute(
-                            "UPDATE daily_stats SET daily_goal_met = 1 WHERE date = ?1",
-                            params![today],
-                        );
+        let daily_repo = SqliteDailyStatsRepository::new(&conn);
+        let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+        daily_repo.update_after_test(
+            &today,
+            completed.final_stats.duration_ms as i64,
+            (completed.final_stats.correct_chars + completed.final_stats.incorrect_chars) as i64,
+            completed.final_stats.wpm,
+            completed.final_stats.accuracy,
+        )?;
+        persist_daily_streak(&conn, &today)?;
+
+        // Check daily goal
+        if let Ok(settings) = app_state.settings_store().load() {
+            if let Some(day_stats) = daily_repo.get_day(&today)? {
+                let goal_met = match settings.daily_goal_type.as_str() {
+                    "wpm" => {
+                        settings.daily_goal_wpm > 0.0
+                            && day_stats.best_wpm >= settings.daily_goal_wpm
                     }
+                    "accuracy" => {
+                        settings.daily_goal_accuracy > 0.0
+                            && day_stats.avg_accuracy >= settings.daily_goal_accuracy
+                    }
+                    "time" => {
+                        day_stats.total_time_ms >= (settings.daily_goal_wpm as i64 * 60_000).max(0)
+                    }
+                    _ => false,
+                };
+                if goal_met {
+                    conn.execute(
+                        "UPDATE daily_stats SET daily_goal_met = 1 WHERE date = ?1",
+                        params![today],
+                    )
+                    .map_err(|error| AppError::DbWrite(error.to_string()))?;
                 }
             }
         }
@@ -247,14 +249,6 @@ pub fn get_stats_history(
     let total = repo.get_count(mode_filter.as_deref())?;
 
     Ok(StatsHistoryResponse { tests, total })
-}
-
-#[tauri::command]
-pub fn get_test_detail(state: State<'_, AppState>, id: i64) -> Result<TestDetail, AppError> {
-    let db = state.db.lock()?;
-    let conn = db.conn();
-    let repo = SqliteTestRepository::new(&conn);
-    repo.get_by_id(id).map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -298,11 +292,13 @@ pub fn save_custom_text(
     state: State<'_, AppState>,
     name: String,
     text: String,
+    language: String,
 ) -> Result<i64, AppError> {
     let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteCustomTextRepository::new(&conn);
-    repo.save(&name, &text).map_err(AppError::from)
+    repo.save_with_language(&name, &text, &language)
+        .map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -311,11 +307,13 @@ pub fn update_custom_text(
     id: i64,
     name: String,
     text: String,
+    language: String,
 ) -> Result<(), AppError> {
     let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteCustomTextRepository::new(&conn);
-    repo.update(id, &name, &text).map_err(AppError::from)
+    repo.update_with_language(id, &name, &text, &language)
+        .map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -356,8 +354,10 @@ pub fn start_custom_text_test(
 
     let mut engine = engine_state.lock()?;
     let session_id = generate_session_id();
-    let mode: Box<dyn TestMode> =
-        Box::new(CustomMode::new(custom_text.text.clone(), "en".to_string()));
+    let mode: Box<dyn TestMode> = Box::new(CustomMode::new(
+        custom_text.text.clone(),
+        custom_text.language.clone(),
+    ));
     let info = engine.start_test_mode(session_id.clone(), mode);
 
     Ok(TestSessionResponse {
@@ -658,7 +658,7 @@ pub fn get_lesson_progress(
     let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteLessonRepository::new(&conn);
-    let progress = repo.get_course_progress(&language)?;
+    let progress = repo.get_progress(&language)?;
     serde_json::to_value(progress).map_err(AppError::from)
 }
 
@@ -680,7 +680,7 @@ pub fn start_lesson(
         let db = app_state.db.lock()?;
         let conn = db.conn();
         let repo = SqliteLessonRepository::new(&conn);
-        let _ = repo.create_progress(&lesson_id, &module_id, &language, "beginner");
+        repo.create_progress(&lesson_id, &module_id, &language, "beginner")?;
     }
 
     let mut engine = engine_state.lock()?;
@@ -714,6 +714,8 @@ pub fn complete_lesson(
     let conn = db.conn();
     let repo = SqliteLessonRepository::new(&conn);
     repo.complete_lesson(&lesson_id, wpm, accuracy)?;
+    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
+    SqliteDailyStatsRepository::new(&conn).increment_lessons_completed(&today)?;
     Ok(())
 }
 
@@ -763,13 +765,6 @@ pub struct DashboardStatsResponse {
     pub tests_this_week: i64,
     pub total_tests: i64,
     pub daily_goal_met: bool,
-}
-
-#[derive(Debug, serde::Serialize)]
-pub struct StreakInfoResponse {
-    pub current: i64,
-    pub longest: i64,
-    pub is_active: bool,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -843,7 +838,9 @@ pub fn get_dashboard_stats(state: State<'_, AppState>) -> Result<DashboardStatsR
             "SELECT daily_goal_met FROM daily_stats WHERE date = ?1",
             params![today],
             |row| row.get::<_, i64>(0),
-        ).unwrap_or(0) == 1
+        )
+        .unwrap_or(0)
+            == 1
     } else {
         false
     };
@@ -857,29 +854,6 @@ pub fn get_dashboard_stats(state: State<'_, AppState>) -> Result<DashboardStatsR
         tests_this_week,
         total_tests: total,
         daily_goal_met,
-    })
-}
-
-#[tauri::command]
-pub fn get_streak_info(state: State<'_, AppState>) -> Result<StreakInfoResponse, AppError> {
-    let db = state.db.lock()?;
-    let conn = db.conn();
-    let test_repo = SqliteTestRepository::new(&conn);
-
-    let history = test_repo.get_history(1000, 0, None)?;
-    let dates: Vec<String> = history
-        .iter()
-        .map(|t| t.created_at.split('T').next().unwrap_or("").to_string())
-        .filter(|d| !d.is_empty())
-        .collect();
-
-    let (current, longest) = racoon_core::StreakEngine::streak_from_dates(&dates);
-    let is_active = current > 0;
-
-    Ok(StreakInfoResponse {
-        current,
-        longest,
-        is_active,
     })
 }
 
@@ -1076,14 +1050,11 @@ pub fn export_data(state: State<'_, AppState>, format: String) -> Result<String,
 pub fn get_replay(
     state: State<'_, AppState>,
     test_id: i64,
-) -> Result<Vec<serde_json::Value>, AppError> {
+) -> Result<Vec<racoon_data::repository::ReplayFrame>, AppError> {
     let db = state.db.lock()?;
     let conn = db.conn();
     let repo = SqliteReplayRepository::new(&conn);
-    let frames = repo.load_replay(test_id).map_err(AppError::from)?;
-    serde_json::to_value(frames)
-        .map(|v| vec![v])
-        .map_err(AppError::from)
+    repo.load_replay(test_id).map_err(AppError::from)
 }
 
 #[tauri::command]
@@ -1107,15 +1078,10 @@ pub struct SoundOutputResponse {
 #[tauri::command]
 pub fn get_sound_event(
     _engine_state: State<'_, Mutex<CoreEngine>>,
-    _state: State<'_, AppState>,
+    state: State<'_, AppState>,
     event: String,
 ) -> Result<Option<SoundOutputResponse>, AppError> {
-    let settings_path = dirs::config_dir()
-        .unwrap_or_default()
-        .join("racoon-typper")
-        .join("settings.toml");
-    let settings_store = racoon_data::repository::SettingsStore::new(settings_path);
-    let settings = settings_store.load().unwrap_or_default();
+    let settings = state.settings_store().load()?;
 
     if !settings.sound_enabled {
         return Ok(None);
@@ -1148,163 +1114,90 @@ pub fn get_sound_event(
     }))
 }
 
-// ── Session Recovery ──
+// ── Helpers ──
 
-#[derive(Debug, serde::Serialize, serde::Deserialize)]
-pub struct SessionState {
-    pub text: String,
-    pub typed_chars: Vec<bool>,
-    pub mode_type: String,
-    pub language: String,
-    pub elapsed_ms: u64,
-    pub saved_at: String,
+struct CompletedSession {
+    final_stats: FinalStats,
+    mode_type: String,
+    mode_config: serde_json::Value,
+    language: String,
+    text_length: usize,
+    replay_frames: Vec<racoon_core::ReplayFrame>,
 }
 
-#[tauri::command]
-pub fn save_session_state(
-    state: State<'_, AppState>,
-    session: SessionState,
-) -> Result<(), AppError> {
-    let path = state.data_dir.join("session_recovery.json");
-    let json = serde_json::to_string(&session).map_err(AppError::from)?;
-    std::fs::write(&path, json).map_err(|e| AppError::Internal(e.to_string()))
-}
-
-#[tauri::command]
-pub fn load_session_state(state: State<'_, AppState>) -> Result<Option<SessionState>, AppError> {
-    let path = state.data_dir.join("session_recovery.json");
-    if !path.exists() {
-        return Ok(None);
+fn test_record_from_completion(completed: &CompletedSession) -> TestRecord {
+    TestRecord {
+        created_at: chrono::Utc::now().to_rfc3339(),
+        mode_type: completed.mode_type.clone(),
+        mode_config: completed.mode_config.clone(),
+        language: completed.language.clone(),
+        text_length: completed.text_length,
+        duration_ms: completed.final_stats.duration_ms,
+        wpm: completed.final_stats.wpm,
+        raw_wpm: completed.final_stats.raw_wpm,
+        accuracy: completed.final_stats.accuracy,
+        raw_accuracy: completed.final_stats.raw_accuracy,
+        consistency: completed.final_stats.consistency,
+        correct_chars: completed.final_stats.correct_chars,
+        incorrect_chars: completed.final_stats.incorrect_chars,
+        backspaces: completed.final_stats.backspaces,
+        char_stats: completed.final_stats.char_stats.clone(),
+        heatmap_data: completed.final_stats.heatmap.clone(),
+        graph_data: completed.final_stats.graph_data.clone(),
+        is_pb: false,
+        tags: String::new(),
     }
-    let json = std::fs::read_to_string(&path).map_err(|e| AppError::Internal(e.to_string()))?;
-    let session: SessionState = serde_json::from_str(&json).map_err(AppError::from)?;
-    Ok(Some(session))
 }
 
-#[tauri::command]
-pub fn clear_session_state(state: State<'_, AppState>) -> Result<(), AppError> {
-    let path = state.data_dir.join("session_recovery.json");
-    if path.exists() {
-        std::fs::remove_file(&path).map_err(|e| AppError::Internal(e.to_string()))?;
-    }
-    Ok(())
-}
+fn persist_daily_streak(conn: &Connection, today: &str) -> Result<(), AppError> {
+    let existing = conn
+        .query_row(
+            "SELECT current_streak, longest_streak, last_date, started_date
+             FROM streaks WHERE type = 'daily_test'",
+            [],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, i64>(1)?,
+                    row.get::<_, Option<String>>(2)?,
+                    row.get::<_, Option<String>>(3)?,
+                ))
+            },
+        )
+        .optional()
+        .map_err(|error| AppError::DbQuery(error.to_string()))?;
 
-// ── Extended Statistics ──
-
-#[derive(Debug, serde::Serialize)]
-pub struct ExtendedStatsResponse {
-    pub best_day_wpm: f64,
-    pub best_day_date: String,
-    pub most_active_hour: i64,
-    pub avg_session_duration_ms: i64,
-    pub total_chars: i64,
-    pub total_words: i64,
-}
-
-#[tauri::command]
-pub fn get_extended_stats(state: State<'_, AppState>) -> Result<ExtendedStatsResponse, AppError> {
-    let db = state.db.lock()?;
-    let conn = db.conn();
-    let test_repo = SqliteTestRepository::new(&conn);
-    let daily_repo = SqliteDailyStatsRepository::new(&conn);
-
-    // Best day
-    let thirty_days_ago = (chrono::Utc::now() - chrono::Duration::days(30))
-        .format("%Y-%m-%d")
-        .to_string();
-    let today = chrono::Utc::now().format("%Y-%m-%d").to_string();
-    let range = daily_repo
-        .get_range(&thirty_days_ago, &today)
-        .unwrap_or_default();
-
-    let (best_day_wpm, best_day_date) = range
-        .iter()
-        .max_by(|a, b| {
-            a.best_wpm
-                .partial_cmp(&b.best_wpm)
-                .unwrap_or(std::cmp::Ordering::Equal)
-        })
-        .map(|d| (d.best_wpm, d.date.clone()))
-        .unwrap_or((0.0, "N/A".to_string()));
-
-    // Most active hour
-    let history = test_repo.get_history(500, 0, None).unwrap_or_default();
-    let mut hour_counts: [i64; 24] = [0; 24];
-    for test in &history {
-        if let Some(hour_str) = test.created_at.split('T').nth(1) {
-            if let Some(hour) = hour_str.get(0..2) {
-                if let Ok(h) = hour.parse::<usize>() {
-                    if h < 24 {
-                        hour_counts[h] += 1;
-                    }
-                }
-            }
-        }
-    }
-    let most_active_hour = hour_counts
-        .iter()
-        .enumerate()
-        .max_by_key(|(_, &c)| c)
-        .map(|(h, _)| h as i64)
-        .unwrap_or(0);
-
-    // Avg session duration
-    let total_duration: i64 = history.iter().map(|t| t.duration_ms as i64).sum();
-    let avg_session_duration_ms = if history.is_empty() {
-        0
+    let (previous_current, previous_longest, last_date, previous_started_date) =
+        existing.unwrap_or((0, 0, None, None));
+    let starts_new_streak = last_date
+        .as_deref()
+        .is_none_or(|last| racoon_core::StreakEngine::days_between(last, today) > 1);
+    let (current, longest, _) = racoon_core::StreakEngine::compute_streak(
+        previous_current,
+        previous_longest,
+        last_date.as_deref(),
+        today,
+    );
+    let started_date = if starts_new_streak {
+        today.to_string()
     } else {
-        total_duration / history.len() as i64
+        previous_started_date.unwrap_or_else(|| today.to_string())
     };
 
-    // Total chars and words (estimated from WPM * duration)
-    let total_chars: i64 = history
-        .iter()
-        .map(|t| (t.wpm * 5.0 * (t.duration_ms as f64 / 60000.0)) as i64)
-        .sum();
-    let total_words = total_chars / 5;
-
-    Ok(ExtendedStatsResponse {
-        best_day_wpm,
-        best_day_date,
-        most_active_hour,
-        avg_session_duration_ms,
-        total_chars,
-        total_words,
-    })
+    conn.execute(
+        "INSERT INTO streaks (
+            type, current_streak, longest_streak, last_date, started_date
+         ) VALUES ('daily_test', ?1, ?2, ?3, ?4)
+         ON CONFLICT(type) DO UPDATE SET
+            current_streak = excluded.current_streak,
+            longest_streak = excluded.longest_streak,
+            last_date = excluded.last_date,
+            started_date = excluded.started_date",
+        params![current, longest, today, started_date],
+    )
+    .map_err(|error| AppError::DbWrite(error.to_string()))?;
+    Ok(())
 }
-
-// ── Export/Import Profile ──
-
-#[tauri::command]
-pub fn export_profile(state: State<'_, AppState>) -> Result<String, AppError> {
-    let db = state.db.lock()?;
-    let conn = db.conn();
-    let test_repo = SqliteTestRepository::new(&conn);
-    let ct_repo = SqliteCustomTextRepository::new(&conn);
-    let lesson_repo = SqliteLessonRepository::new(&conn);
-    let pb_repo = SqlitePersonalBestsRepository::new(&conn);
-
-    let history = test_repo.get_history(10000, 0, None)?;
-    let custom_texts = ct_repo.get_all(1000)?;
-    let lessons_en = lesson_repo.get_progress("en").unwrap_or_default();
-    let lessons_ru = lesson_repo.get_progress("ru").unwrap_or_default();
-    let bests = pb_repo.get_bests(None)?;
-
-    let profile = serde_json::json!({
-        "version": "1.1.0",
-        "exported_at": chrono::Utc::now().to_rfc3339(),
-        "tests": history,
-        "custom_texts": custom_texts,
-        "lessons_en": lessons_en,
-        "lessons_ru": lessons_ru,
-        "personal_bests": bests,
-    });
-
-    Ok(serde_json::to_string_pretty(&profile).unwrap_or_default())
-}
-
-// ── Helpers ──
 
 #[derive(Debug, serde::Serialize)]
 pub struct TestSessionResponse {
@@ -1361,5 +1254,54 @@ fn json_to_toml_value(value: &serde_json::Value) -> toml::Value {
         }
         serde_json::Value::Bool(b) => toml::Value::Boolean(*b),
         _ => toml::Value::String(value.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn completed_session_record_preserves_unicode_text_length() {
+        let completed = CompletedSession {
+            final_stats: FinalStats {
+                wpm: 40.0,
+                raw_wpm: 42.0,
+                accuracy: 98.0,
+                raw_accuracy: 96.0,
+                consistency: Some(90.0),
+                correct_chars: 6,
+                incorrect_chars: 0,
+                backspaces: 0,
+                char_stats: serde_json::json!({}),
+                heatmap: serde_json::json!({}),
+                graph_data: Some(serde_json::json!([])),
+                duration_ms: 10_000,
+            },
+            mode_type: "custom".to_string(),
+            mode_config: serde_json::json!({"language": "ru"}),
+            language: "ru".to_string(),
+            text_length: "привет".chars().count(),
+            replay_frames: Vec::new(),
+        };
+
+        assert_eq!(test_record_from_completion(&completed).text_length, 6);
+    }
+
+    #[test]
+    fn daily_streak_is_persisted() {
+        let database = racoon_data::Database::open_in_memory().unwrap();
+        let conn = database.conn();
+        persist_daily_streak(&conn, "2026-07-10").unwrap();
+        persist_daily_streak(&conn, "2026-07-11").unwrap();
+
+        let streak = conn
+            .query_row(
+                "SELECT current_streak, longest_streak FROM streaks WHERE type = 'daily_test'",
+                [],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, i64>(1)?)),
+            )
+            .unwrap();
+        assert_eq!(streak, (2, 2));
     }
 }

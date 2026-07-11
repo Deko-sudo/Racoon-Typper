@@ -53,19 +53,13 @@ export interface TestSummary {
   is_pb: boolean;
 }
 
-export interface TestDetail {
-  id: number;
-  created_at: string;
-  mode_type: string;
-  mode_config: Record<string, unknown>;
-  language: string;
-  wpm: number;
-  raw_wpm: number;
-  accuracy: number;
-  raw_accuracy: number;
-  duration_ms: number;
-  char_stats: Record<string, unknown>;
-  heatmap_data: Record<string, unknown>;
+export interface ReplayFrame {
+  frame_index: number;
+  timestamp_ms: number;
+  position: number;
+  expected_char: string;
+  typed_char: string | null;
+  correct: boolean;
 }
 
 export interface StatsHistoryResponse {
@@ -89,6 +83,7 @@ export interface CustomText {
   id: number;
   name: string;
   text: string;
+  language: LanguageCode;
   created_at: string;
   last_used_at: string | null;
   use_count: number;
@@ -149,6 +144,13 @@ export interface CourseResponse {
   modules: ModuleResponse[];
 }
 
+export interface LessonProgressRecord {
+  lesson_id: string;
+  status: string;
+  best_wpm: number;
+  best_accuracy: number;
+}
+
 export interface DashboardStatsResponse {
   current_streak: number;
   longest_streak: number;
@@ -158,12 +160,6 @@ export interface DashboardStatsResponse {
   tests_this_week: number;
   total_tests: number;
   daily_goal_met: boolean;
-}
-
-export interface StreakInfoResponse {
-  current: number;
-  longest: number;
-  is_active: boolean;
 }
 
 export interface ProgressPoint {

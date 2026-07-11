@@ -2,7 +2,7 @@
 //! Синхронная архитектура: process_key() → EngineOutput.
 //! CoreEngine не знает конкретный режим — работает через dyn TestMode.
 
-use racoon_domain::{EngineOutput, FinalStats, KeyResult, VisiblePos};
+use racoon_domain::{CharStatus, EngineOutput, FinalStats, KeyResult, VisiblePos};
 
 use crate::input::{KeyAction, KeyClassifier, KeyEvent};
 use crate::modes::{ModeResult, ModeType, TestMode};
@@ -20,6 +20,19 @@ pub struct TestSession {
 pub struct CoreEngine {
     session: Option<TestSession>,
     stats: StatisticsEngine,
+    replay_frames: Vec<ReplayFrame>,
+    replay_start_timestamp_ms: Option<u64>,
+}
+
+/// One authoritative input frame captured during a typing session.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct ReplayFrame {
+    pub timestamp_ms: u64,
+    pub key: String,
+    pub caret_pos: usize,
+    pub char_status: CharStatus,
+    pub expected_char: char,
+    pub typed_char: Option<char>,
 }
 
 /// Информация о стартованной сессии (возвращается в frontend).
@@ -38,6 +51,8 @@ impl CoreEngine {
         Self {
             session: None,
             stats: StatisticsEngine::new(),
+            replay_frames: Vec::new(),
+            replay_start_timestamp_ms: None,
         }
     }
 
@@ -70,6 +85,8 @@ impl CoreEngine {
             buffer,
         });
         self.stats.reset();
+        self.replay_frames.clear();
+        self.replay_start_timestamp_ms = None;
         info
     }
 
@@ -77,6 +94,8 @@ impl CoreEngine {
     pub fn abort(&mut self) {
         self.session = None;
         self.stats.reset();
+        self.replay_frames.clear();
+        self.replay_start_timestamp_ms = None;
     }
 
     /// Сбрасывает тест с тем же режимом и текстом.
@@ -86,6 +105,8 @@ impl CoreEngine {
             session.buffer = TextBuffer::new(&text);
         }
         self.stats.reset();
+        self.replay_frames.clear();
+        self.replay_start_timestamp_ms = None;
     }
 
     /// Обрабатывает нажатие клавиши. Возвращает EngineOutput.
@@ -97,6 +118,7 @@ impl CoreEngine {
 
         // Классификация
         let action = KeyClassifier::classify(&key_event.key, &key_event.code);
+        let previous_caret_pos = session.buffer.current_position;
 
         // Делегируем обработку режиму
         let typing_result = match action {
@@ -108,60 +130,44 @@ impl CoreEngine {
                 match mode_result {
                     ModeResult::Complete => TypingResult::TestEnded,
                     ModeResult::Continue => {
-                        // Определяем TypingResult по статусу текущей позиции
-                        if session.buffer.current_position > 0 {
-                            let prev = session.buffer.typed_chars
-                                [session.buffer.current_position - 1]
-                                .status
-                                .clone();
-                            match prev {
-                                racoon_domain::CharStatus::Correct => TypingResult::Correct,
-                                racoon_domain::CharStatus::Incorrect => TypingResult::Incorrect,
-                                _ => TypingResult::Noop,
-                            }
-                        } else {
-                            // Позиция не двигалась — incorrect
-                            let curr = session
-                                .buffer
-                                .typed_chars
-                                .get(session.buffer.current_position);
-                            match curr.map(|tc| tc.status.clone()) {
-                                Some(racoon_domain::CharStatus::Incorrect) => {
-                                    TypingResult::Incorrect
-                                }
-                                _ => TypingResult::Noop,
-                            }
+                        match session
+                            .buffer
+                            .typed_chars
+                            .get(previous_caret_pos)
+                            .map(|typed| &typed.status)
+                        {
+                            Some(racoon_domain::CharStatus::Correct) => TypingResult::Correct,
+                            Some(racoon_domain::CharStatus::Incorrect) => TypingResult::Incorrect,
+                            _ => TypingResult::Noop,
                         }
                     }
                     ModeResult::Failed(_) => TypingResult::Noop,
                 }
             }
             KeyAction::Backspace => {
+                let backspace_result = match session
+                    .buffer
+                    .typed_chars
+                    .get(previous_caret_pos)
+                    .map(|typed| &typed.status)
+                {
+                    Some(CharStatus::Incorrect) => TypingResult::UndoneIncorrect,
+                    _ if previous_caret_pos > 0 => match session
+                        .buffer
+                        .typed_chars
+                        .get(previous_caret_pos - 1)
+                        .map(|typed| &typed.status)
+                    {
+                        Some(CharStatus::Correct) => TypingResult::UndoneCorrect,
+                        Some(CharStatus::Incorrect) => TypingResult::UndoneIncorrect,
+                        _ => TypingResult::Noop,
+                    },
+                    _ => TypingResult::Noop,
+                };
                 let mode_result = session.mode.on_backspace(&mut session.buffer);
                 match mode_result {
                     ModeResult::Complete => TypingResult::TestEnded,
-                    _ => {
-                        // Определяем результат backspace по смене позиции
-                        // on_backspace уже вызвал buf.process_backspace() внутри режима
-                        // Нужно определить результат — проверяем что caret изменился
-                        // К сожалению результат потерян. Нужно вернуть TypingResult из режима.
-                        // Пока определяем по статусу:
-                        if session.buffer.current_position < session.buffer.typed_chars.len() {
-                            let status = session.buffer.typed_chars
-                                [session.buffer.current_position]
-                                .status
-                                .clone();
-                            match status {
-                                racoon_domain::CharStatus::Pending => TypingResult::UndoneIncorrect,
-                                racoon_domain::CharStatus::Backspaced => {
-                                    TypingResult::UndoneCorrect
-                                }
-                                _ => TypingResult::Noop,
-                            }
-                        } else {
-                            TypingResult::Noop
-                        }
-                    }
+                    _ => backspace_result,
                 }
             }
             _ => TypingResult::Noop,
@@ -172,7 +178,29 @@ impl CoreEngine {
         let is_complete = session.mode.is_complete(&session.buffer);
 
         // Обновляем статистику
-        self.stats.on_key_processed(&typing_result, &session.buffer);
+        self.stats
+            .on_key_processed_at(&typing_result, &session.buffer, key_event.timestamp);
+
+        if !matches!(typing_result, TypingResult::Noop | TypingResult::TestEnded) {
+            let affected_position = match typing_result {
+                TypingResult::Correct | TypingResult::Incorrect => previous_caret_pos,
+                TypingResult::UndoneCorrect | TypingResult::UndoneIncorrect => caret_pos,
+                TypingResult::Noop | TypingResult::TestEnded => unreachable!(),
+            };
+            if let Some(typed_char) = session.buffer.typed_chars.get(affected_position) {
+                let start_timestamp = *self
+                    .replay_start_timestamp_ms
+                    .get_or_insert(key_event.timestamp);
+                self.replay_frames.push(ReplayFrame {
+                    timestamp_ms: key_event.timestamp.saturating_sub(start_timestamp),
+                    key: key_event.key.clone(),
+                    caret_pos,
+                    char_status: typed_char.status.clone(),
+                    expected_char: typed_char.expected,
+                    typed_char: typed_char.typed,
+                });
+            }
+        }
 
         // Live stats
         let live_stats = if session.buffer.start_time.is_some() && !is_complete {
@@ -234,6 +262,11 @@ impl CoreEngine {
     /// Язык текущего теста.
     pub fn current_language(&self) -> Option<&str> {
         self.session.as_ref().map(|s| s.mode.language())
+    }
+
+    /// Replay frames captured for the active or most recently completed session.
+    pub fn replay_frames(&self) -> &[ReplayFrame] {
+        &self.replay_frames
     }
 
     /// Возвращает char_stats из последней завершённой сессии.
@@ -345,6 +378,18 @@ mod tests {
     }
 
     #[test]
+    fn incorrect_key_after_progress_is_reported_as_incorrect() {
+        let mut engine = CoreEngine::new();
+        let mode = Box::new(TimeMode::new("hello".to_string(), "en".to_string(), 30));
+        engine.start_test_mode("s1".to_string(), mode);
+
+        engine.process_key(&make_key("h", "KeyH"));
+        let output = engine.process_key(&make_key("x", "KeyX"));
+        assert_eq!(output.key_result, KeyResult::Incorrect);
+        assert_eq!(output.caret_pos, 1);
+    }
+
+    #[test]
     fn backspace_with_mode() {
         let mut engine = CoreEngine::new();
         let mode = Box::new(TimeMode::new("hello".to_string(), "en".to_string(), 30));
@@ -354,6 +399,17 @@ mod tests {
         let output = engine.process_key(&make_key("Backspace", "Backspace"));
         assert_eq!(output.key_result, KeyResult::UndoneCorrect);
         assert_eq!(output.caret_pos, 0);
+    }
+
+    #[test]
+    fn backspace_at_start_is_noop_and_not_replayed() {
+        let mut engine = CoreEngine::new();
+        let mode = Box::new(TimeMode::new("hello".to_string(), "en".to_string(), 30));
+        engine.start_test_mode("s1".to_string(), mode);
+
+        let output = engine.process_key(&make_key("Backspace", "Backspace"));
+        assert_eq!(output.key_result, KeyResult::Noop);
+        assert!(engine.replay_frames().is_empty());
     }
 
     #[test]
@@ -447,5 +503,40 @@ mod tests {
         assert_eq!(info.mode_type, "time");
         assert_eq!(info.mode_config["duration"], 15);
         assert_eq!(info.language, "en");
+    }
+
+    #[test]
+    fn process_key_collects_authoritative_replay_frames() {
+        let mut engine = CoreEngine::new();
+        let mode = Box::new(TimeMode::new("hi".to_string(), "en".to_string(), 30));
+        engine.start_test_mode("s1".to_string(), mode);
+
+        engine.process_key(&KeyEvent {
+            key: "h".to_string(),
+            code: "KeyH".to_string(),
+            timestamp: 1_000,
+        });
+        engine.process_key(&KeyEvent {
+            key: "x".to_string(),
+            code: "KeyX".to_string(),
+            timestamp: 1_250,
+        });
+
+        assert_eq!(engine.replay_frames().len(), 2);
+        assert_eq!(engine.replay_frames()[0].timestamp_ms, 0);
+        assert_eq!(engine.replay_frames()[0].caret_pos, 1);
+        assert_eq!(engine.replay_frames()[0].char_status, CharStatus::Correct);
+        assert_eq!(engine.replay_frames()[1].timestamp_ms, 250);
+        assert_eq!(engine.replay_frames()[1].key, "x");
+        assert_eq!(engine.replay_frames()[1].char_status, CharStatus::Incorrect);
+    }
+
+    #[test]
+    fn ignored_keys_are_not_replay_frames() {
+        let mut engine = CoreEngine::new();
+        let mode = Box::new(TimeMode::new("hi".to_string(), "en".to_string(), 30));
+        engine.start_test_mode("s1".to_string(), mode);
+        engine.process_key(&make_key("Shift", "ShiftLeft"));
+        assert!(engine.replay_frames().is_empty());
     }
 }
