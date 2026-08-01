@@ -5,7 +5,7 @@
 
 #[cfg(target_os = "linux")]
 use std::env;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use tauri::{App, Manager, Wry};
 
@@ -39,6 +39,9 @@ pub fn resolve(app: &App<Wry>) -> Result<AppPaths, Box<dyn std::error::Error>> {
         settings_path,
     })
 }
+
+#[cfg(target_os = "linux")]
+use std::path::Path;
 
 #[cfg(target_os = "linux")]
 fn migrate_linux_baseline_paths(
