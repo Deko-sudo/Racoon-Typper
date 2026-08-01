@@ -3,6 +3,7 @@
 
 //! Platform-managed application paths with a one-way Linux legacy-path migration.
 
+#[cfg(target_os = "linux")]
 use std::env;
 use std::path::{Path, PathBuf};
 
@@ -75,6 +76,7 @@ fn migrate_linux_baseline_paths(
 
 /// Copies a file only when its destination is absent. The temporary sibling plus
 /// rename keeps an interrupted migration from exposing a partially copied file.
+#[cfg(any(target_os = "linux", test))]
 fn copy_if_missing(source: &Path, destination: &Path) -> std::io::Result<bool> {
     if destination.exists() || !source.exists() {
         return Ok(false);
