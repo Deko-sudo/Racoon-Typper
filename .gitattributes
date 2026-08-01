@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Racoon Typper Contributors
+
+# Normalize all text files to LF on checkout, regardless of host platform.
+# Windows checkout with core.autocrlf would otherwise introduce CRLF, which
+# breaks line-sensitive tools such as scripts/check-version.mjs.
+* text=auto eol=lf
+
+# Binary assets must never be normalized.
+*.png binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary

@@ -10,7 +10,7 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..");
 
 function read(path) {
-  return readFileSync(join(repositoryRoot, path), "utf8");
+  return readFileSync(join(repositoryRoot, path), "utf8").replace(/\r/g, "");
 }
 
 function requiredMatch(value, pattern, description) {
