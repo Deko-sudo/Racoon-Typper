@@ -68,6 +68,37 @@ impl<'a> SqliteLessonRepository<'a> {
     pub fn new(conn: &'a Connection) -> Self {
         Self { conn }
     }
+
+    /// Transaction-scoped completion helper used by the recovery finalizer.
+    /// The supplied timestamp comes from the immutable completion intent.
+    pub(crate) fn complete_lesson_at(
+        &self,
+        lesson_id: &str,
+        wpm: f64,
+        accuracy: f64,
+        completed_at: &str,
+    ) -> Result<(), DbError> {
+        let affected = self
+            .conn
+            .execute(
+                "UPDATE lesson_progress
+                 SET best_wpm = CASE WHEN ?1 > best_wpm THEN ?1 ELSE best_wpm END,
+                     best_accuracy = CASE WHEN ?2 > best_accuracy THEN ?2 ELSE best_accuracy END,
+                     attempts = attempts + 1,
+                     last_attempt_at = ?3,
+                     completed_at = ?3,
+                     status = 'completed'
+                 WHERE lesson_id = ?4",
+                params![wpm, accuracy, completed_at, lesson_id],
+            )
+            .map_err(|e| DbError::Write(e.to_string()))?;
+        if affected == 0 {
+            return Err(DbError::NotFound(format!(
+                "LessonProgress lesson_id={lesson_id}"
+            )));
+        }
+        Ok(())
+    }
 }
 
 impl<'a> LessonRepository for SqliteLessonRepository<'a> {
@@ -184,21 +215,7 @@ impl<'a> LessonRepository for SqliteLessonRepository<'a> {
     }
 
     fn complete_lesson(&self, lesson_id: &str, wpm: f64, accuracy: f64) -> Result<(), DbError> {
-        let now = chrono::Utc::now().to_rfc3339();
-        self.conn
-            .execute(
-                "UPDATE lesson_progress
-                 SET best_wpm = CASE WHEN ?1 > best_wpm THEN ?1 ELSE best_wpm END,
-                     best_accuracy = CASE WHEN ?2 > best_accuracy THEN ?2 ELSE best_accuracy END,
-                     attempts = attempts + 1,
-                     last_attempt_at = ?3,
-                     completed_at = ?3,
-                     status = 'completed'
-                 WHERE lesson_id = ?4",
-                params![wpm, accuracy, now, lesson_id],
-            )
-            .map_err(|e| DbError::Write(e.to_string()))?;
-        Ok(())
+        self.complete_lesson_at(lesson_id, wpm, accuracy, &chrono::Utc::now().to_rfc3339())
     }
 
     fn get_course_progress(&self, language: &str) -> Result<CourseProgress, DbError> {
@@ -276,7 +293,7 @@ mod tests {
 
     fn setup() -> SqliteLessonRepository<'static> {
         let conn = Box::leak(Box::new(rusqlite::Connection::open_in_memory().unwrap()));
-        crate::db::run_migrations(conn);
+        crate::db::run_migrations(conn).expect("Failed to run test migrations");
         SqliteLessonRepository::new(conn)
     }
 
@@ -464,9 +481,12 @@ mod tests {
     }
 
     #[test]
-    fn complete_lesson_nonexistent_no_error() {
+    fn complete_lesson_nonexistent_fails() {
         let repo = setup();
-        repo.complete_lesson("nonexistent", 30.0, 95.0).unwrap();
+        assert!(matches!(
+            repo.complete_lesson("nonexistent", 30.0, 95.0),
+            Err(DbError::NotFound(_))
+        ));
     }
 
     #[test]

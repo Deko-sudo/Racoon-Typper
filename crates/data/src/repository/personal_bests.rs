@@ -37,6 +37,132 @@ impl<'a> SqlitePersonalBestsRepository<'a> {
     pub fn new(conn: &'a Connection) -> Self {
         Self { conn }
     }
+
+    /// Applies the existing personal-best policy with an explicitly supplied
+    /// timestamp. This is intentionally infrastructure-private: the atomic
+    /// recovery finalizer supplies the immutable completion timestamp, while
+    /// the legacy repository trait retains its wall-clock convenience method.
+    pub(crate) fn check_and_update_at(
+        &self,
+        mode_type: &str,
+        mode_config: &str,
+        wpm: f64,
+        accuracy: f64,
+        test_id: i64,
+        updated_at: &str,
+    ) -> Result<Vec<PbUpdate>, DbError> {
+        let hash = config_hash(mode_type, mode_config);
+        let consistency = self
+            .conn
+            .query_row(
+                "SELECT consistency FROM tests WHERE id = ?1",
+                params![test_id],
+                |row| row.get::<_, Option<f64>>(0),
+            )
+            .optional()
+            .map_err(|e| DbError::Query(e.to_string()))?
+            .flatten();
+
+        let mut updates = Vec::new();
+        let existing: Option<(f64, f64, Option<f64>)> = self
+            .conn
+            .query_row(
+                "SELECT best_wpm, best_accuracy, best_consistency FROM personal_bests
+                 WHERE mode_type = ?1 AND mode_config_hash = ?2",
+                params![mode_type, hash],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get::<_, Option<f64>>(2)?)),
+            )
+            .optional()
+            .map_err(|e| DbError::Query(e.to_string()))?;
+
+        match existing {
+            Some((prev_wpm, prev_acc, prev_consistency)) => {
+                if wpm > prev_wpm {
+                    updates.push(PbUpdate {
+                        metric: "wpm".to_string(),
+                        previous: Some(prev_wpm),
+                        new: wpm,
+                        test_id,
+                    });
+                }
+                if accuracy > prev_acc {
+                    updates.push(PbUpdate {
+                        metric: "accuracy".to_string(),
+                        previous: Some(prev_acc),
+                        new: accuracy,
+                        test_id,
+                    });
+                }
+                if let Some(value) = consistency {
+                    if prev_consistency.is_none_or(|previous| value > previous) {
+                        updates.push(PbUpdate {
+                            metric: "consistency".to_string(),
+                            previous: prev_consistency,
+                            new: value,
+                            test_id,
+                        });
+                    }
+                }
+                if !updates.is_empty() {
+                    self.conn.execute(
+                        "UPDATE personal_bests SET
+                            best_wpm = CASE WHEN ?1 > best_wpm THEN ?1 ELSE best_wpm END,
+                            best_wpm_test_id = CASE WHEN ?1 > best_wpm THEN ?4 ELSE best_wpm_test_id END,
+                            best_accuracy = CASE WHEN ?2 > best_accuracy THEN ?2 ELSE best_accuracy END,
+                            best_accuracy_test_id = CASE WHEN ?2 > best_accuracy THEN ?4 ELSE best_accuracy_test_id END,
+                            best_consistency = CASE WHEN ?3 IS NOT NULL AND (best_consistency IS NULL OR ?3 > best_consistency) THEN ?3 ELSE best_consistency END,
+                            best_consistency_test_id = CASE WHEN ?3 IS NOT NULL AND (best_consistency IS NULL OR ?3 > best_consistency) THEN ?4 ELSE best_consistency_test_id END,
+                            updated_at = ?5
+                         WHERE mode_type = ?6 AND mode_config_hash = ?7",
+                        params![wpm, accuracy, consistency, test_id, updated_at, mode_type, hash],
+                    ).map_err(|e| DbError::Write(e.to_string()))?;
+                }
+            }
+            None => {
+                self.conn
+                    .execute(
+                        "INSERT INTO personal_bests (mode_type, mode_config_hash, mode_config,
+                 best_wpm, best_wpm_test_id, best_accuracy, best_accuracy_test_id,
+                 best_consistency, best_consistency_test_id, updated_at)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                        params![
+                            mode_type,
+                            hash,
+                            mode_config,
+                            wpm,
+                            test_id,
+                            accuracy,
+                            test_id,
+                            consistency,
+                            consistency.map(|_| test_id),
+                            updated_at
+                        ],
+                    )
+                    .map_err(|e| DbError::Write(e.to_string()))?;
+                updates.push(PbUpdate {
+                    metric: "wpm".to_string(),
+                    previous: None,
+                    new: wpm,
+                    test_id,
+                });
+                if let Some(value) = consistency {
+                    updates.push(PbUpdate {
+                        metric: "consistency".to_string(),
+                        previous: None,
+                        new: value,
+                        test_id,
+                    });
+                }
+                updates.push(PbUpdate {
+                    metric: "accuracy".to_string(),
+                    previous: None,
+                    new: accuracy,
+                    test_id,
+                });
+            }
+        }
+        Ok(updates)
+    }
 }
 
 impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
@@ -88,141 +214,14 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
         accuracy: f64,
         test_id: i64,
     ) -> Result<Vec<PbUpdate>, DbError> {
-        let hash = config_hash(mode_type, mode_config);
-        let now = chrono::Utc::now().to_rfc3339();
-        let consistency = self
-            .conn
-            .query_row(
-                "SELECT consistency FROM tests WHERE id = ?1",
-                params![test_id],
-                |row| row.get::<_, Option<f64>>(0),
-            )
-            .optional()
-            .map_err(|e| DbError::Query(e.to_string()))?
-            .flatten();
-
-        let mut updates = Vec::new();
-
-        // Проверяем существующую запись
-        let existing: Option<(f64, f64, Option<f64>)> = self
-            .conn
-            .query_row(
-                "SELECT best_wpm, best_accuracy, best_consistency FROM personal_bests
-                 WHERE mode_type = ?1 AND mode_config_hash = ?2",
-                params![mode_type, hash],
-                |row| Ok((row.get(0)?, row.get(1)?, row.get::<_, Option<f64>>(2)?)),
-            )
-            .optional()
-            .map_err(|e| DbError::Query(e.to_string()))?;
-
-        match existing {
-            Some((prev_wpm, prev_acc, prev_consistency)) => {
-                // Обновляем если превзойдён
-                if wpm > prev_wpm {
-                    updates.push(PbUpdate {
-                        metric: "wpm".to_string(),
-                        previous: Some(prev_wpm),
-                        new: wpm,
-                        test_id,
-                    });
-                }
-
-                if accuracy > prev_acc {
-                    updates.push(PbUpdate {
-                        metric: "accuracy".to_string(),
-                        previous: Some(prev_acc),
-                        new: accuracy,
-                        test_id,
-                    });
-                }
-
-                if let Some(value) = consistency {
-                    if prev_consistency.is_none_or(|previous| value > previous) {
-                        updates.push(PbUpdate {
-                            metric: "consistency".to_string(),
-                            previous: prev_consistency,
-                            new: value,
-                            test_id,
-                        });
-                    }
-                }
-
-                if !updates.is_empty() {
-                    self.conn
-                        .execute(
-                            "UPDATE personal_bests SET
-                                best_wpm = CASE WHEN ?1 > best_wpm THEN ?1 ELSE best_wpm END,
-                                best_wpm_test_id = CASE WHEN ?1 > best_wpm THEN ?4 ELSE best_wpm_test_id END,
-                                best_accuracy = CASE WHEN ?2 > best_accuracy THEN ?2 ELSE best_accuracy END,
-                                best_accuracy_test_id = CASE WHEN ?2 > best_accuracy THEN ?4 ELSE best_accuracy_test_id END,
-                                best_consistency = CASE
-                                    WHEN ?3 IS NOT NULL AND (best_consistency IS NULL OR ?3 > best_consistency)
-                                    THEN ?3 ELSE best_consistency END,
-                                best_consistency_test_id = CASE
-                                    WHEN ?3 IS NOT NULL AND (best_consistency IS NULL OR ?3 > best_consistency)
-                                    THEN ?4 ELSE best_consistency_test_id END,
-                                updated_at = ?5
-                             WHERE mode_type = ?6 AND mode_config_hash = ?7",
-                            params![
-                                wpm,
-                                accuracy,
-                                consistency,
-                                test_id,
-                                now,
-                                mode_type,
-                                hash,
-                            ],
-                        )
-                        .map_err(|e| DbError::Write(e.to_string()))?;
-                }
-            }
-            None => {
-                // Первая запись — все метрики = рекорды
-                self.conn
-                    .execute(
-                        "INSERT INTO personal_bests (mode_type, mode_config_hash, mode_config,
-                     best_wpm, best_wpm_test_id, best_accuracy, best_accuracy_test_id,
-                     best_consistency, best_consistency_test_id, updated_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-                        params![
-                            mode_type,
-                            hash,
-                            mode_config,
-                            wpm,
-                            test_id,
-                            accuracy,
-                            test_id,
-                            consistency,
-                            consistency.map(|_| test_id),
-                            now,
-                        ],
-                    )
-                    .map_err(|e| DbError::Write(e.to_string()))?;
-
-                updates.push(PbUpdate {
-                    metric: "wpm".to_string(),
-                    previous: None,
-                    new: wpm,
-                    test_id,
-                });
-                if let Some(value) = consistency {
-                    updates.push(PbUpdate {
-                        metric: "consistency".to_string(),
-                        previous: None,
-                        new: value,
-                        test_id,
-                    });
-                }
-                updates.push(PbUpdate {
-                    metric: "accuracy".to_string(),
-                    previous: None,
-                    new: accuracy,
-                    test_id,
-                });
-            }
-        }
-
-        Ok(updates)
+        self.check_and_update_at(
+            mode_type,
+            mode_config,
+            wpm,
+            accuracy,
+            test_id,
+            &chrono::Utc::now().to_rfc3339(),
+        )
     }
 }
 
@@ -247,7 +246,7 @@ mod tests {
     use super::*;
     use crate::db::Database;
     use crate::repository::tests::{SqliteTestRepository, TestRepository};
-    use racoon_domain::TestRecord;
+    use racoon_domain::{SessionId, TestRecord};
 
     fn save_test_with_repo(conn: &Connection, wpm: f64, acc: f64) -> i64 {
         save_test_with_consistency(conn, wpm, acc, None)
@@ -261,6 +260,7 @@ mod tests {
     ) -> i64 {
         let test_repo = SqliteTestRepository::new(conn);
         let record = TestRecord {
+            session_id: SessionId::from(format!("personal-best-{wpm}-{acc}")),
             created_at: chrono::Utc::now().to_rfc3339(),
             mode_type: "time".to_string(),
             mode_config: serde_json::json!({"duration": 30}),

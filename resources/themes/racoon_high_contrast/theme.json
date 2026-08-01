@@ -1,0 +1,18 @@
+{
+  "name": "racoon_high_contrast",
+  "display_name": "Racoon High Contrast",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "version": "1.0.0",
+  "description": "Original high-contrast theme created for Racoon Typper.",
+  "source": "Racoon Typper repository",
+  "is_dark": true,
+  "preview_colors": {
+    "bg": "#000000",
+    "main": "#00ff9d",
+    "caret": "#facc15",
+    "sub": "#a3a3a3",
+    "text": "#ffffff",
+    "error": "#ff4d6d"
+  }
+}

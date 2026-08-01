@@ -28,6 +28,7 @@ pub trait DailyStatsRepository {
         accuracy: f64,
     ) -> Result<(), DbError>;
     fn increment_lessons_completed(&self, date: &str) -> Result<(), DbError>;
+    fn set_daily_goal_met(&self, date: &str, met: bool) -> Result<(), DbError>;
     fn get_day(&self, date: &str) -> Result<Option<DailyStats>, DbError>;
     fn get_range(&self, from: &str, to: &str) -> Result<Vec<DailyStats>, DbError>;
     fn get_last_30_days(&self) -> Result<Vec<DailyStats>, DbError>;
@@ -93,6 +94,20 @@ impl<'a> DailyStatsRepository for SqliteDailyStatsRepository<'a> {
                 params![date],
             )
             .map_err(|e| DbError::Write(e.to_string()))?;
+        Ok(())
+    }
+
+    fn set_daily_goal_met(&self, date: &str, met: bool) -> Result<(), DbError> {
+        let updated = self
+            .conn
+            .execute(
+                "UPDATE daily_stats SET daily_goal_met = ?2 WHERE date = ?1",
+                params![date, met],
+            )
+            .map_err(|error| DbError::Write(error.to_string()))?;
+        if updated == 0 {
+            return Err(DbError::NotFound(format!("DailyStats date={date}")));
+        }
         Ok(())
     }
 
@@ -170,7 +185,7 @@ mod tests {
 
     fn setup() -> SqliteDailyStatsRepository<'static> {
         let conn = Box::leak(Box::new(rusqlite::Connection::open_in_memory().unwrap()));
-        crate::db::run_migrations(conn);
+        crate::db::run_migrations(conn).expect("Failed to run test migrations");
         SqliteDailyStatsRepository::new(conn)
     }
 
@@ -221,6 +236,20 @@ mod tests {
                 .lessons_completed,
             1
         );
+    }
+
+    #[test]
+    fn daily_goal_state_requires_an_existing_day() {
+        let repo = setup();
+        assert!(matches!(
+            repo.set_daily_goal_met("2026-07-12", true),
+            Err(DbError::NotFound(_))
+        ));
+
+        repo.update_after_test("2026-07-12", 30_000, 100, 40.0, 95.0)
+            .unwrap();
+        repo.set_daily_goal_met("2026-07-12", true).unwrap();
+        assert!(repo.get_day("2026-07-12").unwrap().unwrap().daily_goal_met);
     }
 
     #[test]

@@ -11,8 +11,7 @@
 
   async function loadAchievements() {
     try {
-      const data = await ipc.getAchievements() as any;
-      achievements = Array.isArray(data) ? (data.length === 1 && Array.isArray(data[0]) ? data[0] : data) : [];
+      achievements = (await ipc.getAchievements()).flat();
     } catch (e) {
       errorMsg = `Error: ${e}`;
     }

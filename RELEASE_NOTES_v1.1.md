@@ -16,10 +16,10 @@ Typing feedback sounds for key presses, errors, lesson completions, and achievem
 Distraction-free typing mode. When enabled, the navbar, statistics, and panels hide during a test — leaving only the text, caret, and progress. Toggle in Settings → Zen Mode.
 
 ### New Themes
-Three community-requested themes added:
-- **Dracula** — dark purple
-- **Catppuccin Mocha** — warm dark
-- **Nord** — cold blue dark
+Three original Racoon themes are included:
+- **Racoon Dark** — dark practice palette
+- **Racoon Light** — light practice palette
+- **Racoon High Contrast** — high-contrast accessibility palette
 
 ### Achievement Notifications
 Toast notifications now appear when achievements unlock (First Test, 50 WPM, 100 WPM, 7 Day Streak, etc.).

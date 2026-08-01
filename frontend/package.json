@@ -1,13 +1,20 @@
 {
   "name": "racoon-typper-frontend",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
+  "license": "Apache-2.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port 1420 --strictPort",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "check:version": "node ../scripts/check-version.mjs",
+    "license:check": "node ../scripts/license-policy.mjs --check",
+    "tauri:dev": "node ../scripts/tauri.mjs dev",
+    "tauri:build": "node ../scripts/tauri.mjs build",
+    "tauri:build:ci": "node ../scripts/tauri.mjs build --ci",
+    "tauri:build:binary": "node ../scripts/tauri.mjs build --ci --no-bundle"
   },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
@@ -20,7 +27,6 @@
     "vite": "^5.4.0"
   },
   "dependencies": {
-    "@tauri-apps/api": "^2.0.0",
-    "@tauri-apps/plugin-shell": "^2.0.0"
+    "@tauri-apps/api": "^2.0.0"
   }
 }

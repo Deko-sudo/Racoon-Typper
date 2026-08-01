@@ -3,10 +3,13 @@
 import { invoke } from '@tauri-apps/api/core';
 import type {
   AppSettings,
+  Achievement,
+  ConsistencyReport,
   CourseResponse,
   CustomText,
   DashboardStatsResponse,
   EngineOutput,
+  Insight,
   LessonProgressRecord,
   PersonalBest,
   ProgressPoint,
@@ -14,7 +17,24 @@ import type {
   StatsHistoryResponse,
   TestSessionResponse,
   ThemeInfo,
+  SoundOutputResponse,
+  WeakKeysReport,
 } from '../types/index';
+
+export interface IpcError {
+  code?: string;
+  message?: string;
+}
+
+export function ipcErrorMessage(error: unknown): string {
+  if (typeof error === 'object' && error !== null) {
+    const typed = error as IpcError;
+    if (typed.message) return typed.message;
+    if (typed.code) return typed.code;
+  }
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
 
 export async function startTest(params: {
   mode: string;
@@ -27,12 +47,12 @@ export async function startTest(params: {
   return invoke<TestSessionResponse>('start_test', params);
 }
 
-export async function processKey(key: string, code: string): Promise<EngineOutput> {
-  return invoke<EngineOutput>('process_key', { key, code });
+export async function processKey(key: string, code: string, sessionId: string): Promise<EngineOutput> {
+  return invoke<EngineOutput>('process_key', { key, code, sessionId });
 }
 
-export async function abortSession(): Promise<void> {
-  return invoke('abort_session');
+export async function abortSession(sessionId: string): Promise<void> {
+  return invoke('abort_session', { sessionId });
 }
 
 export async function getStatsHistory(limit: number, offset = 0): Promise<StatsHistoryResponse> {
@@ -96,13 +116,9 @@ export async function startLesson(lessonId: string, language: string): Promise<T
   return invoke<TestSessionResponse>('start_lesson', { lessonId, language });
 }
 
-export async function completeLesson(lessonId: string, wpm: number, accuracy: number): Promise<void> {
-  return invoke('complete_lesson', { lessonId, wpm, accuracy });
-}
-
 // Weak Keys
-export async function analyzeWeakKeys(): Promise<unknown> {
-  return invoke('analyze_weak_keys');
+export async function analyzeWeakKeys(): Promise<WeakKeysReport> {
+  return invoke<WeakKeysReport>('analyze_weak_keys');
 }
 
 export async function generateWeakKeysTraining(language: string, wordCount?: number): Promise<string> {
@@ -119,16 +135,16 @@ export async function getProgressHistory(days?: number): Promise<ProgressPoint[]
 }
 
 // Analytics
-export async function getAchievements(): Promise<unknown> {
-  return invoke('get_achievements');
+export async function getAchievements(): Promise<Achievement[][]> {
+  return invoke<Achievement[][]>('get_achievements');
 }
 
-export async function getInsights(): Promise<unknown> {
-  return invoke('get_insights');
+export async function getInsights(): Promise<Insight[][]> {
+  return invoke<Insight[][]>('get_insights');
 }
 
-export async function getConsistency(): Promise<unknown> {
-  return invoke('get_consistency');
+export async function getConsistency(): Promise<ConsistencyReport> {
+  return invoke<ConsistencyReport>('get_consistency');
 }
 
 export async function exportData(format: 'json' | 'csv'): Promise<string> {
@@ -140,11 +156,7 @@ export async function getReplay(testId: number): Promise<ReplayFrame[]> {
   return invoke<ReplayFrame[]>('get_replay', { testId });
 }
 
-export async function hasReplay(testId: number): Promise<boolean> {
-  return invoke<boolean>('has_replay', { testId });
-}
-
 // Sound
-export async function getSoundEvent(event: string): Promise<{ frequency: number; duration_ms: number; volume: number; event: string } | null> {
-  return invoke('get_sound_event', { event });
+export async function getSoundEvent(event: string): Promise<SoundOutputResponse | null> {
+  return invoke<SoundOutputResponse | null>('get_sound_event', { event });
 }

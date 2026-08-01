@@ -5,7 +5,7 @@
   import type {
     CharStatus, EngineOutput, TestSessionResponse, FinalStats, TestSummary,
     PersonalBest, CustomText, AppSettings,
-    ThemeInfo, ViewName, ModeName, LanguageCode, ModuleResponse,
+    ThemeInfo, ViewName, ModeName, LanguageCode, ModuleResponse, SessionState,
     DashboardStatsResponse,
   } from './lib/types/index';
 
@@ -32,6 +32,7 @@
   let charStatuses = $state<CharStatus[]>([]);
   let isRunning = $state(false);
   let isComplete = $state(false);
+  let sessionState = $state<SessionState>('idle');
   let errorMsg = $state('');
   let liveWpm = $state(0);
   let liveAccuracy = $state(100);
@@ -45,6 +46,9 @@
   let selectedLanguage = $state<LanguageCode>('en');
   let sessionModeType = $state('time');
   let sessionLanguage = $state('en');
+  // Backend-issued identity used only as a stale-request correlation token.
+  // The backend creates and validates it; the frontend cannot replace it.
+  let sessionId = $state<string | null>(null);
   let sessionDurationMs = $state(0);
   let testStartedAt = $state<number | null>(null);
 
@@ -71,7 +75,7 @@
 
   // Themes
   let themes = $state<ThemeInfo[]>([]);
-  let activeTheme = $state('serika_dark');
+  let activeTheme = $state('racoon_dark');
 
   // Lessons
   let courseModules = $state<ModuleResponse[]>([]);
@@ -103,6 +107,7 @@
   interface QueuedKey {
     key: string;
     code: string;
+    sessionId: string;
     generation: number;
     synthetic: boolean;
   }
@@ -112,6 +117,12 @@
   let sessionGeneration = 0;
   let timeCompletionQueued = false;
   let audioContext: AudioContext | null = null;
+
+  function applySessionState(nextState: SessionState) {
+    sessionState = nextState;
+    isRunning = nextState === 'running' || nextState === 'awaiting_persistence' || nextState === 'persisting';
+    isComplete = nextState === 'persisted';
+  }
 
   function addNotification(type: string, message: string) {
     const id = ++notifId;
@@ -123,9 +134,11 @@
 
   async function snapshotAchievements() {
     try {
-      const data = await ipc.getAchievements() as any;
-      const arr = Array.isArray(data) ? (data.length === 1 && Array.isArray(data[0]) ? data[0] : data) : [];
-      preTestAchievements = arr.map((a: any) => ({ id: a.id, unlocked: a.unlocked }));
+      const achievements = (await ipc.getAchievements()).flat();
+      preTestAchievements = achievements.map((achievement) => ({
+        id: achievement.id,
+        unlocked: achievement.unlocked,
+      }));
     } catch {
       preTestAchievements = [];
     }
@@ -133,9 +146,7 @@
 
   async function checkNewAchievements() {
     try {
-      const data = await ipc.getAchievements() as any;
-      const arr = Array.isArray(data) ? (data.length === 1 && Array.isArray(data[0]) ? data[0] : data) : [];
-      const after: Array<{ id: string; unlocked: boolean; name: string; description: string }> = arr;
+      const after = (await ipc.getAchievements()).flat();
       for (const a of after) {
         if (a.unlocked && !preTestAchievements.find(p => p.id === a.id && p.unlocked)) {
           addNotification('SUCCESS', `🏆 ${a.name} — ${a.description}`);
@@ -150,10 +161,10 @@
     sessionGeneration += 1;
     queuedKeys = [];
     timeCompletionQueued = false;
+    sessionId = resp.session_id;
     text = resp.text;
     caretPos = 0;
-    isComplete = false;
-    isRunning = true;
+    applySessionState('running');
     finalStats = null;
     sessionModeType = resp.mode_type;
     sessionLanguage = resp.language;
@@ -172,20 +183,63 @@
     }));
   }
 
+  function clearAbortedSessionPresentation() {
+    sessionGeneration += 1;
+    queuedKeys = [];
+    timeCompletionQueued = false;
+    applySessionState('idle');
+    sessionId = null;
+    currentLessonId = null;
+    testStartedAt = null;
+    elapsedMs = 0;
+    caretPos = 0;
+    charStatuses = [];
+  }
+
+  // Replacing a running test is an explicit user action. The backend must
+  // accept the abort before any new-session request is sent; this prevents the
+  // presentation configuration from diverging from the authoritative engine.
+  // A retry-pending completion intentionally cannot be abandoned here.
+  async function abandonActiveSessionForReplacement(): Promise<boolean> {
+    if (!isRunning || isComplete) return true;
+    if (!sessionId) {
+      errorMsg = 'Abort error: the active session has no backend identity';
+      return false;
+    }
+    try {
+      await ipc.abortSession(sessionId);
+      clearAbortedSessionPresentation();
+      return true;
+    } catch (error) {
+      errorMsg = `Abort error: ${ipc.ipcErrorMessage(error)}`;
+      return false;
+    }
+  }
+
   async function startTest() {
     errorMsg = '';
     finalStats = null;
     if (settings?.zen_mode_enabled) zenActive = true;
-    await snapshotAchievements();
-    const params: Record<string, unknown> = {
-      mode: selectedMode,
-      language: selectedLanguage,
-    };
-    if (selectedMode === 'time') params.duration = selectedDuration;
-    if (selectedMode === 'words') params.wordCount = selectedWordCount;
+    try {
+      await snapshotAchievements();
+      const params: {
+        mode: string;
+        language: string;
+        duration?: number;
+        wordCount?: number;
+      } = {
+        mode: selectedMode,
+        language: selectedLanguage,
+      };
+      if (selectedMode === 'time') params.duration = selectedDuration;
+      if (selectedMode === 'words') params.wordCount = selectedWordCount;
 
-    const resp = await ipc.startTest(params as any);
-    startTestFromResponse(resp);
+      const resp = await ipc.startTest(params);
+      startTestFromResponse(resp);
+    } catch (error) {
+      zenActive = false;
+      errorMsg = `Start test error: ${ipc.ipcErrorMessage(error)}`;
+    }
   }
 
   async function playSound(event: 'key_press' | 'error' | 'lesson_complete') {
@@ -215,9 +269,7 @@
 
   async function finishTest(stats: FinalStats) {
     finalStats = stats;
-    isComplete = true;
     zenActive = false;
-    isRunning = false;
     testStartedAt = null;
     elapsedMs = stats.duration_ms;
 
@@ -227,19 +279,16 @@
 
     const lessonId = currentLessonId;
     if (sessionModeType === 'lesson' && lessonId) {
-      try {
-        await ipc.completeLesson(lessonId, stats.wpm, stats.accuracy);
-        lessonProgress = {
-          ...lessonProgress,
-          [lessonId]: {
-            status: 'completed',
-            best_wpm: Math.max(lessonProgress[lessonId]?.best_wpm ?? 0, stats.wpm),
-            best_accuracy: Math.max(lessonProgress[lessonId]?.best_accuracy ?? 0, stats.accuracy),
-          },
-        };
-      } catch (error) {
-        errorMsg = `Lesson completion error: ${error}`;
-      }
+      // The backend persisted lesson completion in the same transaction as the
+      // completed test. This local update only renders that confirmed state.
+      lessonProgress = {
+        ...lessonProgress,
+        [lessonId]: {
+          status: 'completed',
+          best_wpm: Math.max(lessonProgress[lessonId]?.best_wpm ?? 0, stats.wpm),
+          best_accuracy: Math.max(lessonProgress[lessonId]?.best_accuracy ?? 0, stats.accuracy),
+        },
+      };
       void playSound('lesson_complete');
     }
     currentLessonId = null;
@@ -247,6 +296,7 @@
   }
 
   async function applyEngineOutput(output: EngineOutput, key: string, synthetic: boolean) {
+    applySessionState(output.session_state);
     caretPos = output.caret_pos;
     if (output.live_stats) {
       liveWpm = output.live_stats.wpm;
@@ -279,7 +329,7 @@
       void playSound('key_press');
     }
 
-    if (output.test_complete) {
+    if (output.test_complete && output.session_state === 'persisted') {
       await finishTest(output.test_complete);
     }
   }
@@ -293,14 +343,14 @@
         if (!queued || queued.generation !== sessionGeneration) continue;
         if (!isRunning || isComplete) continue;
         try {
-          const output = await ipc.processKey(queued.key, queued.code);
+          const output = await ipc.processKey(queued.key, queued.code, queued.sessionId);
           if (queued.generation !== sessionGeneration) continue;
           await applyEngineOutput(output, queued.key, queued.synthetic);
           if (queued.synthetic && !output.test_complete) timeCompletionQueued = false;
         } catch (error) {
           if (queued.synthetic) timeCompletionQueued = false;
           queuedKeys = [];
-          errorMsg = `Error: ${error}`;
+          errorMsg = `Typing error: ${ipc.ipcErrorMessage(error)}`;
         }
       }
     } finally {
@@ -310,7 +360,8 @@
   }
 
   function enqueueKey(key: string, code: string, synthetic = false) {
-    queuedKeys.push({ key, code, generation: sessionGeneration, synthetic });
+    if (!sessionId) return;
+    queuedKeys.push({ key, code, sessionId, generation: sessionGeneration, synthetic });
     void drainKeyQueue();
   }
 
@@ -384,22 +435,9 @@
     return () => window.clearInterval(interval);
   });
 
-  function abortTest() {
-    if (isRunning) {
-      ipc.abortSession().catch((error) => {
-        errorMsg = `Abort error: ${error}`;
-      });
-    }
-    sessionGeneration += 1;
-    queuedKeys = [];
-    timeCompletionQueued = false;
-    isRunning = false;
-    isComplete = false;
-    currentLessonId = null;
-    testStartedAt = null;
-    elapsedMs = 0;
-    caretPos = 0;
-    charStatuses = [];
+  async function abortTest() {
+    if (!isRunning) return;
+    await abandonActiveSessionForReplacement();
   }
 
   async function loadHistory() {
@@ -435,25 +473,46 @@
       document.head.appendChild(el);
       return el;
     })();
+    styleEl.setAttribute('data-theme', name);
     styleEl.textContent = css;
+
+    // Apply variables inline as well as through the stylesheet. This keeps
+    // theme switching reliable when component-scoped CSS is present.
+    const root = document.documentElement;
+    const variables = /--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;/g;
+    for (const match of css.matchAll(variables)) {
+      root.style.setProperty(`--${match[1]}`, match[2], 'important');
+    }
+    root.dataset.theme = name;
+    const themeInfo = themes.find((theme) => theme.name === name);
+    root.style.colorScheme = themeInfo?.is_dark ? 'dark' : 'light';
   }
 
   async function selectTheme(name: string) {
-    activeTheme = name;
-    await ipc.setSetting('theme', name);
-    await applyTheme(name);
-    settings = await ipc.getSettings();
+    try {
+      await applyTheme(name);
+      await ipc.setSetting('theme', name);
+      activeTheme = name;
+      settings = await ipc.getSettings();
+      errorMsg = '';
+    } catch (error) {
+      const detail = error instanceof Error
+        ? error.message
+        : typeof error === 'object' && error !== null
+          ? JSON.stringify(error)
+          : String(error);
+      errorMsg = `Theme error: ${detail}`;
+      console.error('Theme switch failed', { name, error });
+    }
   }
 
   async function updateSetting(key: string, value: unknown) {
     try {
       await ipc.setSetting(key, value);
       settings = await ipc.getSettings();
-    } catch (e) {
-      // IPC not available (browser or error) — update locally
-      if (settings) {
-        (settings as unknown as Record<string, unknown>)[key] = value;
-      }
+    } catch (error) {
+      errorMsg = `Settings error: ${ipc.ipcErrorMessage(error)}`;
+      return;
     }
     if (key === 'ui_language') {
       uiLang = (value as string) || 'en';
@@ -489,6 +548,7 @@
 
   async function startCustomTest(id: number) {
     try {
+      if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
       const resp = await ipc.startCustomTextTest(id);
       startTestFromResponse(resp);
@@ -527,7 +587,7 @@
 
   async function loadWeakKeys() {
     try {
-      const data = await ipc.analyzeWeakKeys() as { weak_keys: Array<{ ch: string; error_count: number; accuracy: number; rank: number }> };
+      const data = await ipc.analyzeWeakKeys();
       weakKeysData = data.weak_keys || [];
     } catch (e) {
       errorMsg = `Weak keys error: ${e}`;
@@ -536,6 +596,7 @@
 
   async function onGenerateTraining() {
     try {
+      if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
       const generatedText = await ipc.generateWeakKeysTraining(selectedLanguage, 25);
       const resp = await ipc.startTest({
@@ -544,7 +605,6 @@
         text: generatedText,
       });
       startTestFromResponse(resp);
-      view = 'test';
     } catch (e) {
       errorMsg = `Training error: ${e}`;
     }
@@ -569,6 +629,7 @@
 
   async function onSelectLesson(lessonId: string, language: string) {
     try {
+      if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
       const resp = await ipc.startLesson(lessonId, language);
       startTestFromResponse(resp, lessonId);
@@ -578,69 +639,46 @@
     }
   }
 
+  async function updateTestConfigurationAndRestart(update: () => void) {
+    if (!(await abandonActiveSessionForReplacement())) return;
+    update();
+    await startTest();
+  }
+
   function onModeChange(m: ModeName) {
-    selectedMode = m;
-    startTest();
+    void updateTestConfigurationAndRestart(() => { selectedMode = m; });
   }
 
   function onDurationChange(d: number) {
-    selectedDuration = d;
-    startTest();
+    void updateTestConfigurationAndRestart(() => { selectedDuration = d; });
   }
 
   function onWordCountChange(w: number) {
-    selectedWordCount = w;
-    startTest();
+    void updateTestConfigurationAndRestart(() => { selectedWordCount = w; });
   }
 
   function onLanguageChange(l: LanguageCode) {
-    selectedLanguage = l;
-    startTest();
+    void updateTestConfigurationAndRestart(() => { selectedLanguage = l; });
   }
 
   onMount(async () => {
     try {
       await loadThemes();
-    } catch (e) {
-      console.warn('loadThemes failed, using defaults:', e);
-      themes = [
-        { name: 'serika_dark', display_name: 'Serika Dark', is_dark: true, preview_colors: { bg: '#323437', main: '#e2b714', text: '#999999', error: '#ca4754' } },
-        { name: 'serika_light', display_name: 'Serika Light', is_dark: false, preview_colors: { bg: '#f0f0f0', main: '#e2b714', text: '#333333', error: '#ca4754' } },
-        { name: 'racoon_dark', display_name: 'Racoon Dark', is_dark: true, preview_colors: { bg: '#1a1b26', main: '#7aa2f7', text: '#a9b1d6', error: '#f7768e' } },
-      ];
+    } catch (error) {
+      errorMsg = `Theme catalog error: ${ipc.ipcErrorMessage(error)}`;
     }
     try {
       await loadSettings();
-    } catch (e) {
-      console.warn('loadSettings failed, using defaults:', e);
-      settings = {
-        theme: 'serika_dark', font_size: 24, caret_style: 'block',
-        show_live_wpm: true, show_accuracy: true, show_keyboard_trainer: false,
-        show_hand_guide: false, show_layout_warnings: false, show_capslock_warnings: true,
-        sound_enabled: false, sound_volume: 0.5, zen_mode_enabled: false,
-        ui_language: 'en', vim_mode: false,
-        daily_goal_type: 'time', daily_goal_wpm: 0, daily_goal_accuracy: 0,
-      };
-      uiLang = 'en';
-      await applyTheme('serika_dark');
+    } catch (error) {
+      errorMsg = `Settings load error: ${ipc.ipcErrorMessage(error)}`;
     }
-    try {
-      await startTest();
-    } catch (e) {
-      console.warn('startTest failed, using fallback text:', e);
-      text = 'The quick brown fox jumps over the lazy dog and runs through the forest while the sun sets slowly behind the mountains';
-      charStatuses = Array.from(text, (ch) => ({ expected: ch, typed: null, status: 'pending' as const }));
-      isRunning = true;
-      sessionModeType = 'time';
-      sessionLanguage = 'en';
-      sessionDurationMs = selectedDuration * 1000;
-    }
+    await startTest();
   });
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
-<main style:font-size={mainFontSize}>
+<main style:font-size={mainFontSize} data-session-state={sessionState}>
   {#if !zenActive}
     <NavigationBar {view} {historyTotal} {uiLang} onNavigate={switchView} />
   {/if}
@@ -652,13 +690,14 @@
   {#if view === 'dashboard'}
     <DashboardView stats={dashboardStats} onNavigate={(v) => switchView(v as ViewName)} uiLang={uiLang} />
   {:else if view === 'test'}
-    {#if isRunning && settings?.show_layout_warnings}
+    {#if isRunning}
       <TypingWarnings
         expectedLanguage={sessionLanguage}
         {lastTypedChar}
         {capsLockOn}
-        showLayoutWarnings={settings.show_layout_warnings}
-        showCapsLockWarnings={settings.show_capslock_warnings}
+        showLayoutWarnings={true}
+        showCapsLockWarnings={settings?.show_capslock_warnings ?? true}
+        {uiLang}
       />
     {/if}
     <TestView
@@ -741,6 +780,7 @@
       trainingCharStatuses={charStatuses}
       trainingCaretPos={caretPos}
       trainingRunning={isRunning}
+      trainingLanguage={isRunning ? sessionLanguage : selectedLanguage}
     />
   {:else if view === 'analytics'}
     <AnalyticsView uiLang={uiLang} />
@@ -753,8 +793,8 @@
 
 <style>
   :root {
-    --bg: #323437; --bg-sub: #2c2e31; --main: #e2b714;
-    --sub: #555555; --text: #999999; --error: #ca4754; --caret: #e2b714;
+    --bg: #151a24; --bg-sub: #202a38; --main: #5eead4;
+    --sub: #7890a8; --text: #e8f0f7; --error: #fb7185; --caret: #fbbf24;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   main {

@@ -34,7 +34,7 @@
 
 ### Licenses
 
-All workspace crates: Apache-2.0. Transitive dependencies: standard open-source (MIT, Apache-2.0, MPL-2.0). No GPL contamination.
+All workspace crates and project-owned metadata are Apache-2.0. Third-party dependency licenses are maintained separately in `licenses/dependencies.json` and `THIRD_PARTY_NOTICES.md`; they are not relicensed as Apache-2.0. The machine-readable asset inventory is `licenses/assets.json`, with the human-readable table in `licenses/ASSET_PROVENANCE.md` and the generation record in `licenses/PROVENANCE_ATTESTATION.md`.
 
 ---
 

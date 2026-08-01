@@ -4,7 +4,10 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+use racoon_application::SessionRandomSource;
 use serde::Deserialize;
+
+use crate::SystemRandomSource;
 
 /// Одна цитата.
 #[derive(Debug, Clone, Deserialize)]
@@ -36,15 +39,19 @@ impl QuotePack {
     }
 
     pub fn get_random(&self) -> Option<&Quote> {
+        let mut random_source = SystemRandomSource;
+        self.get_random_with_random(&mut random_source)
+    }
+
+    /// Returns a quote using the caller-provided runtime value source.
+    pub fn get_random_with_random(
+        &self,
+        random_source: &mut dyn SessionRandomSource,
+    ) -> Option<&Quote> {
         if self.quotes.is_empty() {
             return None;
         }
-        use std::time::{SystemTime, UNIX_EPOCH};
-        let seed = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_nanos() as usize;
-        let idx = seed % self.quotes.len();
+        let idx = (random_source.next_u64() as usize) % self.quotes.len();
         self.quotes.get(idx)
     }
 
@@ -100,6 +107,16 @@ impl QuoteLoader {
         self.get_pack(language)?.get_random()
     }
 
+    /// Returns a quote for a session using the caller-provided value source.
+    pub fn get_random_quote_with_random(
+        &self,
+        language: &str,
+        random_source: &mut dyn SessionRandomSource,
+    ) -> Option<&Quote> {
+        self.get_pack(language)?
+            .get_random_with_random(random_source)
+    }
+
     /// Возвращает цитату по индексу.
     pub fn get_quote_by_index(&self, language: &str, index: usize) -> Option<&Quote> {
         self.get_pack(language)?.get_by_index(index)
@@ -140,6 +157,14 @@ fn load_toml(content: &str) -> Vec<Quote> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct FixedRandomSource(u64);
+
+    impl SessionRandomSource for FixedRandomSource {
+        fn next_u64(&mut self) -> u64 {
+            self.0
+        }
+    }
 
     #[test]
     fn load_en_quotes() {
@@ -201,6 +226,19 @@ mod tests {
         for q in &pack.quotes {
             assert!(!q.text.is_empty(), "Empty quote text found");
         }
+    }
+
+    #[test]
+    fn random_quote_uses_the_injected_random_source() {
+        let loader = QuoteLoader::new();
+        let expected = loader.get_quote_by_index("en", 0).unwrap().text.clone();
+        let mut random_source = FixedRandomSource(0);
+
+        let quote = loader
+            .get_random_quote_with_random("en", &mut random_source)
+            .unwrap();
+
+        assert_eq!(quote.text, expected);
     }
 
     #[test]

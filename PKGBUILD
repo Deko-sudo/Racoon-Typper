@@ -2,10 +2,10 @@
 pkgname=racoon-typper
 pkgver=1.1.0
 pkgrel=1
-pkgdesc="Local desktop touch-typing trainer for Linux — combines Monkeytype and Stamina"
+pkgdesc="Local desktop touch-typing trainer for Linux"
 arch=('x86_64')
 url="https://github.com/racoon-typper/racoon-typper"
-license=('MIT')
+license=('Apache-2.0')
 depends=('webkit2gtk-4.1')
 makedepends=('rust' 'npm' 'base-devel')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/racoon-typper/racoon-typper/archive/v$pkgver.tar.gz")
@@ -13,8 +13,8 @@ sha256sums=('SKIP')
 
 build() {
     cd "$srcdir/$pkgname-$pkgver"
-    npm install --prefix frontend
-    cargo tauri build --release
+    npm ci --prefix frontend
+    npm run tauri:build:binary --prefix frontend
 }
 
 package() {
@@ -36,4 +36,5 @@ package() {
 
     # License
     install -Dm644 "LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 "THIRD_PARTY_NOTICES.md" "$pkgdir/usr/share/doc/$pkgname/THIRD_PARTY_NOTICES.md"
 }

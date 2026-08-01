@@ -5,7 +5,7 @@
 
 ## Overview
 
-Racoon Typper is a local desktop touch-typing trainer for Linux, combining the best of Monkeytype (statistics, modes) and Stamina (structured learning — planned for v0.2+).
+Racoon Typper is a local desktop touch-typing trainer for Linux, combining focused statistics, multiple typing modes, and structured learning.
 
 ## Features
 
@@ -28,7 +28,7 @@ Racoon Typper is a local desktop touch-typing trainer for Linux, combining the b
 - Test History (SQLite persistence)
 
 ### Customization
-- 3 built-in themes (Serika Dark, Serika Light, Racoon Dark)
+- 3 built-in Racoon themes (Dark, Light, High Contrast)
 - Settings: font size, caret style, live WPM/accuracy display
 - Settings stored in `~/.config/racoon-typper/settings.toml`
 
@@ -53,7 +53,7 @@ Racoon Typper is a local desktop touch-typing trainer for Linux, combining the b
 
 ## Known Limitations
 
-- No Lessons/Stamina module (planned v0.2+)
+- No structured lesson module (planned v0.2+)
 - No Consistency metric (planned v0.2)
 - No Graph visualization (planned v0.2)
 - No Daily Stats / Streaks (planned v0.2)
@@ -85,7 +85,7 @@ yay -S racoon-typper
 - Graph (WPM/accuracy over time)
 - Daily stats aggregation
 - Streaks
-- Lessons (Stamina-style course)
+- Structured lesson course
 
 ### Post v1.0
 - Weak Keys Engine

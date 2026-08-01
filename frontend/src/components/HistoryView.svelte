@@ -5,29 +5,9 @@
   import ReplayView from './ReplayView.svelte';
 
   let { history, total, uiLang = 'en' }: { history: TestSummary[]; total: number; uiLang?: string } = $props();
-  let replayAvailability = $state<Record<number, boolean>>({});
   let replayLoadingId = $state<number | null>(null);
   let selectedReplay = $state<{ testId: number; frames: ReplayFrame[] } | null>(null);
   let replayError = $state('');
-
-  $effect(() => {
-    const testIds = history.map((test) => test.id);
-    let cancelled = false;
-    replayAvailability = {};
-
-    const checks = testIds.map(async (testId) => {
-      try {
-        return [testId, await ipc.hasReplay(testId)] as const;
-      } catch {
-        return [testId, false] as const;
-      }
-    });
-    void Promise.all(checks).then((entries) => {
-      if (!cancelled) replayAvailability = Object.fromEntries(entries);
-    });
-
-    return () => { cancelled = true; };
-  });
 
   function formatDate(iso: string): string {
     try { return new Date(iso).toLocaleString(); } catch { return iso; }
@@ -66,17 +46,15 @@
             <td>
               <button
                 type="button"
-                disabled={replayAvailability[h.id] !== true || replayLoadingId !== null}
+                disabled={!h.has_replay || replayLoadingId !== null}
                 onclick={() => openReplay(h.id)}
               >
                 {#if replayLoadingId === h.id}
                   {t(uiLang, 'history.loading_replay')}
-                {:else if replayAvailability[h.id] === true}
+                {:else if h.has_replay}
                   {t(uiLang, 'history.watch_replay')}
-                {:else if replayAvailability[h.id] === false}
-                  {t(uiLang, 'history.no_replay')}
                 {:else}
-                  …
+                  {t(uiLang, 'history.no_replay')}
                 {/if}
               </button>
             </td>

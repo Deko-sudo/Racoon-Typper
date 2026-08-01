@@ -1,9 +1,10 @@
-//! Database — соединение SQLite, WAL mode, миграции.
+//! Database connection lifecycle, SQLite safety pragmas, and migrations.
 
 use std::path::Path;
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
+use std::time::Duration;
 
-use rusqlite::Connection;
+use rusqlite::{Connection, Transaction, TransactionBehavior};
 
 use crate::error::DbError;
 
@@ -12,11 +13,29 @@ mod embedded {
     embed_migrations!("migrations");
 }
 
-/// Применяет миграции к соединению.
-pub fn run_migrations(conn: &mut Connection) {
+/// Applies the embedded, forward-only migrations to an already configured connection.
+pub fn run_migrations(conn: &mut Connection) -> Result<(), DbError> {
     embedded::migrations::runner()
         .run(conn)
-        .expect("Failed to run migrations");
+        .map(|_| ())
+        .map_err(|error| DbError::Migration(error.to_string()))
+}
+
+/// Configures every SQLite connection before it is made available to repositories.
+///
+/// Foreign-key enforcement is connection-local in SQLite, so this must run for both
+/// file-backed and in-memory databases. WAL and the busy timeout keep the single
+/// desktop-process writer responsive without introducing a connection pool.
+fn configure_connection(conn: &Connection) -> Result<(), DbError> {
+    conn.pragma_update(None, "foreign_keys", "ON")
+        .map_err(|error| DbError::from_sqlite("configure foreign keys", error))?;
+    conn.pragma_update(None, "journal_mode", "WAL")
+        .map_err(|error| DbError::from_sqlite("configure journal mode", error))?;
+    conn.pragma_update(None, "synchronous", "NORMAL")
+        .map_err(|error| DbError::from_sqlite("configure synchronous mode", error))?;
+    conn.busy_timeout(Duration::from_secs(5))
+        .map_err(|error| DbError::from_sqlite("configure busy timeout", error))?;
+    Ok(())
 }
 
 /// Database — обёртка над Mutex<Connection>.
@@ -27,19 +46,10 @@ pub struct Database {
 impl Database {
     /// Открывает БД по пути и применяет миграции.
     pub fn open(path: &Path) -> Result<Self, DbError> {
-        let conn = Connection::open(path).map_err(|e| DbError::Connection(e.to_string()))?;
-
-        // WAL mode
-        conn.pragma_update(None, "journal_mode", "WAL")
-            .map_err(|e| DbError::Connection(e.to_string()))?;
-
-        // Миграции
-        let mut migrate_conn =
-            rusqlite::Connection::open(path).map_err(|e| DbError::Connection(e.to_string()))?;
-        embedded::migrations::runner()
-            .run(&mut migrate_conn)
-            .map_err(|e| DbError::Migration(e.to_string()))?;
-        drop(migrate_conn);
+        let mut conn =
+            Connection::open(path).map_err(|error| DbError::from_sqlite("open database", error))?;
+        configure_connection(&conn)?;
+        run_migrations(&mut conn)?;
 
         Ok(Self {
             conn: Mutex::new(conn),
@@ -48,20 +58,52 @@ impl Database {
 
     /// Открывает in-memory БД (для тестов).
     pub fn open_in_memory() -> Result<Self, DbError> {
-        let mut conn =
-            Connection::open_in_memory().map_err(|e| DbError::Connection(e.to_string()))?;
-
-        embedded::migrations::runner()
-            .run(&mut conn)
-            .map_err(|e| DbError::Migration(e.to_string()))?;
+        let mut conn = Connection::open_in_memory()
+            .map_err(|error| DbError::from_sqlite("open in-memory database", error))?;
+        configure_connection(&conn)?;
+        run_migrations(&mut conn)?;
 
         Ok(Self {
             conn: Mutex::new(conn),
         })
     }
 
-    /// Возвращает ссылку на соединение (для тестов).
-    /// Возвращает MutexGuard на соединение.
+    fn lock(&self) -> Result<MutexGuard<'_, Connection>, DbError> {
+        self.conn.lock().map_err(|_| DbError::LockPoisoned)
+    }
+
+    /// Executes one read or single-write operation while holding the only database lock.
+    /// Application code should prefer this over retaining a connection guard across work.
+    pub fn with_connection<T>(
+        &self,
+        operation: impl FnOnce(&Connection) -> Result<T, DbError>,
+    ) -> Result<T, DbError> {
+        let conn = self.lock()?;
+        operation(&conn)
+    }
+
+    /// Executes a logical unit of work atomically.
+    ///
+    /// `IMMEDIATE` obtains the write reservation up front. This avoids a partially
+    /// completed user-visible operation after repositories have started writing; an
+    /// error from the closure rolls the transaction back automatically.
+    pub fn with_transaction<T>(
+        &self,
+        operation: impl FnOnce(&Transaction<'_>) -> Result<T, DbError>,
+    ) -> Result<T, DbError> {
+        let mut conn = self.lock()?;
+        let transaction = conn
+            .transaction_with_behavior(TransactionBehavior::Immediate)
+            .map_err(|error| DbError::from_sqlite("begin immediate transaction", error))?;
+        let result = operation(&transaction)?;
+        transaction
+            .commit()
+            .map_err(|error| DbError::from_sqlite("commit transaction", error))?;
+        Ok(result)
+    }
+
+    /// Legacy diagnostic/test accessor. Production code must use `with_connection`
+    /// or `with_transaction` so lock failures are surfaced as `DbError`.
     pub fn conn(&self) -> std::sync::MutexGuard<'_, Connection> {
         self.conn.lock().expect("DB mutex poisoned")
     }
@@ -152,5 +194,41 @@ mod tests {
             [],
         );
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn foreign_keys_are_enabled_on_each_database_connection() {
+        let db = Database::open_in_memory().expect("Failed to open");
+        let conn = db.conn();
+        let foreign_keys: i64 = conn
+            .query_row("PRAGMA foreign_keys", [], |row| row.get(0))
+            .expect("Failed to inspect foreign key pragma");
+        assert_eq!(foreign_keys, 1);
+    }
+
+    #[test]
+    fn transaction_rolls_back_all_writes_when_the_operation_fails() {
+        let db = Database::open_in_memory().expect("Failed to open");
+
+        let result: Result<(), DbError> = db.with_transaction(|conn| {
+            conn.execute(
+                "INSERT INTO daily_stats (date, total_tests, total_time_ms, total_chars, best_wpm, avg_wpm, avg_accuracy, lessons_completed, daily_goal_met)
+                 VALUES ('2026-07-12', 1, 1, 1, 1, 1, 1, 0, 0)",
+                [],
+            )
+            .map_err(|error| DbError::Write(error.to_string()))?;
+            Err(DbError::Write("forced rollback".to_string()))
+        });
+
+        assert!(result.is_err());
+        let conn = db.conn();
+        let rows: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM daily_stats WHERE date = '2026-07-12'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("Failed to count daily statistics");
+        assert_eq!(rows, 0);
     }
 }

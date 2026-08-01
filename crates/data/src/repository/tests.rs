@@ -4,7 +4,7 @@ use rusqlite::{params, Connection};
 
 use crate::error::DbError;
 use crate::models::TestRow;
-use racoon_domain::{TestDetail, TestRecord, TestSummary};
+use racoon_domain::{SessionId, TestDetail, TestRecord, TestSummary};
 
 /// Trait для тестового репозитория.
 pub trait TestRepository {
@@ -36,10 +36,17 @@ impl<'a> SqliteTestRepository<'a> {
     }
 }
 
-const SELECT_ALL_COLS: &str = "id, created_at, mode_type, mode_config, language, text_length,
+const SELECT_ALL_COLS: &str =
+    "id, session_id, created_at, mode_type, mode_config, language, text_length,
     duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency,
     correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data,
     graph_data, is_pb, tags";
+const SELECT_HISTORY_COLS: &str =
+    "id, session_id, created_at, mode_type, mode_config, language, text_length,
+    duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency,
+    correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data,
+    graph_data, is_pb, tags,
+    EXISTS(SELECT 1 FROM test_replays WHERE test_replays.test_id = tests.id) AS has_replay";
 
 impl<'a> TestRepository for SqliteTestRepository<'a> {
     fn save_test(&self, record: TestRecord) -> Result<i64, DbError> {
@@ -57,12 +64,13 @@ impl<'a> TestRepository for SqliteTestRepository<'a> {
         self.conn
             .execute(
                 "INSERT INTO tests (
-                    created_at, mode_type, mode_config, language, text_length,
+                    session_id, created_at, mode_type, mode_config, language, text_length,
                     duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency,
                     correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data,
                     graph_data, is_pb, tags
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)",
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20)",
                 params![
+                    record.session_id.to_string(),
                     record.created_at,
                     record.mode_type,
                     mode_config_json,
@@ -110,33 +118,35 @@ impl<'a> TestRepository for SqliteTestRepository<'a> {
             self.conn
                 .prepare(&format!(
                     "SELECT {} FROM tests WHERE mode_type = ?1 ORDER BY created_at DESC LIMIT ?2 OFFSET ?3",
-                    SELECT_ALL_COLS
+                    SELECT_HISTORY_COLS
                 ))
                 .map_err(|e| DbError::Query(e.to_string()))?
         } else {
             self.conn
                 .prepare(&format!(
                     "SELECT {} FROM tests ORDER BY created_at DESC LIMIT ?1 OFFSET ?2",
-                    SELECT_ALL_COLS
+                    SELECT_HISTORY_COLS
                 ))
                 .map_err(|e| DbError::Query(e.to_string()))?
         };
 
-        let rows: Vec<Result<TestRow, rusqlite::Error>> = match mode_filter {
+        let rows: Vec<Result<TestSummary, rusqlite::Error>> = match mode_filter {
             Some(mode) => stmt
-                .query_map(params![mode, limit as i64, offset as i64], map_test_row)
+                .query_map(
+                    params![mode, limit as i64, offset as i64],
+                    map_test_summary_row,
+                )
                 .map_err(|e| DbError::Query(e.to_string()))?
                 .collect(),
             None => stmt
-                .query_map(params![limit as i64, offset as i64], map_test_row)
+                .query_map(params![limit as i64, offset as i64], map_test_summary_row)
                 .map_err(|e| DbError::Query(e.to_string()))?
                 .collect(),
         };
 
         let mut summaries = Vec::new();
         for row in rows {
-            let test_row = row.map_err(|e| DbError::Query(e.to_string()))?;
-            summaries.push(TestSummary::from(test_row));
+            summaries.push(row.map_err(|e| DbError::Query(e.to_string()))?);
         }
         Ok(summaries)
     }
@@ -218,26 +228,33 @@ impl<'a> TestRepository for SqliteTestRepository<'a> {
 fn map_test_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TestRow> {
     Ok(TestRow {
         id: row.get(0)?,
-        created_at: row.get(1)?,
-        mode_type: row.get(2)?,
-        mode_config: row.get(3)?,
-        language: row.get(4)?,
-        text_length: row.get(5)?,
-        duration_ms: row.get(6)?,
-        wpm: row.get(7)?,
-        raw_wpm: row.get(8)?,
-        accuracy: row.get(9)?,
-        raw_accuracy: row.get(10)?,
-        consistency: row.get(11)?,
-        correct_chars: row.get(12)?,
-        incorrect_chars: row.get(13)?,
-        backspaces: row.get(14)?,
-        char_stats: row.get(15)?,
-        heatmap_data: row.get(16)?,
-        graph_data: row.get(17)?,
-        is_pb: row.get(18)?,
-        tags: row.get(19)?,
+        session_id: SessionId::from_storage(row.get(1)?),
+        created_at: row.get(2)?,
+        mode_type: row.get(3)?,
+        mode_config: row.get(4)?,
+        language: row.get(5)?,
+        text_length: row.get(6)?,
+        duration_ms: row.get(7)?,
+        wpm: row.get(8)?,
+        raw_wpm: row.get(9)?,
+        accuracy: row.get(10)?,
+        raw_accuracy: row.get(11)?,
+        consistency: row.get(12)?,
+        correct_chars: row.get(13)?,
+        incorrect_chars: row.get(14)?,
+        backspaces: row.get(15)?,
+        char_stats: row.get(16)?,
+        heatmap_data: row.get(17)?,
+        graph_data: row.get(18)?,
+        is_pb: row.get(19)?,
+        tags: row.get(20)?,
     })
+}
+
+fn map_test_summary_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TestSummary> {
+    let mut summary = TestSummary::from(map_test_row(row)?);
+    summary.has_replay = row.get(21)?;
+    Ok(summary)
 }
 
 #[cfg(test)]
@@ -248,6 +265,7 @@ mod repository_tests {
 
     fn make_test_record(wpm: f64, accuracy: f64) -> TestRecord {
         TestRecord {
+            session_id: SessionId::from(format!("repository-test-{wpm:.2}-{accuracy:.2}")),
             created_at: "2026-06-21T22:00:00Z".to_string(),
             mode_type: "time".to_string(),
             mode_config: serde_json::json!({"duration": 30, "language": "en"}),
@@ -282,6 +300,36 @@ mod repository_tests {
         let history = repo.get_history(10, 0, None).unwrap();
         assert_eq!(history.len(), 1);
         assert!((history[0].wpm - 45.0).abs() < 0.01);
+        assert_eq!(
+            history[0].session_id.as_str(),
+            "repository-test-45.00-95.00"
+        );
+        assert!(!history[0].has_replay);
+    }
+
+    #[test]
+    fn get_history_includes_replay_availability() {
+        let db = Database::open_in_memory().unwrap();
+        let conn = db.conn();
+        let repo = SqliteTestRepository::new(&conn);
+
+        let without_replay = repo.save_test(make_test_record(40.0, 95.0)).unwrap();
+        let with_replay = repo.save_test(make_test_record(50.0, 95.0)).unwrap();
+        conn.execute(
+            "INSERT INTO test_replays (test_id, frame_index, timestamp_ms, position, expected_char, typed_char, correct)
+             VALUES (?1, 0, 0, 0, 'a', 'a', 1)",
+            params![with_replay],
+        )
+        .unwrap();
+
+        let history = repo.get_history(10, 0, None).unwrap();
+        assert_eq!(history.len(), 2);
+        assert!(history
+            .iter()
+            .any(|test| test.id == with_replay && test.has_replay));
+        assert!(history
+            .iter()
+            .any(|test| test.id == without_replay && !test.has_replay));
     }
 
     #[test]
@@ -296,6 +344,7 @@ mod repository_tests {
         assert!((detail.wpm - 50.0).abs() < 0.01);
         assert_eq!(detail.correct_chars, 95);
         assert_eq!(detail.text_length, 100);
+        assert_eq!(detail.session_id.as_str(), "repository-test-50.00-90.00");
     }
 
     #[test]

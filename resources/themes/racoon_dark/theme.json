@@ -1,16 +1,18 @@
 {
   "name": "racoon_dark",
   "display_name": "Racoon Dark",
-  "author": "racoon-typper",
-  "version": "1.0.0",
-  "description": "Фирменная тёмная тема Racoon Typper с синим акцентом",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "version": "2.0.0",
+  "description": "Original dark theme created for Racoon Typper.",
+  "source": "Racoon Typper repository",
   "is_dark": true,
   "preview_colors": {
-    "bg": "#1a1b26",
-    "main": "#7aa2f7",
-    "caret": "#7aa2f7",
-    "sub": "#565f89",
-    "text": "#a9b1d6",
-    "error": "#f7768e"
+    "bg": "#151a24",
+    "main": "#5eead4",
+    "caret": "#fbbf24",
+    "sub": "#7890a8",
+    "text": "#e8f0f7",
+    "error": "#fb7185"
   }
 }

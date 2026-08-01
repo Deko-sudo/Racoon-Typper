@@ -2,7 +2,10 @@
 //! Синхронная архитектура: process_key() → EngineOutput.
 //! CoreEngine не знает конкретный режим — работает через dyn TestMode.
 
-use racoon_domain::{CharStatus, EngineOutput, FinalStats, KeyResult, VisiblePos};
+use chrono::{DateTime, Utc};
+use racoon_domain::{
+    CharStatus, EngineOutput, FinalStats, KeyResult, SessionId, SessionState, VisiblePos,
+};
 
 use crate::input::{KeyAction, KeyClassifier, KeyEvent};
 use crate::modes::{ModeResult, ModeType, TestMode};
@@ -11,7 +14,7 @@ use crate::typing::{TextBuffer, TypingResult};
 
 /// Сессия теста.
 pub struct TestSession {
-    pub session_id: String,
+    pub session_id: SessionId,
     pub mode: Box<dyn TestMode>,
     pub buffer: TextBuffer,
 }
@@ -19,9 +22,12 @@ pub struct TestSession {
 /// CoreEngine — главный движок.
 pub struct CoreEngine {
     session: Option<TestSession>,
+    session_state: SessionState,
     stats: StatisticsEngine,
     replay_frames: Vec<ReplayFrame>,
     replay_start_timestamp_ms: Option<u64>,
+    completed_stats: Option<FinalStats>,
+    completed_at: Option<DateTime<Utc>>,
 }
 
 /// One authoritative input frame captured during a typing session.
@@ -50,18 +56,32 @@ impl CoreEngine {
     pub fn new() -> Self {
         Self {
             session: None,
+            session_state: SessionState::Idle,
             stats: StatisticsEngine::new(),
             replay_frames: Vec::new(),
             replay_start_timestamp_ms: None,
+            completed_stats: None,
+            completed_at: None,
         }
     }
 
-    /// Запускает новый тест с заданным режимом.
+    /// Starts a new test only from an empty or durably completed session.
+    ///
+    /// Returning the rejected state closes the core-level escape hatch that
+    /// previously let a direct caller replace a running or retry-pending
+    /// session. The app maps that state to its stable IPC error envelope.
     pub fn start_test_mode(
         &mut self,
-        session_id: String,
+        session_id: impl Into<SessionId>,
         mode: Box<dyn TestMode>,
-    ) -> TestSessionInfo {
+    ) -> Result<TestSessionInfo, SessionState> {
+        if !matches!(
+            self.session_state,
+            SessionState::Idle | SessionState::Persisted
+        ) {
+            return Err(self.session_state);
+        }
+        let session_id = session_id.into();
         let text = mode.get_text().to_string();
         let text_length = text.chars().count();
         let mode_type = mode.mode_type().to_string();
@@ -71,7 +91,7 @@ impl CoreEngine {
         let buffer = TextBuffer::new(&text);
 
         let info = TestSessionInfo {
-            session_id: session_id.clone(),
+            session_id: session_id.to_string(),
             text: text.clone(),
             text_length,
             mode_type,
@@ -84,22 +104,45 @@ impl CoreEngine {
             mode,
             buffer,
         });
+        self.session_state = SessionState::Running;
         self.stats.reset();
         self.replay_frames.clear();
         self.replay_start_timestamp_ms = None;
-        info
+        self.completed_stats = None;
+        self.completed_at = None;
+        Ok(info)
     }
 
-    /// Прерывает тест.
-    pub fn abort(&mut self) {
+    /// Aborts a session only while it is still safe to discard it.
+    ///
+    /// A completed result is never discarded while it is being persisted or is
+    /// waiting to be retried. Callers must let that transaction settle so an
+    /// already completed test cannot be silently lost or reported as failed.
+    pub fn abort(&mut self) -> bool {
+        if matches!(
+            self.session_state,
+            SessionState::AwaitingPersistence | SessionState::Persisting
+        ) {
+            return false;
+        }
         self.session = None;
+        self.session_state = SessionState::Idle;
         self.stats.reset();
         self.replay_frames.clear();
         self.replay_start_timestamp_ms = None;
+        self.completed_stats = None;
+        self.completed_at = None;
+        true
     }
 
-    /// Сбрасывает тест с тем же режимом и текстом.
-    pub fn reset(&mut self) {
+    /// Resets only a running session with the same mode and text.
+    ///
+    /// A completed result must remain immutable while persistence is pending or
+    /// retryable, so reset is rejected outside `Running`.
+    pub fn reset(&mut self) -> bool {
+        if self.session_state != SessionState::Running {
+            return false;
+        }
         if let Some(session) = &mut self.session {
             let text = session.mode.get_text().to_string();
             session.buffer = TextBuffer::new(&text);
@@ -107,13 +150,32 @@ impl CoreEngine {
         self.stats.reset();
         self.replay_frames.clear();
         self.replay_start_timestamp_ms = None;
+        self.completed_stats = None;
+        self.completed_at = None;
+        true
     }
 
     /// Обрабатывает нажатие клавиши. Возвращает EngineOutput.
     pub fn process_key(&mut self, key_event: &KeyEvent) -> EngineOutput {
+        match self.session_state {
+            SessionState::Idle => return noop_output(SessionState::Idle),
+            SessionState::AwaitingPersistence => {
+                return completed_output(
+                    SessionState::AwaitingPersistence,
+                    self.completed_stats.clone(),
+                );
+            }
+            SessionState::Persisting => return terminal_output(SessionState::Persisting),
+            SessionState::Persisted => return terminal_output(SessionState::Persisted),
+            SessionState::Running => {}
+        }
+
         let session = match &mut self.session {
             Some(s) => s,
-            None => return noop_output(),
+            None => {
+                self.session_state = SessionState::Idle;
+                return noop_output(SessionState::Idle);
+            }
         };
 
         // Классификация
@@ -217,6 +279,11 @@ impl CoreEngine {
             None
         };
 
+        if let Some(final_stats) = &test_complete {
+            self.completed_stats = Some(final_stats.clone());
+            self.session_state = SessionState::AwaitingPersistence;
+        }
+
         // Маппинг TypingResult → KeyResult
         let key_result = match typing_result {
             TypingResult::Correct => KeyResult::Correct,
@@ -228,6 +295,7 @@ impl CoreEngine {
         };
 
         EngineOutput {
+            session_state: self.session_state,
             key_result,
             caret_pos,
             visible_pos,
@@ -239,9 +307,76 @@ impl CoreEngine {
         }
     }
 
+    /// Claims a completed session before a database transaction begins.
+    /// Only one caller can make the transition, which prevents concurrent IPC
+    /// requests from attempting the same completion persistence twice.
+    pub fn begin_persistence(&mut self) -> bool {
+        if self.session_state != SessionState::AwaitingPersistence {
+            return false;
+        }
+        self.session_state = SessionState::Persisting;
+        true
+    }
+
+    /// Marks the completion durable after its transaction has committed.
+    pub fn mark_persisted(&mut self) -> bool {
+        if self.session_state != SessionState::Persisting {
+            return false;
+        }
+        self.session_state = SessionState::Persisted;
+        true
+    }
+
+    /// Makes a failed persistence attempt retryable without accepting further
+    /// typing input or recalculating the completed result.
+    pub fn mark_persistence_failed(&mut self) -> bool {
+        if self.session_state != SessionState::Persisting {
+            return false;
+        }
+        self.session_state = SessionState::AwaitingPersistence;
+        true
+    }
+
+    /// Returns the current authoritative session lifecycle state.
+    pub fn session_state(&self) -> SessionState {
+        self.session_state
+    }
+
+    /// Records the wall-clock metadata supplied by the application runtime at
+    /// the authoritative completion transition. It is retained through retry
+    /// so a failed persistence attempt cannot move a completed record into a
+    /// different UTC day.
+    pub fn set_completion_timestamp(&mut self, completed_at: DateTime<Utc>) -> bool {
+        if self.session_state != SessionState::AwaitingPersistence
+            || self.completed_stats.is_none()
+            || self.completed_at.is_some()
+        {
+            return false;
+        }
+        self.completed_at = Some(completed_at);
+        true
+    }
+
+    /// Wall-clock metadata captured once at the authoritative completion
+    /// transition. It is retained through retry so a failed persistence attempt
+    /// cannot move a completed record into a different UTC day.
+    pub fn completion_timestamp(&self) -> Option<DateTime<Utc>> {
+        self.completed_at
+    }
+
+    /// Returns the immutable identity of the current or retryable session.
+    pub fn current_session_id(&self) -> Option<&SessionId> {
+        self.session.as_ref().map(|session| &session.session_id)
+    }
+
+    /// Returns true while a completion transaction is in flight.
+    pub fn is_finalizing(&self) -> bool {
+        self.session_state == SessionState::Persisting
+    }
+
     /// Активна ли сессия.
     pub fn is_active(&self) -> bool {
-        self.session.is_some()
+        self.session_state == SessionState::Running
     }
 
     /// Текст текущего теста.
@@ -317,8 +452,9 @@ fn calc_visible_pos(caret_pos: usize) -> VisiblePos {
 }
 
 /// Noop output для случая без активной сессии.
-fn noop_output() -> EngineOutput {
+fn noop_output(session_state: SessionState) -> EngineOutput {
     EngineOutput {
+        session_state,
         key_result: KeyResult::Noop,
         caret_pos: 0,
         visible_pos: VisiblePos { row: 0, col: 0 },
@@ -330,8 +466,41 @@ fn noop_output() -> EngineOutput {
     }
 }
 
+fn terminal_output(session_state: SessionState) -> EngineOutput {
+    EngineOutput {
+        session_state,
+        key_result: KeyResult::TestEnded,
+        caret_pos: 0,
+        visible_pos: VisiblePos { row: 0, col: 0 },
+        live_stats: None,
+        lesson_delta: None,
+        test_complete: None,
+        text_scrolled: None,
+        keyboard_viz: None,
+    }
+}
+
+fn completed_output(
+    session_state: SessionState,
+    test_complete: Option<FinalStats>,
+) -> EngineOutput {
+    EngineOutput {
+        session_state,
+        key_result: KeyResult::TestEnded,
+        caret_pos: 0,
+        visible_pos: VisiblePos { row: 0, col: 0 },
+        live_stats: None,
+        lesson_delta: None,
+        test_complete,
+        text_scrolled: None,
+        keyboard_viz: None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #![allow(unused_must_use)]
+
     use super::*;
     use crate::modes::time::TimeMode;
 
@@ -347,7 +516,9 @@ mod tests {
     fn start_test_with_time_mode() {
         let mut engine = CoreEngine::new();
         let mode = Box::new(TimeMode::new("hello".to_string(), "en".to_string(), 30));
-        let info = engine.start_test_mode("s1".to_string(), mode);
+        let info = engine
+            .start_test_mode("s1".to_string(), mode)
+            .expect("idle engine should accept a session");
 
         assert_eq!(info.text, "hello");
         assert_eq!(info.mode_type, "time");
@@ -423,6 +594,76 @@ mod tests {
         assert!(output.test_complete.is_some());
         let stats = output.test_complete.unwrap();
         assert_eq!(stats.correct_chars, 2);
+        assert_eq!(engine.session_state(), SessionState::AwaitingPersistence);
+    }
+
+    #[test]
+    fn completion_is_emitted_once_after_persistence_succeeds() {
+        let mut engine = CoreEngine::new();
+        let mode = Box::new(TimeMode::new("a".to_string(), "en".to_string(), 30));
+        engine.start_test_mode("s1".to_string(), mode);
+
+        let first = engine.process_key(&make_key("a", "KeyA"));
+        assert!(first.test_complete.is_some());
+        assert_eq!(first.session_state, SessionState::AwaitingPersistence);
+        assert!(engine.begin_persistence());
+        assert!(engine.mark_persisted());
+
+        let repeated = engine.process_key(&make_key("a", "KeyA"));
+        assert_eq!(repeated.session_state, SessionState::Persisted);
+        assert_eq!(repeated.key_result, KeyResult::TestEnded);
+        assert!(repeated.test_complete.is_none());
+    }
+
+    #[test]
+    fn failed_persistence_reuses_the_same_completed_result_for_a_retry() {
+        let mut engine = CoreEngine::new();
+        let mode = Box::new(TimeMode::new("a".to_string(), "en".to_string(), 30));
+        engine.start_test_mode("s1".to_string(), mode);
+
+        let first = engine.process_key(&make_key("a", "KeyA"));
+        let first_stats = first.test_complete.expect("completion expected");
+        let expected_timestamp = DateTime::parse_from_rfc3339("2026-07-13T00:00:00Z")
+            .expect("fixed timestamp should parse")
+            .with_timezone(&Utc);
+        assert!(engine.set_completion_timestamp(expected_timestamp));
+        let completion_timestamp = engine
+            .completion_timestamp()
+            .expect("completion timestamp should be captured once");
+        assert!(engine.begin_persistence());
+        assert!(engine.mark_persistence_failed());
+
+        let retry = engine.process_key(&make_key("ignored", "Unidentified"));
+        let retry_stats = retry.test_complete.expect("retry completion expected");
+        assert_eq!(retry.session_state, SessionState::AwaitingPersistence);
+        assert_eq!(retry_stats.correct_chars, first_stats.correct_chars);
+        assert_eq!(retry_stats.duration_ms, first_stats.duration_ms);
+        assert_eq!(engine.completion_timestamp(), Some(completion_timestamp));
+    }
+
+    #[test]
+    fn abort_is_rejected_while_persistence_is_in_flight() {
+        let mut engine = CoreEngine::new();
+        let mode = Box::new(TimeMode::new("a".to_string(), "en".to_string(), 30));
+        engine.start_test_mode("s1".to_string(), mode);
+        engine.process_key(&make_key("a", "KeyA"));
+        assert!(engine.begin_persistence());
+
+        assert!(!engine.abort());
+        assert_eq!(engine.session_state(), SessionState::Persisting);
+    }
+
+    #[test]
+    fn abort_is_rejected_while_a_failed_persistence_is_retryable() {
+        let mut engine = CoreEngine::new();
+        let mode = Box::new(TimeMode::new("a".to_string(), "en".to_string(), 30));
+        engine.start_test_mode("s1".to_string(), mode);
+        engine.process_key(&make_key("a", "KeyA"));
+        assert!(engine.begin_persistence());
+        assert!(engine.mark_persistence_failed());
+
+        assert!(!engine.abort());
+        assert_eq!(engine.session_state(), SessionState::AwaitingPersistence);
     }
 
     #[test]
@@ -480,8 +721,64 @@ mod tests {
         engine.process_key(&make_key("h", "KeyH"));
         assert_eq!(engine.caret_position(), 1);
 
-        engine.reset();
+        assert!(engine.reset());
         assert_eq!(engine.caret_position(), 0);
+    }
+
+    #[test]
+    fn start_and_reset_cannot_discard_a_pending_completion() {
+        let mut engine = CoreEngine::new();
+        assert!(engine
+            .start_test_mode(
+                "s1".to_string(),
+                Box::new(TimeMode::new("a".to_string(), "en".to_string(), 30)),
+            )
+            .is_ok());
+        engine.process_key(&make_key("a", "KeyA"));
+        assert_eq!(engine.session_state(), SessionState::AwaitingPersistence);
+
+        assert!(matches!(
+            engine.start_test_mode(
+                "s2".to_string(),
+                Box::new(TimeMode::new("b".to_string(), "en".to_string(), 30)),
+            ),
+            Err(SessionState::AwaitingPersistence)
+        ));
+        assert!(!engine.reset());
+        assert_eq!(engine.session_state(), SessionState::AwaitingPersistence);
+
+        assert!(engine.begin_persistence());
+        assert!(matches!(
+            engine.start_test_mode(
+                "s2".to_string(),
+                Box::new(TimeMode::new("b".to_string(), "en".to_string(), 30)),
+            ),
+            Err(SessionState::Persisting)
+        ));
+        assert!(!engine.reset());
+    }
+
+    #[test]
+    fn persisted_session_can_be_replaced() {
+        let mut engine = CoreEngine::new();
+        assert!(engine
+            .start_test_mode(
+                "s1".to_string(),
+                Box::new(TimeMode::new("a".to_string(), "en".to_string(), 30)),
+            )
+            .is_ok());
+        engine.process_key(&make_key("a", "KeyA"));
+        assert!(engine.begin_persistence());
+        assert!(engine.mark_persisted());
+
+        let replacement = engine
+            .start_test_mode(
+                "s2".to_string(),
+                Box::new(TimeMode::new("b".to_string(), "en".to_string(), 30)),
+            )
+            .expect("persisted session may be replaced");
+        assert_eq!(replacement.session_id, "s2");
+        assert_eq!(engine.session_state(), SessionState::Running);
     }
 
     #[test]
@@ -498,11 +795,44 @@ mod tests {
     fn test_session_info_has_mode_info() {
         let mut engine = CoreEngine::new();
         let mode = Box::new(TimeMode::new("test".to_string(), "en".to_string(), 15));
-        let info = engine.start_test_mode("s1".to_string(), mode);
+        let info = engine
+            .start_test_mode("s1".to_string(), mode)
+            .expect("idle engine should accept a session");
 
         assert_eq!(info.mode_type, "time");
         assert_eq!(info.mode_config["duration"], 15);
         assert_eq!(info.language, "en");
+    }
+
+    #[test]
+    fn session_identity_is_immutable_through_completion_retry_and_replacement() {
+        let mut engine = CoreEngine::new();
+        let first = engine
+            .start_test_mode(
+                racoon_domain::SessionId::new(),
+                Box::new(TimeMode::new("a".to_string(), "en".to_string(), 30)),
+            )
+            .unwrap();
+        let first_id = engine.current_session_id().cloned().unwrap();
+        assert_eq!(first.session_id, first_id.to_string());
+
+        engine.process_key(&make_key("a", "KeyA"));
+        assert_eq!(engine.current_session_id(), Some(&first_id));
+        assert!(engine.begin_persistence());
+        assert!(engine.mark_persistence_failed());
+        assert_eq!(engine.current_session_id(), Some(&first_id));
+        assert!(!engine.mark_persistence_failed());
+        assert!(!engine.abort());
+
+        assert!(engine.begin_persistence());
+        assert!(engine.mark_persisted());
+        let replacement = engine
+            .start_test_mode(
+                racoon_domain::SessionId::new(),
+                Box::new(TimeMode::new("b".to_string(), "en".to_string(), 30)),
+            )
+            .unwrap();
+        assert_ne!(replacement.session_id, first.session_id);
     }
 
     #[test]

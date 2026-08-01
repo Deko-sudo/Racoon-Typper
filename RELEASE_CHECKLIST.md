@@ -1,62 +1,97 @@
 # Release Checklist — Racoon Typper
 
-## Pre-Release
+This checklist describes the current baseline and the gates required for a production release. Phase 0 does not authorize a public release; licensing, foundation, security, and release-engineering gates remain mandatory.
 
-### Code Quality
-- [ ] `cargo fmt --all --check` passes
-- [ ] `cargo clippy --workspace -- -D warnings` — 0 warnings
-- [ ] `cargo test --workspace` — all tests pass
-- [ ] `cargo audit` — 0 vulnerabilities (unmaintained warnings OK)
-- [ ] No TODO/FIXME in code
-- [ ] No dead code warnings
+## Phase 0 baseline checks
 
-### Build
-- [ ] `npm run build` (frontend) passes
-- [ ] `cargo tauri build` passes without errors
-- [ ] Release binary starts and opens window
-- [ ] Database creates on first run
-- [ ] Settings file creates on first run
+### Version and worktree
 
-### Migrations
-- [ ] Fresh DB: all 3 migrations apply (V001, V002, V003)
-- [ ] Existing DB: upgrade without data loss
-- [ ] Migration idempotent: re-opening DB safe
+- [ ] Worktree contains only reviewed changes.
+- [ ] `Cargo.toml` `[workspace.package]` contains the intended release version.
+- [ ] `npm run check:version --prefix frontend` passes.
+- [ ] Tag is exactly `v<canonical-version>`.
+- [ ] [BASELINE.md](BASELINE.md) separates reviewed baseline files from work in progress.
 
-### Packaging
-- [ ] PKGBUILD: `makepkg -si` works on clean Arch
-- [ ] AppImage: `build-appimage.sh` produces working AppImage
-- [ ] Flatpak: `flatpak-builder` produces working Flatpak
-- [ ] Windows: NSIS installer builds
-- [ ] All artifacts start without errors
+### Code and frontend validation
 
-## Release Process
+- [ ] `cargo fmt --all --check` passes.
+- [ ] `cargo clippy --workspace --all-targets -- -D warnings` passes.
+- [ ] `cargo test --workspace` passes.
+- [ ] `npm run check --prefix frontend` passes.
+- [ ] `npm run build --prefix frontend` passes.
+- [ ] `git diff --check` passes.
 
-1. Update version in `Cargo.toml` (workspace), `tauri.conf.json`, `PKGBUILD`
-2. Run full test suite
-3. Create git tag: `git tag -a v1.0.0 -m "Release v1.0.0"`
-4. Push tag: `git push origin v1.0.0`
-5. GitHub Actions builds artifacts automatically
-6. Create GitHub Release (draft)
-7. Attach artifacts: AppImage, tarball, NSIS exe, torrent
-8. Publish release
-9. Update AUR package (if applicable)
+### Tauri topology
 
-## Post-Release
+- [ ] `npm ci --prefix frontend` succeeds from a clean checkout.
+- [ ] `npm run tauri:dev --prefix frontend` starts the frontend and desktop process.
+- [ ] `npm run tauri:build:binary --prefix frontend` locates `frontend/dist` and produces the release binary.
+- [ ] `npm run tauri:build --prefix frontend` completes for each claimed platform/bundle target.
 
-- [ ] Verify download links work
-- [ ] Verify AppImage runs on clean Ubuntu
-- [ ] Verify NSIS installs on clean Windows
-- [ ] Verify PKGBUILD installs on clean Arch
+## Required before production release
 
-## Rollback Process
+### Licensing and provenance — Phase 1
 
-1. Delete GitHub Release
-2. Delete git tag: `git tag -d v1.0.0 && git push origin :refs/tags/v1.0.0`
-3. Revert to previous tag: `git checkout v0.9.0`
-4. Rebuild and re-release as v1.0.1
+- [ ] Project-owned code/assets/content have Apache-2.0 provenance.
+- [ ] GPL/LGPL/AGPL and unknown project content is removed or separately cleared.
+- [ ] `THIRD_PARTY_NOTICES.md` and machine-readable inventory are generated.
+- [ ] CI license policy passes.
+- [ ] SBOM is generated for the release.
 
-## Version Numbering
+### Foundation — Phase 2
 
-- `vX.Y.Z` — stable release
-- `vX.Y.0-rc.N` — release candidate
-- `vX.Y.0-alpha.N` — alpha
+- [ ] In-process completion/retry and persistence tests pass; do not describe this as durable crash recovery.
+- [ ] Related persistence writes use an atomic transaction.
+- [ ] Monotonic timing, replay, validation, and typed endpoint responses are verified.
+- [ ] Startup, shutdown, error, and retry paths are tested.
+
+### Trusted Core, architecture, and data — Phases 3–4
+
+- [ ] Stable durable session IDs, crash recovery, deterministic injected seams, and restart-safe idempotency are separately designed and verified.
+- [ ] Application ports/contracts and frontend state ownership have passed Phase 3 review.
+- [ ] Database foreign keys, migration fixtures, backup/restore, and long-history behavior are verified.
+
+### Packaging and release engineering — Phase 6
+
+- [ ] Linux artifacts install/launch on clean supported environments.
+- [ ] Windows NSIS artifact installs/launches on clean Windows.
+- [ ] Checksums, source revision, version, SBOM, and provenance are attached.
+- [ ] Signing or attestation is verified where supported.
+- [ ] Release actions use least-privilege permissions and reviewed action versions.
+- [ ] Smoke journey completes a short test, persists it, restarts, exports data, and exits cleanly.
+
+### Public repository — Phase 7
+
+- [ ] README, install guide, architecture, support matrix, and roadmap are accurate.
+- [ ] Screenshots come from a cleared release candidate.
+- [ ] Security reporting and contribution workflows are published.
+- [ ] Release notes match the actual artifacts.
+
+## Database and migration safety
+
+The current schema contains migrations V001 through V004. Every future schema change must:
+
+- include a fixture from each supported prior version;
+- create and verify a backup before migration;
+- validate foreign keys and indexes;
+- provide a forward-fix or restore procedure;
+- never rely on checking out an older binary to undo a user database migration.
+
+## Release process
+
+1. Complete the applicable roadmap gate and obtain maintainer approval.
+2. Review the clean worktree and run the complete validation matrix.
+3. Set the canonical version in the root workspace manifest and synchronize/check mirrors.
+4. Update changelog and release notes with verified changes only.
+5. Create an annotated tag `vX.Y.Z` from the reviewed commit.
+6. Let CI build candidate artifacts and attach evidence.
+7. Run clean-install and smoke checks.
+8. Publish only after artifact, licensing, security, and documentation review.
+9. Keep the prior known-good release available and record post-release issues.
+
+## Rollback
+
+- Withdraw or mark a defective release artifact rather than silently replacing it.
+- Publish a forward-fixed version after the cause is understood.
+- Restore user data from the pre-migration backup or follow the documented forward-fix procedure.
+- Do not use `git checkout` or deleting a tag as a database rollback mechanism.

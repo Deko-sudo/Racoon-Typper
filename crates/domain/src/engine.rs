@@ -2,6 +2,22 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Authoritative lifecycle for the in-memory typing session.
+///
+/// The application intentionally has no paused state yet, so it is not modeled
+/// here. A session is retained after completion until persistence has either
+/// succeeded or can be retried; this prevents repeated input from creating
+/// duplicate completion events.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum SessionState {
+    Idle,
+    Running,
+    AwaitingPersistence,
+    Persisting,
+    Persisted,
+}
+
 /// Результат обработки нажатия клавиши.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -70,6 +86,7 @@ pub struct LiveStats {
 /// EngineOutput — синхронный контракт возврата из core.process_key().
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EngineOutput {
+    pub session_state: SessionState,
     pub key_result: KeyResult,
     pub caret_pos: usize,
     pub visible_pos: VisiblePos,

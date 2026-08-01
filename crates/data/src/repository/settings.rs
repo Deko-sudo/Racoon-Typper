@@ -1,29 +1,40 @@
 //! SettingsStore — загрузка/сохранение настроек в settings.toml.
 
+use std::fs::OpenOptions;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
 use crate::error::DbError;
 
 /// Настройки приложения (подмножество для MVP Sprint 5).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct AppSettings {
+    #[serde(default = "default_theme")]
     pub theme: String,
+    #[serde(default = "default_font_size")]
     pub font_size: i64,
+    #[serde(default = "default_caret_style")]
     pub caret_style: String,
+    #[serde(default = "default_true")]
     pub show_live_wpm: bool,
+    #[serde(default = "default_true")]
     pub show_accuracy: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub show_keyboard_trainer: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub show_hand_guide: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub show_layout_warnings: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     pub show_capslock_warnings: bool,
+    #[serde(default)]
     pub sound_enabled: bool,
+    #[serde(default = "default_sound_volume")]
     pub sound_volume: f64,
+    #[serde(default)]
     pub zen_mode_enabled: bool,
     #[serde(default = "default_ui_language")]
     pub ui_language: String,
@@ -37,6 +48,33 @@ pub struct AppSettings {
     pub daily_goal_accuracy: f64,
 }
 
+fn default_theme() -> String {
+    "racoon_dark".to_string()
+}
+
+fn normalize_theme(theme: &str) -> String {
+    match theme {
+        "racoon_dark" | "racoon_light" | "racoon_high_contrast" => theme.to_string(),
+        _ => default_theme(),
+    }
+}
+
+fn default_font_size() -> i64 {
+    24
+}
+
+fn default_caret_style() -> String {
+    "underline".to_string()
+}
+
+fn default_true() -> bool {
+    true
+}
+
+fn default_sound_volume() -> f64 {
+    0.5
+}
+
 fn default_ui_language() -> String {
     "en".to_string()
 }
@@ -45,10 +83,62 @@ fn default_daily_goal_type() -> String {
     "time".to_string()
 }
 
+const MIN_FONT_SIZE: i64 = 12;
+const MAX_FONT_SIZE: i64 = 72;
+const MAX_DAILY_GOAL_WPM: f64 = 300.0;
+const MAX_DAILY_GOAL_ACCURACY: f64 = 100.0;
+static SETTINGS_TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
+
+fn validation_error(message: impl Into<String>) -> DbError {
+    DbError::Validation(message.into())
+}
+
+fn valid_caret_style(value: &str) -> bool {
+    matches!(value, "underline" | "block" | "solid" | "off")
+}
+
+fn valid_daily_goal_type(value: &str) -> bool {
+    matches!(value, "time" | "wpm" | "accuracy")
+}
+
+fn valid_language_code(value: &str) -> bool {
+    !value.is_empty()
+        && value.len() <= 16
+        && value
+            .chars()
+            .all(|character| character.is_ascii_lowercase() || character == '-')
+}
+
+fn integer_value(value: &toml::Value, key: &str) -> Result<i64, DbError> {
+    value
+        .as_integer()
+        .ok_or_else(|| validation_error(format!("{key} must be an integer")))
+}
+
+fn number_value(value: &toml::Value, key: &str) -> Result<f64, DbError> {
+    value
+        .as_float()
+        .or_else(|| value.as_integer().map(|number| number as f64))
+        .filter(|number| number.is_finite())
+        .ok_or_else(|| validation_error(format!("{key} must be a finite number")))
+}
+
+fn string_value<'a>(value: &'a toml::Value, key: &str) -> Result<&'a str, DbError> {
+    value
+        .as_str()
+        .ok_or_else(|| validation_error(format!("{key} must be a string")))
+}
+
+fn boolean_value(value: &toml::Value, key: &str) -> Result<bool, DbError> {
+    value
+        .as_bool()
+        .ok_or_else(|| validation_error(format!("{key} must be a boolean")))
+}
+
 impl Default for AppSettings {
     fn default() -> Self {
         Self {
-            theme: "serika_dark".to_string(),
+            theme: default_theme(),
             font_size: 24,
             caret_style: "underline".to_string(),
             show_live_wpm: true,
@@ -91,8 +181,14 @@ impl SettingsStore {
         let content = std::fs::read_to_string(&self.path)
             .map_err(|e| DbError::Connection(format!("Failed to read settings.toml: {}", e)))?;
 
-        let settings: AppSettings = toml::from_str(&content)
+        let mut settings: AppSettings = toml::from_str(&content)
             .map_err(|e| DbError::Connection(format!("Failed to parse settings.toml: {}", e)))?;
+
+        let normalized_theme = normalize_theme(&settings.theme);
+        if normalized_theme != settings.theme {
+            settings.theme = normalized_theme;
+            self.save(&settings)?;
+        }
 
         Ok(settings)
     }
@@ -108,8 +204,42 @@ impl SettingsStore {
         let content = toml::to_string(settings)
             .map_err(|e| DbError::Write(format!("Failed to serialize settings: {}", e)))?;
 
-        std::fs::write(&self.path, content)
-            .map_err(|e| DbError::Write(format!("Failed to write settings.toml: {}", e)))?;
+        let file_name = self
+            .path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .ok_or_else(|| DbError::Write("settings path has no valid file name".to_string()))?;
+        let sequence = SETTINGS_TEMP_SEQUENCE.fetch_add(1, Ordering::Relaxed);
+        let temporary_path = self.path.with_file_name(format!(
+            ".{file_name}.{}.{}.tmp",
+            std::process::id(),
+            sequence
+        ));
+
+        let write_result = (|| -> Result<(), DbError> {
+            let mut temporary = OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .open(&temporary_path)
+                .map_err(|error| {
+                    DbError::Write(format!("Failed to create temporary settings file: {error}"))
+                })?;
+            temporary.write_all(content.as_bytes()).map_err(|error| {
+                DbError::Write(format!("Failed to write temporary settings file: {error}"))
+            })?;
+            temporary.sync_all().map_err(|error| {
+                DbError::Write(format!("Failed to sync temporary settings file: {error}"))
+            })?;
+            std::fs::rename(&temporary_path, &self.path).map_err(|error| {
+                DbError::Write(format!("Failed to replace settings.toml: {error}"))
+            })?;
+            Ok(())
+        })();
+
+        if write_result.is_err() {
+            let _ = std::fs::remove_file(&temporary_path);
+        }
+        write_result?;
 
         Ok(())
     }
@@ -120,92 +250,103 @@ impl SettingsStore {
 
         match key {
             "theme" => {
-                if let Some(v) = value.as_str() {
-                    settings.theme = v.to_string();
+                let value = string_value(&value, key)?;
+                let normalized = normalize_theme(value);
+                if normalized != value {
+                    return Err(validation_error(format!("Unsupported theme: {value}")));
                 }
+                settings.theme = normalized;
             }
             "font_size" => {
-                if let Some(v) = value.as_integer() {
-                    settings.font_size = v;
+                let value = integer_value(&value, key)?;
+                if !(MIN_FONT_SIZE..=MAX_FONT_SIZE).contains(&value) {
+                    return Err(validation_error(format!(
+                        "font_size must be between {MIN_FONT_SIZE} and {MAX_FONT_SIZE}"
+                    )));
                 }
+                settings.font_size = value;
             }
             "caret_style" => {
-                if let Some(v) = value.as_str() {
-                    settings.caret_style = v.to_string();
+                let value = string_value(&value, key)?;
+                if !valid_caret_style(value) {
+                    return Err(validation_error(format!(
+                        "Unsupported caret style: {value}"
+                    )));
                 }
+                settings.caret_style = value.to_string();
             }
             "show_live_wpm" => {
-                if let Some(v) = value.as_bool() {
-                    settings.show_live_wpm = v;
-                }
+                settings.show_live_wpm = boolean_value(&value, key)?;
             }
             "show_accuracy" => {
-                if let Some(v) = value.as_bool() {
-                    settings.show_accuracy = v;
-                }
+                settings.show_accuracy = boolean_value(&value, key)?;
             }
             "show_keyboard_trainer" => {
-                if let Some(v) = value.as_bool() {
-                    settings.show_keyboard_trainer = v;
-                }
+                settings.show_keyboard_trainer = boolean_value(&value, key)?;
             }
             "show_hand_guide" => {
-                if let Some(v) = value.as_bool() {
-                    settings.show_hand_guide = v;
-                }
+                settings.show_hand_guide = boolean_value(&value, key)?;
             }
             "show_layout_warnings" => {
-                if let Some(v) = value.as_bool() {
-                    settings.show_layout_warnings = v;
-                }
+                settings.show_layout_warnings = boolean_value(&value, key)?;
             }
             "show_capslock_warnings" => {
-                if let Some(v) = value.as_bool() {
-                    settings.show_capslock_warnings = v;
-                }
+                settings.show_capslock_warnings = boolean_value(&value, key)?;
             }
             "sound_enabled" => {
-                if let Some(v) = value.as_bool() {
-                    settings.sound_enabled = v;
-                }
+                settings.sound_enabled = boolean_value(&value, key)?;
             }
             "sound_volume" => {
-                if let Some(v) = value.as_float() {
-                    settings.sound_volume = v;
+                let value = number_value(&value, key)?;
+                if !(0.0..=1.0).contains(&value) {
+                    return Err(validation_error("sound_volume must be between 0 and 1"));
                 }
+                settings.sound_volume = value;
             }
             "zen_mode_enabled" => {
-                if let Some(v) = value.as_bool() {
-                    settings.zen_mode_enabled = v;
-                }
+                settings.zen_mode_enabled = boolean_value(&value, key)?;
             }
             "ui_language" => {
-                if let Some(v) = value.as_str() {
-                    settings.ui_language = v.to_string();
+                let value = string_value(&value, key)?;
+                if !valid_language_code(value) {
+                    return Err(validation_error(
+                        "ui_language must be a supported language code",
+                    ));
                 }
+                settings.ui_language = value.to_string();
             }
             "vim_mode" => {
-                if let Some(v) = value.as_bool() {
-                    settings.vim_mode = v;
-                }
+                settings.vim_mode = boolean_value(&value, key)?;
             }
             "daily_goal_type" => {
-                if let Some(v) = value.as_str() {
-                    settings.daily_goal_type = v.to_string();
+                let value = string_value(&value, key)?;
+                if !valid_daily_goal_type(value) {
+                    return Err(validation_error(format!(
+                        "Unsupported daily goal type: {value}"
+                    )));
                 }
+                settings.daily_goal_type = value.to_string();
             }
             "daily_goal_wpm" => {
-                if let Some(v) = value.as_float() {
-                    settings.daily_goal_wpm = v;
+                let value = number_value(&value, key)?;
+                if !(0.0..=MAX_DAILY_GOAL_WPM).contains(&value) {
+                    return Err(validation_error(format!(
+                        "daily_goal_wpm must be between 0 and {MAX_DAILY_GOAL_WPM}"
+                    )));
                 }
+                settings.daily_goal_wpm = value;
             }
             "daily_goal_accuracy" => {
-                if let Some(v) = value.as_float() {
-                    settings.daily_goal_accuracy = v;
+                let value = number_value(&value, key)?;
+                if !(0.0..=MAX_DAILY_GOAL_ACCURACY).contains(&value) {
+                    return Err(validation_error(format!(
+                        "daily_goal_accuracy must be between 0 and {MAX_DAILY_GOAL_ACCURACY}"
+                    )));
                 }
+                settings.daily_goal_accuracy = value;
             }
             _ => {
-                return Err(DbError::Write(format!("Unknown setting key: {}", key)));
+                return Err(validation_error(format!("Unknown setting key: {key}")));
             }
         }
 
@@ -244,7 +385,7 @@ mod tests {
         let store = SettingsStore::new(path.clone());
 
         let settings = store.load().unwrap();
-        assert_eq!(settings.theme, "serika_dark");
+        assert_eq!(settings.theme, "racoon_dark");
         assert_eq!(settings.font_size, 24);
         assert!(settings.show_live_wpm);
 
@@ -279,12 +420,12 @@ mod tests {
         let store = SettingsStore::new(path.clone());
 
         let settings = store
-            .set("theme", toml::Value::String("serika_light".to_string()))
+            .set("theme", toml::Value::String("racoon_light".to_string()))
             .unwrap();
-        assert_eq!(settings.theme, "serika_light");
+        assert_eq!(settings.theme, "racoon_light");
 
         let loaded = store.load().unwrap();
-        assert_eq!(loaded.theme, "serika_light");
+        assert_eq!(loaded.theme, "racoon_light");
 
         std::fs::remove_file(&path).ok();
     }
@@ -338,9 +479,37 @@ mod tests {
     }
 
     #[test]
+    fn set_rejects_wrong_value_type_without_overwriting_settings() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+        let original = store.load().unwrap();
+
+        let error = store
+            .set("sound_volume", toml::Value::String("loud".to_string()))
+            .unwrap_err();
+        assert!(matches!(error, DbError::Validation(_)));
+        assert_eq!(store.load().unwrap(), original);
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn set_accepts_integer_numeric_values_for_numeric_settings() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        let settings = store
+            .set("daily_goal_wpm", toml::Value::Integer(65))
+            .unwrap();
+        assert_eq!(settings.daily_goal_wpm, 65.0);
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
     fn default_values() {
         let settings = AppSettings::default();
-        assert_eq!(settings.theme, "serika_dark");
+        assert_eq!(settings.theme, "racoon_dark");
         assert_eq!(settings.font_size, 24);
         assert_eq!(settings.caret_style, "underline");
         assert!(settings.show_live_wpm);
@@ -377,6 +546,28 @@ mod tests {
         assert_eq!(deserialized.caret_style, "solid");
         assert!(!deserialized.show_live_wpm);
         assert!(deserialized.show_accuracy);
+    }
+
+    #[test]
+    fn legacy_settings_loads_with_missing_defaults() {
+        let legacy = r#"
+theme = "legacy_theme"
+font_size = 24
+caret_style = "underline"
+show_live_wpm = true
+show_accuracy = true
+"#;
+
+        let settings: AppSettings = toml::from_str(legacy).unwrap();
+
+        assert_eq!(normalize_theme(&settings.theme), "racoon_dark");
+        assert!(!settings.sound_enabled);
+        assert_eq!(settings.sound_volume, 0.5);
+        assert!(!settings.zen_mode_enabled);
+        assert!(settings.show_keyboard_trainer);
+        assert!(settings.show_hand_guide);
+        assert!(settings.show_layout_warnings);
+        assert!(settings.show_capslock_warnings);
     }
 
     #[test]

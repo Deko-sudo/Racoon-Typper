@@ -1,96 +1,134 @@
 //! Tauri application entry point.
 //! Sprint 5: Settings + Themes + Custom Texts
 
+use chrono::{DateTime, Utc};
+use racoon_application::{
+    SessionWallClock, StartupRecoveryCoordinator, StartupRecoveryGate, StartupRecoveryRetryPolicy,
+    StartupRecoverySleeper,
+};
 use racoon_core::CoreEngine;
-use racoon_data::Database;
+use racoon_data::{
+    Database, SqliteFinalizationLedger, SqliteSessionFinalizer, SqliteSessionRecoveryLedger,
+};
 use racoon_domain::AppInfo;
-use std::env;
-use std::path::PathBuf;
 use std::sync::Mutex;
+use tauri::Manager;
 
 mod commands;
 mod error;
+mod paths;
+mod session_service;
 mod state;
+mod validation;
 
 use state::AppState;
 
+struct SystemRecoveryClock;
+
+impl SessionWallClock for SystemRecoveryClock {
+    fn utc_now(&self) -> DateTime<Utc> {
+        Utc::now()
+    }
+}
+
+struct ThreadStartupRecoverySleeper;
+
+impl StartupRecoverySleeper for ThreadStartupRecoverySleeper {
+    fn sleep(&self, delay: std::time::Duration) {
+        if !delay.is_zero() {
+            std::thread::sleep(delay);
+        }
+    }
+}
+
 fn main() {
-    let (data_dir, config_dir) = get_app_dirs();
-    std::fs::create_dir_all(&data_dir).ok();
-    std::fs::create_dir_all(&config_dir).ok();
+    let application = tauri::Builder::default()
+        .setup(|app| {
+            let paths = paths::resolve(app)?;
+            let database = Database::open(&paths.db_path)
+                .map_err(|error| std::io::Error::other(error.to_string()))?;
 
-    let db_path = data_dir.join("data.db");
-    let settings_path = config_dir.join("settings.toml");
+            let startup_recovery = StartupRecoveryGate::new();
+            let recovery_ledger = SqliteSessionRecoveryLedger::new(&database);
+            let finalization_ledger = SqliteFinalizationLedger::new(&database);
+            let session_finalizer = SqliteSessionFinalizer::new(&database);
+            let recovery_clock = SystemRecoveryClock;
+            let recovery_sleeper = ThreadStartupRecoverySleeper;
+            let coordinator = StartupRecoveryCoordinator::new(
+                &recovery_ledger,
+                &finalization_ledger,
+                &session_finalizer,
+                &recovery_clock,
+                &recovery_sleeper,
+                StartupRecoveryRetryPolicy::default(),
+            );
+            coordinator
+                .run(&startup_recovery)
+                .map_err(|_| std::io::Error::other("startup recovery state unavailable"))?;
 
-    let db = Database::open(&db_path).expect("Failed to open database");
-
-    tauri::Builder::default()
-        .manage(Mutex::new(CoreEngine::new()))
-        .manage(AppState::new(db, settings_path))
+            app.manage(Mutex::new(CoreEngine::new()));
+            app.manage(AppState::new(
+                database,
+                paths.settings_path,
+                paths.data_dir,
+                paths.config_dir,
+                startup_recovery,
+            ));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             // System
-            commands::ping,
-            commands::get_app_info,
+            commands::system::ping,
+            commands::system::get_app_info,
             // Test
-            commands::start_test,
-            commands::process_key,
-            commands::abort_session,
+            commands::session::start_test,
+            commands::session::process_key,
+            commands::session::abort_session,
             // Stats
-            commands::get_stats_history,
-            commands::get_personal_bests,
+            commands::reporting::get_stats_history,
+            commands::reporting::get_personal_bests,
             // Custom Texts
-            commands::get_custom_texts,
-            commands::get_custom_text,
-            commands::save_custom_text,
-            commands::update_custom_text,
-            commands::delete_custom_text,
-            commands::search_custom_texts,
-            commands::start_custom_text_test,
+            commands::content::get_custom_texts,
+            commands::content::get_custom_text,
+            commands::content::save_custom_text,
+            commands::content::update_custom_text,
+            commands::content::delete_custom_text,
+            commands::content::search_custom_texts,
+            commands::session::start_custom_text_test,
             // Settings
-            commands::get_settings,
-            commands::set_setting,
+            commands::preferences::get_settings,
+            commands::preferences::set_setting,
             // Themes
-            commands::get_themes,
-            commands::get_theme_css,
+            commands::preferences::get_themes,
+            commands::preferences::get_theme_css,
             // Lessons
-            commands::get_course,
-            commands::get_lesson_progress,
-            commands::start_lesson,
-            commands::complete_lesson,
+            commands::content::get_course,
+            commands::content::get_lesson_progress,
+            commands::session::start_lesson,
             // Weak Keys
-            commands::analyze_weak_keys,
-            commands::generate_weak_keys_training,
+            commands::content::analyze_weak_keys,
+            commands::content::generate_weak_keys_training,
             // Dashboard
-            commands::get_dashboard_stats,
-            commands::get_progress_history,
+            commands::reporting::get_dashboard_stats,
+            commands::reporting::get_progress_history,
             // Analytics
-            commands::get_achievements,
-            commands::get_insights,
-            commands::get_consistency,
-            commands::export_data,
+            commands::reporting::get_achievements,
+            commands::reporting::get_insights,
+            commands::reporting::get_consistency,
+            commands::reporting::export_data,
             // Replay
-            commands::get_replay,
-            commands::has_replay,
+            commands::reporting::get_replay,
             // Sound
-            commands::get_sound_event,
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+            commands::preferences::get_sound_event,
+        ]);
+
+    if let Err(error) = application.run(tauri::generate_context!()) {
+        eprintln!("Racoon Typper failed to start: {error}");
+        std::process::exit(1);
+    }
 }
 
-fn get_app_dirs() -> (PathBuf, PathBuf) {
-    let home = env::var("HOME").unwrap_or_else(|_| ".".to_string());
-    let data_dir = env::var("XDG_DATA_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from(&home).join(".local/share/racoon-typper"));
-    let config_dir = env::var("XDG_CONFIG_HOME")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| PathBuf::from(&home).join(".config/racoon-typper"));
-    (data_dir, config_dir)
-}
-
-pub fn app_info() -> AppInfo {
-    let (data_dir, config_dir) = get_app_dirs();
+pub fn app_info(state: &AppState) -> AppInfo {
     let profile = if cfg!(debug_assertions) {
         "debug"
     } else {
@@ -99,12 +137,13 @@ pub fn app_info() -> AppInfo {
     AppInfo {
         version: env!("CARGO_PKG_VERSION").to_string(),
         build_profile: profile.to_string(),
-        data_dir: data_dir.to_string_lossy().to_string(),
-        config_dir: config_dir.to_string_lossy().to_string(),
-        db_path: data_dir.join("data.db").to_string_lossy().to_string(),
-        settings_path: config_dir
-            .join("settings.toml")
+        data_dir: state.data_dir().to_string_lossy().to_string(),
+        config_dir: state.config_dir().to_string_lossy().to_string(),
+        db_path: state
+            .data_dir()
+            .join("data.db")
             .to_string_lossy()
             .to_string(),
+        settings_path: state.settings_path().to_string_lossy().to_string(),
     }
 }

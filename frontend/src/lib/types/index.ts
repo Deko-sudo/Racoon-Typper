@@ -16,12 +16,15 @@ export interface TestSessionResponse {
 }
 
 export interface EngineOutput {
+  session_state: SessionState;
   key_result: string;
   caret_pos: number;
   visible_pos: { row: number; col: number };
   live_stats: { wpm: number; raw_wpm: number; accuracy: number; elapsed_ms: number } | null;
   test_complete: FinalStats | null;
 }
+
+export type SessionState = 'idle' | 'running' | 'awaiting_persistence' | 'persisting' | 'persisted';
 
 export interface FinalStats {
   wpm: number;
@@ -40,6 +43,7 @@ export interface FinalStats {
 
 export interface TestSummary {
   id: number;
+  session_id: string;
   created_at: string;
   mode_type: string;
   mode_config: Record<string, unknown>;
@@ -51,6 +55,7 @@ export interface TestSummary {
   consistency: number | null;
   duration_ms: number;
   is_pb: boolean;
+  has_replay: boolean;
 }
 
 export interface ReplayFrame {
@@ -145,10 +150,61 @@ export interface CourseResponse {
 }
 
 export interface LessonProgressRecord {
+  id: number;
   lesson_id: string;
+  module_id: string;
+  language: LanguageCode;
+  difficulty: string;
   status: string;
   best_wpm: number;
   best_accuracy: number;
+  attempts: number;
+  last_attempt_at: string | null;
+  completed_at: string | null;
+}
+
+export interface WeakKey {
+  ch: string;
+  error_count: number;
+  total: number;
+  accuracy: number;
+  rank: number;
+}
+
+export interface WeakKeysReport {
+  weak_keys: WeakKey[];
+  total_chars_analyzed: number;
+  overall_accuracy: number;
+  critical_count: number;
+}
+
+export interface Achievement {
+  id: string;
+  name: string;
+  description: string;
+  unlocked: boolean;
+  unlocked_at: string | null;
+}
+
+export interface Insight {
+  level: string;
+  title: string;
+  message: string;
+}
+
+export interface ConsistencyReport {
+  score: number;
+  mean_wpm: number;
+  std_dev: number;
+  cv: number;
+  samples: number;
+}
+
+export interface SoundOutputResponse {
+  frequency: number;
+  duration_ms: number;
+  volume: number;
+  event: string;
 }
 
 export interface DashboardStatsResponse {

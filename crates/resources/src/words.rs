@@ -4,6 +4,10 @@
 use std::collections::HashMap;
 use std::sync::OnceLock;
 
+use racoon_application::SessionRandomSource;
+
+use crate::SystemRandomSource;
+
 /// Словарь слов для конкретного языка.
 pub struct WordPack {
     pub language: String,
@@ -81,6 +85,20 @@ impl WordPackLoader {
     /// Генерирует N случайных слов из словаря.
     /// Возвращает строку с пробелами между словами.
     pub fn generate_words(&self, language: &str, count: usize) -> Option<String> {
+        let mut random_source = SystemRandomSource;
+        self.generate_words_with_random(language, count, &mut random_source)
+    }
+
+    /// Generates words using the caller-provided runtime value source.
+    ///
+    /// Selection policy remains owned by this resource adapter; only the
+    /// runtime-generated value is supplied by the application boundary.
+    pub fn generate_words_with_random(
+        &self,
+        language: &str,
+        count: usize,
+        random_source: &mut dyn SessionRandomSource,
+    ) -> Option<String> {
         let pack = self.get_pack(language)?;
         if pack.is_empty() {
             return None;
@@ -90,7 +108,7 @@ impl WordPackLoader {
         let mut last_index = None;
 
         for _ in 0..count {
-            let idx = random_index(pack.len(), last_index);
+            let idx = random_index(pack.len(), last_index, random_source);
             result.push(pack.words[idx].clone());
             last_index = Some(idx);
         }
@@ -102,6 +120,16 @@ impl WordPackLoader {
     /// Возвращает batch из N слов.
     pub fn generate_batch(&self, language: &str, count: usize) -> Option<String> {
         self.generate_words(language, count)
+    }
+
+    /// Generates a Time-mode batch using the caller-provided value source.
+    pub fn generate_batch_with_random(
+        &self,
+        language: &str,
+        count: usize,
+        random_source: &mut dyn SessionRandomSource,
+    ) -> Option<String> {
+        self.generate_words_with_random(language, count, random_source)
     }
 }
 
@@ -128,15 +156,13 @@ fn load_txt(content: &str) -> Vec<String> {
         .collect()
 }
 
-/// Простой генератор случайных чисел без rand crate.
-fn random_index(max: usize, exclude: Option<usize>) -> usize {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let seed = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos() as usize;
-
-    let mut idx = seed % max;
+/// Selects an index while retaining the existing no-immediate-repeat policy.
+fn random_index(
+    max: usize,
+    exclude: Option<usize>,
+    random_source: &mut dyn SessionRandomSource,
+) -> usize {
+    let mut idx = (random_source.next_u64() as usize) % max;
     // Избегаем повторения подряд
     if let Some(ex) = exclude {
         if max > 1 && idx == ex {
@@ -149,6 +175,14 @@ fn random_index(max: usize, exclude: Option<usize>) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    struct FixedRandomSource(u64);
+
+    impl SessionRandomSource for FixedRandomSource {
+        fn next_u64(&mut self) -> u64 {
+            self.0
+        }
+    }
 
     #[test]
     fn load_en_words() {
@@ -255,5 +289,20 @@ mod tests {
         assert_eq!(pack.get_word(0), Some("hello"));
         assert_eq!(pack.get_word(1), Some("world"));
         assert_eq!(pack.get_word(2), None);
+    }
+
+    #[test]
+    fn generated_words_use_the_injected_random_source() {
+        let loader = WordPackLoader::new();
+        let pack = loader.get_pack("en").unwrap();
+        let expected_first = pack.get_word(0).unwrap().to_string();
+        let expected_second = pack.get_word(1).unwrap().to_string();
+        let mut random_source = FixedRandomSource(0);
+
+        let result = loader
+            .generate_words_with_random("en", 2, &mut random_source)
+            .unwrap();
+
+        assert_eq!(result, format!("{expected_first} {expected_second}"));
     }
 }

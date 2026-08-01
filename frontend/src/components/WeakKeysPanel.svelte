@@ -1,5 +1,5 @@
 <script lang="ts">
-  import KeyboardVizComponent from './KeyboardVizComponent.svelte';
+  import KeyboardTrainer from './KeyboardTrainer.svelte';
   import type { CharStatus } from '../lib/types/index';
   import { t } from '../lib/i18n';
   import { VIEWPORT_CHARS, VIEWPORT_PADDING } from '../lib/keyboard';
@@ -13,6 +13,7 @@
     trainingCharStatuses = [] as CharStatus[],
     trainingCaretPos = 0,
     trainingRunning = false,
+    trainingLanguage = 'en',
   }: {
     weakKeys: Array<{ ch: string; error_count: number; accuracy: number; rank: number }>;
     charStats: Record<string, { correct: number; incorrect: number; total: number }>;
@@ -22,20 +23,16 @@
     trainingCharStatuses?: CharStatus[];
     trainingCaretPos?: number;
     trainingRunning?: boolean;
+    trainingLanguage?: string;
   } = $props();
 
   let viewportStart = $derived(Math.max(0, trainingCaretPos - VIEWPORT_PADDING));
   let viewportEnd = $derived(Math.min(trainingCharStatuses.length, viewportStart + VIEWPORT_CHARS));
   let viewportChars = $derived(trainingCharStatuses.slice(viewportStart, viewportEnd));
   let viewportOffset = $derived(trainingCaretPos - viewportStart);
-
-  function charClass(char: CharStatus, idx: number): string {
-    const classes: string[] = [char.status];
-    if (idx < viewportOffset) classes.push('past');
-    else if (idx === viewportOffset) classes.push('current');
-    else classes.push('future');
-    return classes.join(' ');
-  }
+  let progress = $derived(trainingCharStatuses.length === 0 ? 0 : (trainingCaretPos / trainingCharStatuses.length) * 100);
+  let nextChar = $derived(trainingRunning && trainingCaretPos < trainingText.length ? trainingText[trainingCaretPos] : '');
+  function charClass(char: CharStatus, idx: number): string { const classes: string[] = [char.status]; if (idx < viewportOffset) classes.push('past'); else if (idx === viewportOffset) classes.push('current'); else classes.push('future'); return classes.join(' '); }
 </script>
 
 <div class="weak-keys-panel">
@@ -58,20 +55,10 @@
   {/if}
 
   {#if trainingText && trainingRunning}
-    <div class="text-viewport">
-      <div class="text-display">
-        {#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}
-        {#each viewportChars as char, i}
-          <span class="char {charClass(char, i)}" class:caret={i === viewportOffset}>
-            {char.expected === ' ' ? '\u00A0' : char.expected}
-          </span>
-        {/each}
-        {#if viewportEnd < trainingCharStatuses.length}<span class="text-ellipsis">…</span>{/if}
-      </div>
-    </div>
+    <section class="training-card"><header class="training-header"><div><p class="training-eyebrow">{t(uiLang, 'weakkeys.training_label')}</p><h4>{t(uiLang, 'weakkeys.training_title')}</h4></div><div class="training-progress"><span>{trainingCaretPos}/{trainingCharStatuses.length}</span><div class="progress-track"><div class="progress-fill" style:width={`${progress}%`}></div></div></div></header><div class="text-viewport"><div class="text-display">{#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}{#each viewportChars as char, i}<span class="char {charClass(char, i)}" class:caret={i === viewportOffset}>{char.expected === ' ' ? '\u00A0' : char.expected}</span>{/each}{#if viewportEnd < trainingCharStatuses.length}<span class="text-ellipsis">…</span>{/if}</div></div></section>
   {/if}
 
-  <KeyboardVizComponent {charStats} />
+  <KeyboardTrainer {charStats} {nextChar} isRussian={trainingLanguage === 'ru'} />
 </div>
 
 <style>
@@ -94,29 +81,10 @@
     cursor: pointer; border-radius: 4px; margin-bottom: 1rem;
   }
   button:hover { background-color: var(--main); color: var(--bg); }
+  .training-card { margin:1.5rem 0; padding:1.25rem; border:1px solid color-mix(in srgb,var(--main) 38%,var(--sub)); border-radius:12px; background:linear-gradient(145deg,color-mix(in srgb,var(--bg-sub) 88%,var(--main)),var(--bg-sub)); box-shadow:0 12px 28px rgba(0,0,0,.16); }
+  .training-header { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin-bottom:1rem; } .training-eyebrow { color:var(--main); text-transform:uppercase; letter-spacing:.08em; font-size:.62rem; font-weight:700; } .training-header h4 { margin:.15rem 0 0; color:var(--text); font-size:.95rem; } .training-progress { min-width:180px; color:var(--sub); font-size:.72rem; text-align:right; }
+  .progress-track { width:100%; height:5px; overflow:hidden; border-radius:999px; background:color-mix(in srgb,var(--sub) 45%,transparent); margin-top:.35rem; } .progress-fill { height:100%; border-radius:inherit; background:var(--main); transition:width .12s ease; }
+  .text-viewport { width:100%; overflow:hidden; background:color-mix(in srgb,var(--bg) 55%,var(--bg-sub)); border:1px solid var(--sub); border-radius:8px; padding:1.5rem; } .text-display { font-size:clamp(1.35rem,3vw,2rem); line-height:1.75; text-align:center; user-select:none; white-space:pre-wrap; word-wrap:break-word; min-height:3.6em; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; } .text-ellipsis { color:var(--sub); opacity:.4; padding:0 .25rem; } .char { position:relative; transition:color .05s,opacity .1s; } .char.pending { color:var(--sub); } .char.correct { color:var(--text); } .char.incorrect { color:var(--error); } .char.backspaced { color:#ff8c42; } .char.past { opacity:.5; } .char.current { opacity:1; font-weight:600; } .char.future { opacity:.35; }
+  .char.caret::before { content:''; position:absolute; left:-.16em; top:.14em; bottom:.14em; width:.1em; border-radius:999px; background:var(--caret); box-shadow:0 0 .5em color-mix(in srgb,var(--caret) 70%,transparent); animation:blink .9s ease-in-out infinite; } @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} }
 
-  .text-viewport {
-    max-width: 1200px; width: 100%; overflow: hidden;
-    background-color: var(--bg-sub); border-radius: 8px;
-    padding: 2rem 1.5rem; position: relative; margin-bottom: 1rem;
-  }
-  .text-display {
-    font-size: 2rem; line-height: 1.8; text-align: center;
-    user-select: none; white-space: pre-wrap; word-wrap: break-word;
-    min-height: 3.6em; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
-  }
-  .text-ellipsis { color: var(--sub); opacity: 0.4; padding: 0 0.25rem; }
-  .char { transition: color 0.05s, opacity 0.1s; position: relative; }
-  .char.pending { color: var(--sub); }
-  .char.correct { color: var(--text); }
-  .char.incorrect { color: var(--error); }
-  .char.backspaced { color: #ff8c42; }
-  .char.past { opacity: 0.5; }
-  .char.current { opacity: 1; font-weight: 600; }
-  .char.future { opacity: 0.35; }
-  .char.caret::before {
-    content: '|'; position: absolute; left: -0.5ch; color: var(--caret);
-    animation: blink 1s infinite;
-  }
-  @keyframes blink { 0%,50%{opacity:1} 51%,100%{opacity:0} }
 </style>

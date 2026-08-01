@@ -26,7 +26,7 @@ pub struct ThemeConfig {
 impl Default for ThemeConfig {
     fn default() -> Self {
         Self {
-            name: "serika_dark".to_string(),
+            name: "racoon_dark".to_string(),
         }
     }
 }

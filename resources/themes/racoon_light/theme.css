@@ -1,0 +1,15 @@
+/* SPDX-License-Identifier: Apache-2.0 */
+/* Copyright 2026 Racoon Typper Contributors */
+
+:root {
+  --bg: #f7fafc;
+  --bg-main: #f7fafc;
+  --bg-sub: #e7eef5;
+  --main: #0f766e;
+  --caret: #d97706;
+  --sub: #718096;
+  --text: #1f2937;
+  --error: #dc2626;
+  --error-extra: #dc2626;
+  --colorful-error: #dc2626;
+}

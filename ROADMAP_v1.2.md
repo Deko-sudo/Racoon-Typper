@@ -34,7 +34,7 @@
 ### v1.1.0
 - [x] Sound Engine
 - [x] Zen Mode
-- [x] 3 new themes (Dracula, Catppuccin Mocha, Nord)
+- [x] Original Racoon theme set
 - [x] Achievement notifications
 - [x] Session recovery
 - [x] Extended statistics
@@ -55,7 +55,7 @@
 - [x] Layout/CapsLock warnings
 - [x] Notification stack
 - [x] Progress charts (SVG)
-- [x] 3 themes (original)
+- [x] 3 themes (original Racoon themes)
 - [x] SQLite persistence
 - [x] AppImage, Flatpak, NSIS, PKGBUILD
 - [x] CI/CD pipeline

@@ -10,7 +10,8 @@ pub mod repository;
 pub use db::Database;
 pub use error::DbError;
 pub use repository::{
-    CustomTextRepository, LessonRepository, PersonalBestsRepository, TestRepository,
+    CustomTextRepository, LessonRepository, PersonalBestsRepository, SqliteFinalizationLedger,
+    SqliteSessionFinalizer, SqliteSessionRecoveryLedger, TestRepository,
 };
 
 // Re-export domain types for convenience

@@ -2,23 +2,22 @@
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
   import { t } from '../lib/i18n';
+  import type { Achievement, ConsistencyReport, Insight } from '../lib/types/index';
 
   let { uiLang = 'en' }: { uiLang?: string } = $props();
 
-  let achievements = $state<Array<{ id: string; name: string; description: string; unlocked: boolean }>>([]);
-  let insights = $state<Array<{ level: string; title: string; message: string }>>([]);
-  let consistency = $state<{ score: number; mean_wpm: number; std_dev: number; cv: number; samples: number } | null>(null);
+  let achievements = $state<Achievement[]>([]);
+  let insights = $state<Insight[]>([]);
+  let consistency = $state<ConsistencyReport | null>(null);
   let exportFormat = $state<'json' | 'csv'>('json');
   let exportResult = $state('');
   let errorMsg = $state('');
 
   async function loadData() {
     try {
-      const ach = await ipc.getAchievements() as Array<{ id: string; name: string; description: string; unlocked: boolean }>[];
-      achievements = ach[0] || [];
-      const ins = await ipc.getInsights() as Array<{ level: string; title: string; message: string }>[];
-      insights = ins[0] || [];
-      consistency = await ipc.getConsistency() as any;
+      achievements = (await ipc.getAchievements()).flat();
+      insights = (await ipc.getInsights()).flat();
+      consistency = await ipc.getConsistency();
     } catch (e) {
       errorMsg = `Error: ${e}`;
     }

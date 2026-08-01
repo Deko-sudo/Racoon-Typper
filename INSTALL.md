@@ -1,99 +1,85 @@
 # Installation — Racoon Typper
 
-## Arch Linux (AUR / PKGBUILD)
+## Support status
 
-### From PKGBUILD
+The current verified development target is Linux x86_64. Package formats and Windows are currently build targets or experiments, not production support promises. Read [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) before distributing an artifact.
 
-```bash
-git clone https://github.com/racoon-typper/racoon-typper.git
-cd racoon-typper
-makepkg -si
-```
+## From source
 
-### From AUR (planned)
+### Prerequisites
 
-```bash
-yay -S racoon-typper
-```
-
-## AppImage
-
-```bash
-chmod +x racoon-typper-v0.9.0.AppImage
-./racoon-typper-v0.9.0.AppImage
-```
-
-## Flatpak
-
-```bash
-flatpak-builder build-dir com.racoon.typper.json
-flatpak install --user build-dir
-flatpak run com.racoon.typper
-```
-
-## Windows (NSIS)
-
-1. Download `racoon-typper-v0.9.0-setup.exe`
-2. Run installer
-3. Launch from Start Menu
-
-## From Source (any Linux)
-
-### Dependencies
+The Rust toolchain, Node.js/npm, and the WebKit/GTK development libraries required by Tauri must be installed.
 
 **Arch Linux:**
+
 ```bash
-sudo pacman -S rust webkit2gtk-4.1 base-devel npm
+sudo pacman -S rust webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg npm base-devel
 ```
 
 **Ubuntu 24.04:**
+
 ```bash
-sudo apt install -y libwebkit2gtk-4.1-dev libgtk-3-dev librsvg2-dev build-essential curl
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs
+sudo apt update
+sudo apt install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev \
+  librsvg2-dev build-essential curl
 ```
 
-**Fedora:**
-```bash
-sudo dnf install -y webkit2gtk4.1-devel gtk3-devel librsvg2-devel openssl-devel
-sudo dnf group install "Development Tools"
-```
+Install Rust with [rustup](https://rustup.rs/) and Node.js from the supported distribution channel if they are not already available.
 
-### Build
+### Development
 
 ```bash
 git clone https://github.com/racoon-typper/racoon-typper.git
 cd racoon-typper
-npm install --prefix frontend
-cargo tauri dev    # development
-cargo tauri build  # production
+npm ci --prefix frontend
+npm run check:version --prefix frontend
+npm run tauri:dev --prefix frontend
 ```
 
-Binary: `target/release/racoon-app`
+### Validation and binary build
 
-## Data Locations
-
-| Platform | Database | Settings |
-|----------|----------|----------|
-| Linux | `~/.local/share/racoon-typper/data.db` | `~/.config/racoon-typper/settings.toml` |
-| Windows | `%LOCALAPPDATA%\racoon-typper\data.db` | `%APPDATA%\racoon-typper\settings.toml` |
-
-## Uninstall
-
-### Arch Linux
 ```bash
-sudo pacman -R racoon-typper
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+npm run check --prefix frontend
+npm run build --prefix frontend
+npm run tauri:build:binary --prefix frontend
 ```
 
-### AppImage
+The no-bundle command produces the Rust release binary without claiming that an installer has been validated. The configured bundle command is:
+
 ```bash
-rm racoon-typper-v*.AppImage
+npm run tauri:build --prefix frontend
 ```
 
-### From source
+It may require platform-specific bundler tools. Installer support is only established by the release smoke tests described in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
+
+## Release artifacts
+
+When a verified release exists, download artifacts from [GitHub Releases](https://github.com/racoon-typper/racoon-typper/releases) and verify the published checksums. AppImage, Debian, RPM, Arch, Flatpak, and Windows installation instructions will be enabled only after the corresponding artifact passes the support matrix.
+
+Do not use the old `v0.9.0` filenames or the obsolete `cargo tauri` commands from historical documentation.
+
+## Data locations
+
+The current verified Linux paths are:
+
+| Data | Location |
+|---|---|
+| SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper/data.db` |
+| Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper/settings.toml` |
+
+Windows and other platform-specific paths remain unverified until the lifecycle/platform phase completes.
+
+## Uninstalling source builds
+
+Removing the checkout does not remove user data. Delete it only after exporting or backing up anything you want to keep:
+
 ```bash
 rm -rf racoon-typper/
-rm ~/.local/share/racoon-typper/data.db
-rm ~/.config/racoon-typper/settings.toml
+rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper"
+rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper"
 ```
+
+Package-manager uninstall instructions will be documented with each verified package format.

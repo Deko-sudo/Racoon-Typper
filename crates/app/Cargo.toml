@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Racoon Typper Contributors
+
 [package]
 name = "racoon-app"
 version.workspace = true
@@ -10,12 +13,12 @@ racoon-domain = { workspace = true }
 racoon-core = { workspace = true }
 racoon-data = { workspace = true }
 racoon-resources = { workspace = true }
+racoon-application = { workspace = true }
 tauri = { version = "2", features = [] }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
 chrono = "0.4"
-dirs = "5"
 rusqlite = { version = "0.31", features = ["bundled"] }
 
 [build-dependencies]

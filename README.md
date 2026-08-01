@@ -1,93 +1,98 @@
 # Racoon Typper
 
-Local desktop touch-typing trainer for Linux. Combines Monkeytype and Stamina.
+[![CI](https://github.com/racoon-typper/racoon-typper/actions/workflows/ci.yml/badge.svg)](https://github.com/racoon-typper/racoon-typper/actions/workflows/ci.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
-## Features
+Racoon Typper is a local-first desktop touch-typing trainer for focused practice, measurable progress, and offline use. It combines a Rust/Tauri desktop application with a Svelte interface and a local SQLite data store.
 
-- **4 Test Modes**: Time (15/30/60/120s), Words (10/25/50/100), Quote, Custom Text
-- **2 Languages**: English, Russian (500+ words each, 20 quotes each)
-- **Statistics**: WPM, Raw WPM, Accuracy, Raw Accuracy, Heatmap
-- **Personal Bests**: Automatic tracking per mode configuration
-- **Test History**: Full history with SQLite persistence
-- **Custom Texts**: Create, edit, delete, search, and test with your own texts
-- **Themes**: 3 built-in themes (Serika Dark, Serika Light, Racoon Dark)
-- **Settings**: Font size, caret style, live WPM/accuracy display
-- **Fully Offline**: No network requests, all data stored locally
+## Current status
 
-## Installation
+The repository is undergoing a controlled modernization. The current release metadata is `1.1.0`, but the project is not claiming a production-ready artifact until the licensing, foundation, security, and release gates in [ROADMAP.md](ROADMAP.md) are complete.
 
-See [INSTALL.md](INSTALL.md) for all installation methods.
+The verified development baseline is Linux x86_64. See [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) for the distinction between development targets, configured packages, and supported releases.
 
-### Quick Start (Arch Linux)
+Existing uncommitted feature and resource changes are tracked separately in [BASELINE.md](BASELINE.md). They are not automatically treated as released functionality.
+
+## Baseline capabilities
+
+- Time, words, quote, custom-text, and lesson-oriented typing workflows
+- WPM, accuracy, heatmap, history, personal-best, and progress views
+- Local SQLite persistence and replay data
+- Keyboard training, weak-key analysis, and adaptive practice components
+- Configurable local themes and typing settings
+- Offline-first operation with no account or server requirement
+
+Feature availability can vary between the committed baseline and the current worktree. Release notes will only claim capabilities demonstrated by a reviewed release artifact.
+
+## Quick start from source
+
+Install the platform prerequisites listed in [INSTALL.md](INSTALL.md), then run:
 
 ```bash
-sudo pacman -S rust webkit2gtk-4.1 base-devel npm
 git clone https://github.com/racoon-typper/racoon-typper.git
 cd racoon-typper
-makepkg -si
+npm ci --prefix frontend
+npm run check:version --prefix frontend
+npm run tauri:dev --prefix frontend
 ```
 
-## Repository Structure
+The canonical commands run Tauri from `crates/app` so the Rust manifest, Tauri configuration, and frontend asset paths remain consistent.
 
-```
-racoon-typper/
-├── crates/
-│   ├── domain/      # Pure types (TestRecord, FinalStats, Settings, etc.)
-│   ├── core/        # Engine logic (Input, Typing, Stats, TestMode trait)
-│   ├── data/        # SQLite layer (rusqlite, migrations, repositories)
-│   ├── resources/   # Word packs, quote loaders (include_str! embedded)
-│   └── app/         # Tauri shell (IPC commands, state, event bridge)
-├── frontend/        # Svelte 5 + Vite SPA
-│   ├── src/
-│   │   ├── components/    # TestView, HistoryView, BestsView, etc.
-│   │   ├── lib/api/       # Typed IPC wrappers
-│   │   └── lib/types/     # TypeScript type definitions
-├── resources/       # Word packs, quotes, themes
-│   ├── words/       # en.txt, ru.txt
-│   ├── quotes/      # en.toml, ru.toml
-│   └── themes/      # serika_dark, serika_light, racoon_dark
-└── Cargo.toml       # Workspace root
+## Build and verify
+
+```bash
+cargo fmt --all --check
+cargo clippy --workspace --all-targets -- -D warnings
+cargo test --workspace
+npm run check --prefix frontend
+npm run build --prefix frontend
+
+# Build the release binary without generating installers
+npm run tauri:build:binary --prefix frontend
+
+# Build configured platform bundles
+npm run tauri:build --prefix frontend
 ```
 
-## Architecture
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the current boundaries and [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor workflow.
 
-- **Backend**: Rust (Tauri 2.x), synchronous architecture
-- **Frontend**: Svelte 5 + Vite (SPA, no SSR)
-- **Database**: SQLite (rusqlite, WAL mode, no connection pool)
-- **Settings**: TOML file (~/.config/racoon-typper/settings.toml)
-- **Data**: SQLite (~/.local/share/racoon-typper/data.db)
+## Repository layout
 
-See `ARCHITECTURE.md` for full specification.
+```text
+crates/domain/       Shared domain types and contracts
+crates/core/         Typing engine, modes, scoring, lessons, analytics
+crates/data/         SQLite connection, migrations, repositories
+crates/resources/    Embedded content loading and validation
+crates/app/          Tauri desktop shell and IPC adapters
+frontend/            Svelte 5/Vite interface and typed IPC client
+resources/           Runtime lessons, words, quotes, and themes
+scripts/             Baseline verification and Tauri command wrappers
+```
 
-## Screenshots
+## Data and privacy
 
-*(Screenshots will be added before public release)*
+The application is designed to keep typing data locally. The currently verified Linux locations are:
 
-## Roadmap
+| Data | Linux location |
+|---|---|
+| SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper/data.db` |
+| Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper/settings.toml` |
 
-### v0.1.0 (Current)
-- [x] Time/Words/Quote/Custom modes
-- [x] WPM, Raw WPM, Accuracy
-- [x] Heatmap data
-- [x] SQLite persistence
-- [x] Personal Bests
-- [x] Custom Texts CRUD
-- [x] 3 themes, 5 settings
-- [x] EN/RU dictionaries
+Other platform paths remain unverified; see the support matrix. Export, retention, deletion, and migration behavior are being formalized before a production release.
 
-### v0.2.0
-- [ ] Consistency metric
-- [ ] Graph (WPM/accuracy over time)
-- [ ] Daily stats aggregation
-- [ ] Streaks
+## Downloads
 
-### Post v1.0
-- [ ] Lessons (Stamina-style course)
-- [ ] Weak Keys Engine
-- [ ] Adaptive training
-- [ ] Plugin System (WASM)
-- [ ] More languages
+Public release artifacts will be published on the [GitHub Releases page](https://github.com/racoon-typper/racoon-typper/releases) after the release pipeline and clean-install smoke tests pass. Configured package formats are not a support promise until they appear in [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) as verified.
+
+## Roadmap and documentation
+
+- [Modernization roadmap](ROADMAP.md)
+- [Architecture](ARCHITECTURE.md)
+- [Support matrix](SUPPORT_MATRIX.md)
+- [Installation guide](INSTALL.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Release checklist](RELEASE_CHECKLIST.md)
+- [Changelog](CHANGELOG.md)
 
 ## License
 
-Apache-2.0
+Project-owned code, resources, and metadata are released under the [Apache License 2.0](LICENSE). Third-party dependencies retain their original licenses; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md), the [dependency inventory](licenses/dependencies.json), the [asset provenance inventory](licenses/ASSET_PROVENANCE.md), and the [provenance record](licenses/PROVENANCE_ATTESTATION.md).

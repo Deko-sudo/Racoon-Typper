@@ -1,5 +1,6 @@
 <script lang="ts">
   // TypingWarnings — определение неверной раскладки и Caps Lock.
+  import { t } from '../lib/i18n';
 
   let {
     expectedLanguage = 'en',
@@ -7,12 +8,14 @@
     capsLockOn = false,
     showLayoutWarnings = true,
     showCapsLockWarnings = true,
+    uiLang = 'en',
   }: {
     expectedLanguage?: string;
     lastTypedChar?: string;
     capsLockOn?: boolean;
     showLayoutWarnings?: boolean;
     showCapsLockWarnings?: boolean;
+    uiLang?: string;
   } = $props();
 
   // Layout detection
@@ -37,9 +40,10 @@
   <div class="warning-card layout-warning">
     <span class="warning-icon">❌</span>
     <div class="warning-text">
-      <strong>Неверная раскладка</strong>
-      <p>Используется {expectedLanguage === 'ru' ? 'EN' : 'RU'} раскладка.
-      Переключитесь на {expectedLanguage === 'ru' ? 'RU' : 'EN'}.</p>
+      <strong>{t(uiLang, 'warning.layout_title')}</strong>
+      <p>{t(uiLang, 'warning.layout_message')
+        .replace('{current}', expectedLanguage === 'ru' ? 'EN' : 'RU')
+        .replace('{expected}', expectedLanguage === 'ru' ? 'RU' : 'EN')}</p>
     </div>
   </div>
 {/if}
@@ -48,21 +52,25 @@
   <div class="warning-card caps-warning">
     <span class="warning-icon">⚠</span>
     <div class="warning-text">
-      <strong>Caps Lock включён</strong>
-      <p>Caps Lock может снизить точность ввода.</p>
+      <strong>{t(uiLang, 'warning.caps_title')}</strong>
+      <p>{t(uiLang, 'warning.caps_message')}</p>
     </div>
   </div>
 {/if}
 
 <style>
   .warning-card {
+    position: fixed; top: 1rem; right: 1rem; z-index: 200;
     display: flex; gap: 0.5rem; align-items: flex-start;
-    padding: 0.75rem 1rem; border-radius: 8px; margin-bottom: 0.5rem;
-    font-size: 0.875rem; max-width: 400px;
+    padding: 0.75rem 1rem; border-radius: 8px;
+    font-size: 0.875rem; max-width: 360px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: slide-in 0.2s ease-out;
   }
   .layout-warning { background: rgba(202,71,84,0.15); border: 1px solid var(--error); }
   .caps-warning { background: rgba(226,183,20,0.15); border: 1px solid var(--main); }
   .warning-icon { font-size: 1.2rem; }
   .warning-text strong { color: var(--text); display: block; }
   .warning-text p { color: var(--sub); font-size: 0.75rem; margin: 0.25rem 0 0; }
+  .caps-warning { top: 6.5rem; }
+  @keyframes slide-in { from { transform: translateX(110%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 </style>

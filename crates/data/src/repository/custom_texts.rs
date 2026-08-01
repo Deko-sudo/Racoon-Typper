@@ -59,13 +59,13 @@ pub fn validate_text(name: &str, text: &str) -> Result<(), String> {
     if name.trim().is_empty() {
         return Err("Name is empty".to_string());
     }
-    if name.len() > MAX_NAME_LENGTH {
+    if name.chars().count() > MAX_NAME_LENGTH {
         return Err(format!("Name too long (max {} chars)", MAX_NAME_LENGTH));
     }
     if text.trim().is_empty() {
         return Err("Text is empty".to_string());
     }
-    if text.len() > MAX_CUSTOM_TEXT_LENGTH {
+    if text.chars().count() > MAX_CUSTOM_TEXT_LENGTH {
         return Err(format!(
             "Text too long (max {} chars)",
             MAX_CUSTOM_TEXT_LENGTH
@@ -125,7 +125,7 @@ impl<'a> CustomTextRepository for SqliteCustomTextRepository<'a> {
     }
 
     fn save_with_language(&self, name: &str, text: &str, language: &str) -> Result<i64, DbError> {
-        validate_text(name, text).map_err(DbError::Write)?;
+        validate_text(name, text).map_err(DbError::Validation)?;
 
         let now = chrono::Utc::now().to_rfc3339();
         self.conn
@@ -140,7 +140,7 @@ impl<'a> CustomTextRepository for SqliteCustomTextRepository<'a> {
     }
 
     fn update(&self, id: i64, name: &str, text: &str) -> Result<(), DbError> {
-        validate_text(name, text).map_err(DbError::Write)?;
+        validate_text(name, text).map_err(DbError::Validation)?;
 
         let affected = self
             .conn
@@ -163,7 +163,7 @@ impl<'a> CustomTextRepository for SqliteCustomTextRepository<'a> {
         text: &str,
         language: &str,
     ) -> Result<(), DbError> {
-        validate_text(name, text).map_err(DbError::Write)?;
+        validate_text(name, text).map_err(DbError::Validation)?;
 
         let affected = self
             .conn
@@ -435,13 +435,22 @@ mod tests {
     }
 
     #[test]
+    fn validation_limits_are_character_based() {
+        let name = "я".repeat(MAX_NAME_LENGTH);
+        let text = "界".repeat(MAX_CUSTOM_TEXT_LENGTH);
+        assert!(validate_text(&name, &text).is_ok());
+    }
+
+    #[test]
     fn save_invalid_name_rejected() {
         let db = Database::open_in_memory().unwrap();
         let conn = db.conn();
         let repo = SqliteCustomTextRepository::new(&conn);
 
-        let result = repo.save("", "hello");
-        assert!(result.is_err());
+        assert!(matches!(
+            repo.save("", "hello"),
+            Err(DbError::Validation(_))
+        ));
     }
 
     #[test]
@@ -450,8 +459,7 @@ mod tests {
         let conn = db.conn();
         let repo = SqliteCustomTextRepository::new(&conn);
 
-        let result = repo.save("Name", "");
-        assert!(result.is_err());
+        assert!(matches!(repo.save("Name", ""), Err(DbError::Validation(_))));
     }
 
     #[test]

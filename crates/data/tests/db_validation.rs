@@ -7,10 +7,11 @@ use racoon_data::repository::{
     SqliteLessonRepository, SqlitePersonalBestsRepository, SqliteReplayRepository,
     SqliteTestRepository, TestRepository,
 };
-use racoon_domain::TestRecord;
+use racoon_domain::{SessionId, TestRecord};
 
 fn make_record(n: i64) -> TestRecord {
     TestRecord {
+        session_id: SessionId::from(format!("validation-test-{n}")),
         created_at: format!("2026-06-{:02}T12:00:00Z", (n % 30) + 1),
         mode_type: "time".to_string(),
         mode_config: serde_json::json!({"duration": 30}),

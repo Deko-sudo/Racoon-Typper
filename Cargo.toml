@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Racoon Typper Contributors
+
 [workspace]
 resolver = "2"
 members = [
@@ -5,6 +8,7 @@ members = [
     "crates/core",
     "crates/data",
     "crates/resources",
+    "crates/application",
     "crates/app",
 ]
 
@@ -24,9 +28,12 @@ racoon-domain = { path = "crates/domain" }
 racoon-core = { path = "crates/core" }
 racoon-data = { path = "crates/data" }
 racoon-resources = { path = "crates/resources" }
+racoon-application = { path = "crates/application" }
 
 # Shared deps
-chrono = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+uuid = { version = "1", features = ["serde", "v7"] }
 
 [profile.release]
 strip = true

@@ -21,6 +21,16 @@ pub enum AppError {
     SessionNotFound(String),
     #[serde(rename = "TEST_NOT_ACTIVE")]
     TestNotActive,
+    #[serde(rename = "SESSION_FINALIZING")]
+    SessionFinalizing,
+    #[serde(rename = "STATE_UNAVAILABLE")]
+    StateUnavailable,
+    #[serde(rename = "RECOVERY_NOT_STARTED")]
+    RecoveryNotStarted,
+    #[serde(rename = "RECOVERY_IN_PROGRESS")]
+    RecoveryInProgress,
+    #[serde(rename = "RECOVERY_BLOCKED")]
+    RecoveryBlocked,
     #[serde(rename = "INVALID_MODE")]
     InvalidMode(String),
     #[serde(rename = "INVALID_CONFIG")]
@@ -43,6 +53,8 @@ pub enum AppError {
     DbConnection(String),
     #[serde(rename = "THEME_NOT_FOUND")]
     ThemeNotFound(String),
+    #[serde(rename = "RESOURCE_NOT_FOUND")]
+    ResourceNotFound(String),
     #[serde(rename = "INTERNAL")]
     Internal(String),
 }
@@ -57,6 +69,13 @@ impl fmt::Display for AppError {
             AppError::TestAlreadyActive => write!(f, "A test is already running"),
             AppError::SessionNotFound(id) => write!(f, "Session not found: {}", id),
             AppError::TestNotActive => write!(f, "No active test"),
+            AppError::SessionFinalizing => write!(f, "The completed test is still being saved"),
+            AppError::StateUnavailable => {
+                write!(f, "Application state is unavailable; restart Racoon Typper")
+            }
+            AppError::RecoveryNotStarted => write!(f, "Startup recovery has not started"),
+            AppError::RecoveryInProgress => write!(f, "Startup recovery is in progress"),
+            AppError::RecoveryBlocked => write!(f, "Startup recovery is blocked"),
             AppError::InvalidMode(mode) => write!(f, "Unknown mode: {}", mode),
             AppError::InvalidConfig(msg) => write!(f, "Invalid config: {}", msg),
             AppError::InvalidKey => write!(f, "Invalid key event"),
@@ -68,6 +87,7 @@ impl fmt::Display for AppError {
             AppError::DbWrite(msg) => write!(f, "DB write error: {}", msg),
             AppError::DbConnection(msg) => write!(f, "DB connection error: {}", msg),
             AppError::ThemeNotFound(name) => write!(f, "Theme not found: {}", name),
+            AppError::ResourceNotFound(name) => write!(f, "Resource not found: {}", name),
             AppError::Internal(msg) => write!(f, "Internal error: {}", msg),
         }
     }
@@ -100,14 +120,14 @@ impl From<toml::ser::Error> for AppError {
 }
 
 impl From<std::sync::PoisonError<std::sync::MutexGuard<'_, racoon_data::Database>>> for AppError {
-    fn from(e: std::sync::PoisonError<std::sync::MutexGuard<'_, racoon_data::Database>>) -> Self {
-        AppError::Internal(format!("Mutex poisoned: {}", e))
+    fn from(_: std::sync::PoisonError<std::sync::MutexGuard<'_, racoon_data::Database>>) -> Self {
+        AppError::StateUnavailable
     }
 }
 
 impl From<std::sync::PoisonError<std::sync::MutexGuard<'_, racoon_core::CoreEngine>>> for AppError {
-    fn from(e: std::sync::PoisonError<std::sync::MutexGuard<'_, racoon_core::CoreEngine>>) -> Self {
-        AppError::Internal(format!("Mutex poisoned: {}", e))
+    fn from(_: std::sync::PoisonError<std::sync::MutexGuard<'_, racoon_core::CoreEngine>>) -> Self {
+        AppError::StateUnavailable
     }
 }
 
@@ -117,14 +137,63 @@ impl From<racoon_data::DbError> for AppError {
             racoon_data::DbError::Connection(msg) => AppError::DbConnection(msg),
             racoon_data::DbError::Query(msg) => AppError::DbQuery(msg),
             racoon_data::DbError::Write(msg) => AppError::DbWrite(msg),
-            racoon_data::DbError::NotFound(msg) => {
-                if msg.starts_with("CustomText") {
-                    AppError::CustomTextNotFound(0)
-                } else {
-                    AppError::Internal(msg)
-                }
+            racoon_data::DbError::Transaction(msg) => AppError::DbWrite(msg),
+            racoon_data::DbError::Sqlite { .. } => {
+                AppError::DbWrite("SQLite operation failed".to_string())
             }
+            racoon_data::DbError::Integrity(msg) => AppError::DbWrite(msg),
+            racoon_data::DbError::Validation(msg) => AppError::InvalidConfig(msg),
+            racoon_data::DbError::LockPoisoned => AppError::StateUnavailable,
+            racoon_data::DbError::NotFound(msg) => AppError::ResourceNotFound(msg),
             racoon_data::DbError::Migration(msg) => AppError::DbConnection(msg),
+        }
+    }
+}
+
+impl From<racoon_application::SessionLifecycleError> for AppError {
+    fn from(error: racoon_application::SessionLifecycleError) -> Self {
+        match error {
+            racoon_application::SessionLifecycleError::AlreadyActive => AppError::TestAlreadyActive,
+            racoon_application::SessionLifecycleError::Finalizing => AppError::SessionFinalizing,
+            racoon_application::SessionLifecycleError::InvalidTransition => AppError::Internal(
+                "session start was rejected from an allowed lifecycle state".to_string(),
+            ),
+        }
+    }
+}
+
+impl From<racoon_application::SessionStartError<AppError>> for AppError {
+    fn from(error: racoon_application::SessionStartError<AppError>) -> Self {
+        match error {
+            racoon_application::SessionStartError::Mode(error) => error,
+            racoon_application::SessionStartError::Lifecycle(error) => error.into(),
+        }
+    }
+}
+
+impl From<racoon_application::SessionProcessError<AppError>> for AppError {
+    fn from(error: racoon_application::SessionProcessError<AppError>) -> Self {
+        match error {
+            racoon_application::SessionProcessError::SessionNotFound(id) => {
+                AppError::SessionNotFound(id.to_string())
+            }
+            racoon_application::SessionProcessError::StateUnavailable => AppError::StateUnavailable,
+            racoon_application::SessionProcessError::Finalizing => AppError::SessionFinalizing,
+            racoon_application::SessionProcessError::Persistence(error) => error,
+            racoon_application::SessionProcessError::InvalidCompletion(message) => {
+                AppError::Internal(message.to_string())
+            }
+        }
+    }
+}
+
+impl From<racoon_application::SessionAbortError> for AppError {
+    fn from(error: racoon_application::SessionAbortError) -> Self {
+        match error {
+            racoon_application::SessionAbortError::SessionNotFound(id) => {
+                AppError::SessionNotFound(id.to_string())
+            }
+            racoon_application::SessionAbortError::Finalizing => AppError::SessionFinalizing,
         }
     }
 }

@@ -6,6 +6,10 @@ on:
     tags: ['v*']
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,7 +29,7 @@ jobs:
       - name: fmt
         run: cargo fmt --all --check
       - name: clippy
-        run: cargo clippy --workspace -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
       - name: test
         run: cargo test --workspace
 
@@ -36,14 +40,51 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
       - name: Install frontend deps
         run: npm ci --prefix frontend
+      - name: Check project version
+        run: npm run check:version --prefix frontend
+      - name: Check frontend
+        run: npm run check --prefix frontend
       - name: Build frontend
         run: npm run build --prefix frontend
 
+  license-policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        run: npm ci --prefix frontend
+      - name: Install cargo-deny
+        run: cargo install cargo-deny --locked --version 0.20.2
+      - name: Validate Rust dependency licenses
+        run: cargo deny check licenses
+      - name: Validate project and npm licenses
+        run: npm run license:check --prefix frontend
+      - name: Upload licensing reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: racoon-typper-licensing-reports
+          path: |
+            licenses/assets.json
+            licenses/ASSET_PROVENANCE.md
+            licenses/PROVENANCE_ATTESTATION.md
+            licenses/dependencies.json
+            licenses/sbom.cdx.json
+            THIRD_PARTY_NOTICES.md
+          if-no-files-found: error
+
   build-linux:
     runs-on: ubuntu-latest
-    needs: [rust-checks, frontend-build]
+    needs: [rust-checks, frontend-build, license-policy]
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -54,16 +95,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
-      - name: Install Tauri CLI
-        run: npm install --prefix frontend @tauri-apps/cli@^2
       - name: Install frontend deps
         run: npm ci --prefix frontend
+      - name: Check project version
+        run: npm run check:version --prefix frontend
       - name: Build Tauri app
-        run: npx --prefix frontend tauri build
+        run: npm run tauri:build:ci --prefix frontend
       - name: Package tarball
         run: |
-          VERSION=${GITHUB_REF_NAME:-0.9.0}
-          VERSION=${VERSION#v}
+          VERSION=${GITHUB_REF_NAME#v}
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-].*)?$ ]]; then
+            VERSION=$(node scripts/check-version.mjs --print)
+          fi
           tar czf racoon-typper-v${VERSION}-x86_64.tar.gz -C target/release racoon-app
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -71,23 +114,25 @@ jobs:
           name: racoon-typper-linux
           path: |
             target/release/racoon-app
+            target/release/bundle/**
             racoon-typper-*.tar.gz
+          if-no-files-found: error
 
   build-windows:
     runs-on: windows-latest
-    needs: [rust-checks, frontend-build]
+    needs: [rust-checks, frontend-build, license-policy]
     steps:
       - uses: actions/checkout@v4
       - uses: actions-rust-lang/setup-rust-toolchain@v1
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install Tauri CLI
-        run: npm install --prefix frontend @tauri-apps/cli@^2
       - name: Install frontend deps
         run: npm ci --prefix frontend
+      - name: Check project version
+        run: npm run check:version --prefix frontend
       - name: Build Tauri app (NSIS)
-        run: npx --prefix frontend tauri build --target nsis
+        run: npm run tauri:build:ci --prefix frontend
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -95,11 +140,14 @@ jobs:
           path: |
             target/release/racoon-app.exe
             target/release/bundle/nsis/*.exe
+          if-no-files-found: error
 
   release:
     runs-on: ubuntu-latest
     needs: [build-linux, build-windows]
     if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Download artifacts
@@ -114,15 +162,15 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Racoon Typper ${{ github.ref_name }} RC
           files: |
-            artifacts/racoon-typper-linux/*
-            artifacts/racoon-typper-windows/*
+            artifacts/racoon-typper-linux/**/*
+            artifacts/racoon-typper-windows/**/*
           body: |
             ## Release Candidate ${{ github.ref_name }}
 
             ### Artifacts
-            - Linux binary (x86_64)
+            - Linux bundles and binary (x86_64)
             - Windows installer (NSIS)
-            - PKGBUILD (Arch Linux)
+            - Source repository and PKGBUILD for Arch Linux users
 
             ### Install
             See INSTALL.md for details.

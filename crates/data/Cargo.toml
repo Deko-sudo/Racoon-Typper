@@ -1,3 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Racoon Typper Contributors
+
 [package]
 name = "racoon-data"
 version.workspace = true
@@ -5,8 +8,18 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 
+[features]
+# Enables integration-test-only seams. This is intentionally non-default so
+# normal consumers cannot construct a failure-injecting finalizer.
+test-support = []
+# Extends test support with an abrupt child-process crash seam. This is never
+# enabled by default or by a production crate.
+crash-test-support = ["test-support"]
+
 [dependencies]
+racoon-application = { workspace = true }
 racoon-domain = { workspace = true }
+racoon-core = { workspace = true }
 rusqlite = { version = "0.31", features = ["bundled"] }
 refinery = { version = "0.8", features = ["rusqlite"] }
 chrono = "0.4"
@@ -15,6 +28,5 @@ serde_json = { workspace = true }
 toml = { workspace = true }
 
 [dev-dependencies]
-racoon-core = { workspace = true }
 chrono = { workspace = true }
 serde_json = { workspace = true }

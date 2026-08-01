@@ -17,6 +17,16 @@
     onSelectTheme: (name: string) => void;
     onUpdateSetting: (key: string, value: unknown) => void;
   } = $props();
+
+  let themeSearch = $state('');
+  let filteredThemes = $derived.by(() => {
+    const query = themeSearch.trim().toLowerCase();
+    if (!query) return themes;
+    return themes.filter((theme) =>
+      theme.name.toLowerCase().includes(query)
+      || theme.display_name.toLowerCase().includes(query),
+    );
+  });
 </script>
 
 <div class="list-view">
@@ -61,16 +71,8 @@
         <input id="setting-accuracy" type="checkbox" checked={settings.show_accuracy} onchange={(e) => onUpdateSetting('show_accuracy', e.currentTarget.checked)} />
       </div>
       <div class="setting-row">
-        <label for="setting-kb-trainer">{t(uiLang, 'settings.keyboard_trainer')}</label>
-        <input id="setting-kb-trainer" type="checkbox" checked={settings.show_keyboard_trainer} onchange={(e) => onUpdateSetting('show_keyboard_trainer', e.currentTarget.checked)} />
-      </div>
-      <div class="setting-row">
         <label for="setting-hand-guide">{t(uiLang, 'settings.hand_guide')}</label>
         <input id="setting-hand-guide" type="checkbox" checked={settings.show_hand_guide} onchange={(e) => onUpdateSetting('show_hand_guide', e.currentTarget.checked)} />
-      </div>
-      <div class="setting-row">
-        <label for="setting-layout-warnings">{t(uiLang, 'settings.layout_warnings')}</label>
-        <input id="setting-layout-warnings" type="checkbox" checked={settings.show_layout_warnings} onchange={(e) => onUpdateSetting('show_layout_warnings', e.currentTarget.checked)} />
       </div>
       <div class="setting-row">
         <label for="setting-capslock">{t(uiLang, 'settings.capslock_warnings')}</label>
@@ -114,8 +116,18 @@
       {/if}
     </div>
     <h3>{t(uiLang, 'settings.theme_preview')}</h3>
+    <div class="theme-toolbar">
+      <input
+        class="theme-search"
+        type="search"
+        placeholder={t(uiLang, 'settings.theme_search')}
+        value={themeSearch}
+        oninput={(event) => { themeSearch = event.currentTarget.value; }}
+      />
+      <span>{filteredThemes.length}/{themes.length}</span>
+    </div>
     <div class="theme-cards">
-      {#each themes as t2}
+      {#each filteredThemes as t2}
         <button
           type="button"
           class="theme-card {t2.name === activeTheme ? 'active' : ''}"
@@ -139,13 +151,22 @@
   .setting-row { display: flex; align-items: center; gap: 1rem; }
   .setting-row label { min-width: 180px; color: var(--sub); font-size: 0.875rem; }
   .setting-row input, .setting-row select {
-    background: var(--bg-sub); border: 1px solid var(--sub); color: var(--text);
+    background-color: var(--bg-sub) !important; border: 1px solid var(--sub); color: var(--text) !important;
     padding: 0.5rem; font-family: inherit; border-radius: 4px; font-size: 0.875rem;
   }
-  .theme-cards { display: flex; gap: 1rem; flex-wrap: wrap; }
+  .setting-row select { appearance: none; min-width: 155px; padding-right: 2rem; background-image: linear-gradient(45deg, transparent 50%, var(--main) 50%), linear-gradient(135deg, var(--main) 50%, transparent 50%); background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .setting-row select option { background-color: var(--bg-sub); color: var(--text); }
+  .setting-row input[type='checkbox'] { accent-color: var(--main); }
+  .setting-row input[type='range'] { accent-color: var(--main); background: transparent !important; }
+  .setting-row input:focus, .setting-row select:focus, .theme-search:focus { outline: 2px solid color-mix(in srgb, var(--main) 55%, transparent); outline-offset: 1px; border-color: var(--main); }
+  .theme-toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
+  .theme-toolbar span { color: var(--sub); font-size: 0.7rem; }
+  .theme-search { min-width: 260px; padding: 0.5rem 0.75rem; border: 1px solid var(--sub); border-radius: 6px; background: var(--bg-sub); color: var(--text); font: inherit; font-size: 0.75rem; }
+  .theme-search:focus { outline: none; border-color: var(--main); }
+  .theme-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 0.65rem; max-height: 460px; overflow-y: auto; padding: 0.25rem; scrollbar-color: var(--sub) var(--bg-sub); }
   .theme-card {
-    padding: 1rem; border-radius: 8px; border: 2px solid transparent; cursor: pointer;
-    display: flex; flex-direction: column; gap: 0.25rem; min-width: 120px;
+    padding: 0.75rem; border-radius: 8px; border: 2px solid transparent; cursor: pointer;
+    display: flex; flex-direction: column; gap: 0.25rem; min-width: 0;
     font-family: inherit; text-align: left;
   }
   .theme-card.active { border-color: var(--main); }

@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::ids::TestId;
+use crate::ids::{SessionId, TestId};
 
 /// Тип режима теста.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -36,6 +36,7 @@ pub struct ModeConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestSummary {
     pub id: TestId,
+    pub session_id: SessionId,
     pub created_at: String,
     pub mode_type: String,
     pub mode_config: serde_json::Value,
@@ -47,12 +48,14 @@ pub struct TestSummary {
     pub consistency: Option<f64>,
     pub duration_ms: u64,
     pub is_pb: bool,
+    pub has_replay: bool,
 }
 
 /// Детальная запись теста.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestDetail {
     pub id: TestId,
+    pub session_id: SessionId,
     pub created_at: String,
     pub mode_type: String,
     pub mode_config: serde_json::Value,
@@ -77,6 +80,7 @@ pub struct TestDetail {
 /// Запись теста для сохранения в БД.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TestRecord {
+    pub session_id: SessionId,
     pub created_at: String,
     pub mode_type: String,
     pub mode_config: serde_json::Value,

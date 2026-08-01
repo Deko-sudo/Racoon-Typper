@@ -27,15 +27,6 @@
   // Row 6: space row
   const SPACE_ROW = ['ctrl', 'win', 'alt', 'space', 'alt', 'fn', 'menu', 'ctrl'];
 
-  // Numpad
-  const NUMPAD_ROWS = [
-    ['num', '/', '*', '-'],
-    ['7', '8', '9', '+'],
-    ['4', '5', '6'],
-    ['1', '2', '3', 'enter'],
-    ['0', '.'],
-  ];
-
   // Special key widths
   const KEY_WIDTHS: Record<string, string> = {
     'esc': '40px', 'tab': '64px', 'caps': '72px', 'enter': '78px',
@@ -61,7 +52,7 @@
     if (data.total === 0) return 'var(--sub)';
     const accuracy = (data.correct / data.total) * 100;
     if (accuracy >= 95) return 'var(--text)';
-    if (accuracy >= 80) return '#e2b714';
+    if (accuracy >= 80) return '#5eead4';
     if (accuracy >= 60) return '#ff8c42';
     return 'var(--error)';
   }
@@ -97,7 +88,7 @@
   <div class="keyboard-wrapper">
     <div class="keyboard-main">
       <!-- Function row -->
-      <div class="keyboard-row">
+      <div class="keyboard-row row-fn">
         {#each FUNC_ROW as key}
           <div class="key key-fn" style="color: {getKeyColor(key)}; opacity: {getKeyIntensity(key)};" title="{key}">
             <span class="key-char-sm">{key}</span>
@@ -105,7 +96,7 @@
         {/each}
       </div>
       <!-- Number row -->
-      <div class="keyboard-row">
+      <div class="keyboard-row row-number">
         {#each NUM_ROW as key}
           <div
             class="key {isSpecial(key) ? 'key-special' : ''}"
@@ -123,7 +114,7 @@
         {/each}
       </div>
       <!-- Top row -->
-      <div class="keyboard-row">
+      <div class="keyboard-row row-top">
         {#each TOP_ROW as key}
           <div
             class="key {isSpecial(key) ? 'key-special' : ''}"
@@ -141,7 +132,7 @@
         {/each}
       </div>
       <!-- Home row -->
-      <div class="keyboard-row">
+      <div class="keyboard-row row-home">
         {#each HOME_ROW as key}
           <div
             class="key {isSpecial(key) ? 'key-special' : ''}"
@@ -159,7 +150,7 @@
         {/each}
       </div>
       <!-- Bottom row -->
-      <div class="keyboard-row">
+      <div class="keyboard-row row-bottom">
         {#each BOTTOM_ROW as key}
           <div
             class="key {isSpecial(key) ? 'key-special' : ''}"
@@ -177,7 +168,7 @@
         {/each}
       </div>
       <!-- Space row -->
-      <div class="keyboard-row">
+      <div class="keyboard-row row-space">
         {#each SPACE_ROW as key}
           <div
             class="key key-special"
@@ -190,21 +181,13 @@
       </div>
     </div>
 
-    <!-- Numpad -->
+    <!-- Numpad: CSS grid preserves the physical geometry of +, Enter, and 0. -->
     <div class="keyboard-numpad">
-      {#each NUMPAD_ROWS as row}
-        <div class="numpad-row">
-          {#each row as key}
-            <div
-              class="key {isSpecial(key) ? 'key-special' : ''}"
-              style="width: {getKeyWidth(key)}; color: {getKeyColor(key)}; opacity: {getKeyIntensity(key)};"
-              title="{key}: {getKeyLabel(key)}"
-            >
-              <span class="key-char">{key}</span>
-            </div>
-          {/each}
-        </div>
-      {/each}
+      <div class="key key-special num-lock">num</div><div class="key">/</div><div class="key">*</div><div class="key">−</div>
+      <div class="key">7</div><div class="key">8</div><div class="key">9</div><div class="key num-plus">+</div>
+      <div class="key">4</div><div class="key">5</div><div class="key">6</div>
+      <div class="key">1</div><div class="key">2</div><div class="key">3</div><div class="key key-special num-enter">enter</div>
+      <div class="key num-zero">0</div><div class="key">.</div>
     </div>
   </div>
 </div>
@@ -212,11 +195,16 @@
 <style>
   .keyboard-viz { width: 100%; display: flex; flex-direction: column; align-items: center; }
   h3 { color: var(--main); font-size: 1.1rem; margin: 0 0 0.5rem; text-align: center; }
-  .keyboard-wrapper { display: flex; gap: 1rem; justify-content: center; align-items: flex-start; }
-  .keyboard-main { display: flex; flex-direction: column; gap: 0.25rem; align-items: center; }
+  .keyboard-wrapper { display: flex; gap: 1rem; justify-content: center; align-items: flex-start; max-width: 100%; overflow-x: auto; padding: 0.25rem; }
+  .keyboard-main { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; min-width: 748px; }
   .keyboard-row { display: flex; gap: 0.25rem; }
-  .keyboard-numpad { display: flex; flex-direction: column; gap: 0.25rem; align-items: center; margin-top: 28px; }
-  .numpad-row { display: flex; gap: 0.25rem; }
+  .row-fn { align-self: flex-start; }
+  .row-number { padding-left: 8px; }
+  .row-top { padding-left: 18px; }
+  .row-home { padding-left: 30px; }
+  .row-bottom { padding-left: 46px; }
+  .row-space { padding-left: 72px; }
+  .keyboard-numpad { display: grid; grid-template-columns: repeat(4, 48px); grid-template-rows: repeat(5, 52px); gap: 0.25rem; margin-top: 36px; }
   .key {
     height: 52px; border: 1px solid var(--bg-sub); border-radius: 4px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -228,4 +216,8 @@
   .key-char-sm { font-weight: bold; font-size: 0.7rem; }
   .key-acc { font-size: 0.55rem; opacity: 0.8; }
   .key-finger { font-size: 0.5rem; opacity: 0.5; position: absolute; bottom: 2px; right: 3px; }
+  .num-lock { width: 48px; }
+  .num-plus { grid-column: 4; grid-row: 2 / span 2; width: 48px !important; height: auto; }
+  .num-enter { grid-column: 4; grid-row: 4 / span 2; width: 48px !important; height: auto; }
+  .num-zero { grid-column: 1 / span 2; width: auto !important; }
 </style>

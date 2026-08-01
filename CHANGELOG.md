@@ -6,7 +6,7 @@
 
 - **Sound Engine**: key press, error, lesson complete, achievement sounds with volume control and cooldown
 - **Zen Mode**: distraction-free typing — hides navbar, stats, panels during test
-- **3 New Themes**: Dracula, Catppuccin Mocha, Nord (total: 6 themes)
+- **Original Racoon Themes**: dark, light, and high-contrast practice palettes
 - **Achievement Notifications**: toast notifications when achievements unlock
 - **Session Recovery**: restore previous session after app crash/close
 - **Extended Statistics**: best day, most active hour, avg session duration, total chars/words
@@ -18,7 +18,7 @@
 
 - Dashboard extended with 5 new stat cards
 - Settings page: 3 new controls (sound toggle, volume slider, zen mode toggle)
-- 6 themes total (was 3)
+- 3 original themes with documented provenance
 
 ### Testing
 
@@ -44,7 +44,7 @@
 - TypingWarnings: layout detection, Caps Lock detection
 - NotificationStack: smart side notifications (max 3, 5s auto-remove)
 - Progress charts: SVG WPM + accuracy (7d/30d/90d)
-- 3 themes: Serika Dark, Serika Light, Racoon Dark
+- 3 original Racoon themes
 - 9 settings: font size, caret style, live WPM, accuracy, keyboard trainer, hand guide, layout warnings, CapsLock warnings
 - SQLite persistence (7 tables, 3 migrations)
 - TOML settings (~/.config/racoon-typper/settings.toml)

@@ -13,7 +13,7 @@
     if (!data || data.total_attempts === 0) return 'var(--sub)';
     const accuracy = (data.correct / data.total_attempts) * 100;
     if (accuracy >= 95) return 'var(--text)';
-    if (accuracy >= 80) return '#e2b714';
+    if (accuracy >= 80) return '#5eead4';
     if (accuracy >= 60) return '#ff8c42';
     return 'var(--error)';
   }

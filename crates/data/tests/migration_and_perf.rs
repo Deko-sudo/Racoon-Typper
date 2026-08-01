@@ -4,10 +4,11 @@ use racoon_data::db::Database;
 use racoon_data::repository::{
     DailyStatsRepository, SqliteDailyStatsRepository, SqliteTestRepository, TestRepository,
 };
-use racoon_domain::TestRecord;
+use racoon_domain::{SessionId, TestRecord};
 
 fn make_record(n: i64) -> TestRecord {
     TestRecord {
+        session_id: SessionId::from(format!("migration-test-{n}")),
         created_at: format!("2026-06-{:02}T12:00:00Z", (n % 30) + 1),
         mode_type: "time".to_string(),
         mode_config: serde_json::json!({"duration": 30}),
@@ -58,6 +59,79 @@ fn migration_v3_adds_replays_table() {
         .query_row("SELECT COUNT(*) FROM test_replays", [], |row| row.get(0))
         .unwrap();
     assert_eq!(count, 0);
+}
+
+#[test]
+fn migration_v4_adds_language_to_existing_custom_texts() {
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    conn.execute_batch(include_str!("../migrations/V001__initial.sql"))
+        .unwrap();
+    conn.execute_batch(include_str!("../migrations/V002__lesson_language.sql"))
+        .unwrap();
+    conn.execute_batch(include_str!("../migrations/V003__replays.sql"))
+        .unwrap();
+    conn.execute(
+        "INSERT INTO custom_texts (name, text, created_at, use_count) VALUES (?1, ?2, ?3, 0)",
+        rusqlite::params!["Existing", "Saved text", "2026-01-01T00:00:00Z"],
+    )
+    .unwrap();
+
+    conn.execute_batch(include_str!("../migrations/V004__custom_text_language.sql"))
+        .unwrap();
+
+    let (name, text, language): (String, String, String) = conn
+        .query_row(
+            "SELECT name, text, language FROM custom_texts WHERE name = 'Existing'",
+            [],
+            |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+        )
+        .unwrap();
+    assert_eq!(
+        (name, text, language),
+        ("Existing".into(), "Saved text".into(), "en".into())
+    );
+}
+
+#[test]
+fn migration_v5_backfills_and_guards_session_identity() {
+    let conn = rusqlite::Connection::open_in_memory().unwrap();
+    conn.execute_batch(include_str!("../migrations/V001__initial.sql"))
+        .unwrap();
+    conn.execute_batch(include_str!("../migrations/V002__lesson_language.sql"))
+        .unwrap();
+    conn.execute_batch(include_str!("../migrations/V003__replays.sql"))
+        .unwrap();
+    conn.execute_batch(include_str!("../migrations/V004__custom_text_language.sql"))
+        .unwrap();
+    conn.execute(
+        "INSERT INTO tests (created_at, mode_type, mode_config, language, text_length, duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency, correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data, graph_data, is_pb, tags)
+         VALUES ('2026-01-01T00:00:00Z', 'time', '{}', 'en', 1, 1000, 1.0, 1.0, 100.0, 100.0, NULL, 1, 0, 0, '{}', '{}', NULL, 0, '')",
+        [],
+    )
+    .unwrap();
+
+    conn.execute_batch(include_str!("../migrations/V005__session_identity.sql"))
+        .unwrap();
+
+    let session_id: String = conn
+        .query_row("SELECT session_id FROM tests WHERE id = 1", [], |row| {
+            row.get(0)
+        })
+        .unwrap();
+    assert_eq!(session_id, "legacy-test-0000000000000001");
+
+    let duplicate = conn.execute(
+        "INSERT INTO tests (session_id, created_at, mode_type, mode_config, language, text_length, duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency, correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data, graph_data, is_pb, tags)
+         VALUES (?1, '2026-01-02T00:00:00Z', 'time', '{}', 'en', 1, 1000, 1.0, 1.0, 100.0, 100.0, NULL, 1, 0, 0, '{}', '{}', NULL, 0, '')",
+        rusqlite::params![session_id],
+    );
+    assert!(duplicate.is_err(), "session identity must be unique");
+
+    let update = conn.execute(
+        "UPDATE tests SET session_id = 'legacy-test-0000000000000002' WHERE id = 1",
+        [],
+    );
+    assert!(update.is_err(), "session identity must be immutable");
 }
 
 #[test]
@@ -380,7 +454,7 @@ fn settings_persistence_update_single_field() {
     assert_eq!(settings.font_size, 32);
     assert_eq!(settings.caret_style, "block");
     // Other fields should be defaults
-    assert_eq!(settings.theme, "serika_dark");
+    assert_eq!(settings.theme, "racoon_dark");
 
     let _ = std::fs::remove_file(&path);
 }
@@ -391,7 +465,7 @@ fn settings_persistence_update_single_field() {
 fn lesson_progress_upgrade_after_completion() {
     use racoon_data::repository::{LessonRepository, SqliteLessonRepository};
     let conn = Box::leak(Box::new(rusqlite::Connection::open_in_memory().unwrap()));
-    racoon_data::db::run_migrations(conn);
+    racoon_data::db::run_migrations(conn).expect("Failed to run test migrations");
     let repo = SqliteLessonRepository::new(conn);
 
     // Create progress
@@ -419,7 +493,7 @@ fn lesson_progress_upgrade_after_completion() {
 fn lesson_progress_course_progress_after_multiple_completions() {
     use racoon_data::repository::{LessonRepository, SqliteLessonRepository};
     let conn = Box::leak(Box::new(rusqlite::Connection::open_in_memory().unwrap()));
-    racoon_data::db::run_migrations(conn);
+    racoon_data::db::run_migrations(conn).expect("Failed to run test migrations");
     let repo = SqliteLessonRepository::new(conn);
 
     // Create 5 lessons across 2 modules

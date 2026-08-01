@@ -46,16 +46,30 @@
   $effect(() => {
     const isPlaying = playing;
     const playbackSpeed = speed;
-    const frameCount = orderedFrames.length;
+    const timeline = orderedFrames;
+    const frameCount = timeline.length;
     if (!isPlaying || frameCount <= 1) return;
 
+    let elapsedSinceAdvance = 0;
+    let lastTick = performance.now();
     const interval = window.setInterval(() => {
-      if (currentFrameIndex >= frameCount - 1) {
-        playing = false;
-        return;
+      const now = performance.now();
+      elapsedSinceAdvance += (now - lastTick) * playbackSpeed;
+      lastTick = now;
+
+      while (currentFrameIndex < frameCount - 1) {
+        const delayMs = Math.max(
+          0,
+          timeline[currentFrameIndex + 1].timestamp_ms - timeline[currentFrameIndex].timestamp_ms,
+        );
+        if (elapsedSinceAdvance < delayMs) break;
+
+        elapsedSinceAdvance -= delayMs;
+        currentFrameIndex += 1;
       }
-      currentFrameIndex += 1;
-    }, Math.max(25, 100 / playbackSpeed));
+
+      if (currentFrameIndex >= frameCount - 1) playing = false;
+    }, 16);
 
     return () => window.clearInterval(interval);
   });

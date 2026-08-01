@@ -1,11 +1,12 @@
 //! Row-структуры для DB запросов (внутренние).
 
-use racoon_domain::{PersonalBest, TestDetail, TestSummary};
+use racoon_domain::{PersonalBest, SessionId, TestDetail, TestSummary};
 
 /// Внутренняя структура для маппинга строки tests → TestSummary.
 #[derive(Debug, Clone)]
 pub struct TestRow {
     pub id: i64,
+    pub session_id: SessionId,
     pub created_at: String,
     pub mode_type: String,
     pub mode_config: String,
@@ -31,6 +32,7 @@ impl From<TestRow> for TestSummary {
     fn from(row: TestRow) -> Self {
         TestSummary {
             id: row.id,
+            session_id: row.session_id,
             created_at: row.created_at,
             mode_type: row.mode_type,
             mode_config: serde_json::from_str(&row.mode_config).unwrap_or(serde_json::Value::Null),
@@ -42,6 +44,7 @@ impl From<TestRow> for TestSummary {
             consistency: row.consistency,
             duration_ms: row.duration_ms as u64,
             is_pb: row.is_pb,
+            has_replay: false,
         }
     }
 }
@@ -50,6 +53,7 @@ impl From<TestRow> for TestDetail {
     fn from(row: TestRow) -> Self {
         TestDetail {
             id: row.id,
+            session_id: row.session_id,
             created_at: row.created_at,
             mode_type: row.mode_type,
             mode_config: serde_json::from_str(&row.mode_config).unwrap_or(serde_json::Value::Null),

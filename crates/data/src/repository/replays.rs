@@ -116,11 +116,11 @@ mod tests {
 
     fn setup() -> SqliteReplayRepository<'static> {
         let conn = Box::leak(Box::new(rusqlite::Connection::open_in_memory().unwrap()));
-        crate::db::run_migrations(conn);
+        crate::db::run_migrations(conn).expect("Failed to run test migrations");
         // Insert a test record for FK
         conn.execute(
-            "INSERT INTO tests (created_at, mode_type, mode_config, language, text_length, duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency, correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data, graph_data, is_pb, tags)
-             VALUES ('2026-01-01T00:00:00Z', 'time', '{}', 'en', 50, 30000, 40.0, 45.0, 90.0, 85.0, NULL, 45, 5, 2, '{}', '{}', NULL, 0, '')",
+            "INSERT INTO tests (session_id, created_at, mode_type, mode_config, language, text_length, duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency, correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data, graph_data, is_pb, tags)
+             VALUES ('legacy-test-0000000000000001', '2026-01-01T00:00:00Z', 'time', '{}', 'en', 50, 30000, 40.0, 45.0, 90.0, 85.0, NULL, 45, 5, 2, '{}', '{}', NULL, 0, '')",
             [],
         ).unwrap();
         SqliteReplayRepository::new(conn)
@@ -242,8 +242,8 @@ mod tests {
         let repo = setup();
         // Insert second test
         repo.conn.execute(
-            "INSERT INTO tests (created_at, mode_type, mode_config, language, text_length, duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency, correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data, graph_data, is_pb, tags)
-             VALUES ('2026-01-02T00:00:00Z', 'words', '{}', 'ru', 100, 60000, 50.0, 55.0, 92.0, 87.0, NULL, 90, 10, 5, '{}', '{}', NULL, 0, '')",
+            "INSERT INTO tests (session_id, created_at, mode_type, mode_config, language, text_length, duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency, correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data, graph_data, is_pb, tags)
+             VALUES ('legacy-test-0000000000000002', '2026-01-02T00:00:00Z', 'words', '{}', 'ru', 100, 60000, 50.0, 55.0, 92.0, 87.0, NULL, 90, 10, 5, '{}', '{}', NULL, 0, '')",
             [],
         ).unwrap();
         repo.save_replay(1, &make_frames(1)).unwrap();

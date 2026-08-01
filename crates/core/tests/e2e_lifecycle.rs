@@ -1,12 +1,16 @@
 //! E2E integration tests — full test lifecycle.
 
+#![allow(unused_must_use)]
+
 use racoon_core::{CoreEngine, CustomMode, KeyResult, QuoteMode, TimeMode, WordsMode};
 
 #[test]
 fn e2e_start_and_complete_time_test() {
     let mut engine = CoreEngine::new();
     let mode = Box::new(TimeMode::new("hello".to_string(), "en".to_string(), 30));
-    let info = engine.start_test_mode("s1".to_string(), mode);
+    let info = engine
+        .start_test_mode("s1".to_string(), mode)
+        .expect("idle engine should accept a session");
 
     assert_eq!(info.text, "hello");
     assert_eq!(info.mode_type, "time");
@@ -30,7 +34,9 @@ fn e2e_start_and_complete_time_test() {
 fn e2e_start_and_complete_words_test() {
     let mut engine = CoreEngine::new();
     let mode = Box::new(WordsMode::new("test word".to_string(), "en".to_string(), 2));
-    let info = engine.start_test_mode("s2".to_string(), mode);
+    let info = engine
+        .start_test_mode("s2".to_string(), mode)
+        .expect("idle engine should accept a session");
 
     assert_eq!(info.mode_type, "words");
     assert_eq!(info.text, "test word");
@@ -56,7 +62,9 @@ fn e2e_start_and_complete_quote_test() {
         "en".to_string(),
         Some(0),
     ));
-    let info = engine.start_test_mode("s3".to_string(), mode);
+    let info = engine
+        .start_test_mode("s3".to_string(), mode)
+        .expect("idle engine should accept a session");
 
     assert_eq!(info.mode_type, "quote");
 
@@ -76,7 +84,9 @@ fn e2e_start_and_complete_quote_test() {
 fn e2e_start_and_complete_custom_test() {
     let mut engine = CoreEngine::new();
     let mode = Box::new(CustomMode::new("custom text".to_string(), "en".to_string()));
-    let info = engine.start_test_mode("s4".to_string(), mode);
+    let info = engine
+        .start_test_mode("s4".to_string(), mode)
+        .expect("idle engine should accept a session");
 
     assert_eq!(info.mode_type, "custom");
 
@@ -96,13 +106,14 @@ fn e2e_start_and_complete_custom_test() {
 fn e2e_save_result_to_db() {
     use racoon_data::repository::{SqliteTestRepository, TestRepository};
     use racoon_data::Database;
-    use racoon_domain::TestRecord;
+    use racoon_domain::{SessionId, TestRecord};
 
     let db = Database::open_in_memory().unwrap();
     let conn = db.conn();
     let repo = SqliteTestRepository::new(&conn);
 
     let record = TestRecord {
+        session_id: SessionId::from("e2e-save-result"),
         created_at: chrono::Utc::now().to_rfc3339(),
         mode_type: "time".to_string(),
         mode_config: serde_json::json!({"duration": 30}),
@@ -158,7 +169,9 @@ fn e2e_create_and_start_custom_text() {
     // Start test with this text
     let mut engine = CoreEngine::new();
     let mode = Box::new(CustomMode::new(ct.text.clone(), "en".to_string()));
-    let info = engine.start_test_mode("s5".to_string(), mode);
+    let info = engine
+        .start_test_mode("s5".to_string(), mode)
+        .expect("idle engine should accept a session");
     assert_eq!(info.text, "The quick brown fox");
     assert_eq!(info.mode_type, "custom");
 }
@@ -170,7 +183,7 @@ fn e2e_personal_best_update() {
         TestRepository,
     };
     use racoon_data::Database;
-    use racoon_domain::TestRecord;
+    use racoon_domain::{SessionId, TestRecord};
 
     let db = Database::open_in_memory().unwrap();
     let conn = db.conn();
@@ -179,6 +192,7 @@ fn e2e_personal_best_update() {
 
     // Save first test
     let record = TestRecord {
+        session_id: SessionId::from("e2e-pb-first"),
         created_at: chrono::Utc::now().to_rfc3339(),
         mode_type: "time".to_string(),
         mode_config: serde_json::json!({"duration": 30}),
@@ -209,6 +223,7 @@ fn e2e_personal_best_update() {
 
     // Save better test
     let record2 = TestRecord {
+        session_id: SessionId::from("e2e-pb-second"),
         created_at: chrono::Utc::now().to_rfc3339(),
         mode_type: "time".to_string(),
         mode_config: serde_json::json!({"duration": 30}),
@@ -267,7 +282,9 @@ fn e2e_abort_and_restart() {
 
     // Start new test
     let mode = Box::new(TimeMode::new("world".to_string(), "en".to_string(), 30));
-    let info = engine.start_test_mode("s2".to_string(), mode);
+    let info = engine
+        .start_test_mode("s2".to_string(), mode)
+        .expect("idle engine should accept a session");
     assert_eq!(info.text, "world");
     assert_eq!(engine.caret_position(), 0);
 }
