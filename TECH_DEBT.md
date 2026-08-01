@@ -1,7 +1,7 @@
 # Technical Debt — Racoon Typper
 
-**Last updated:** 2026-07-13
-**Scope:** Current debt after the Phase 2 Foundation completion. This is not a release-readiness claim.
+**Last updated:** 2026-08-01
+**Scope:** Current debt after the Phase 0–3B.3 baseline commit and Phase 6 CI hardening.
 
 ## Active debt
 
@@ -10,9 +10,9 @@
 | TD1 | The private session service is intentionally not a standalone application layer with typed ports/use cases. | Phase 3 | P1 |
 | TD2 | IPC uses named endpoint responses, but request/config contracts remain hand-maintained; `mode_config` and scalar setting updates are not a versioned typed algebra. | Phase 3 | P1 |
 | TD3 | `App.svelte` still owns broad interaction state; feature stores and explicit cache/session ownership are not established. | Phase 3 | P1 |
-| TD4 | Session handles are process-local timestamp values; durable identifiers, crash recovery, deterministic injected clocks/IDs/randomness, and restart-safe idempotency are not implemented. | Trusted Core | P0/P1 |
+| TD4 | Durable crash recovery is implemented for the recovery/finalization ledger; backup/restore, restart-safe live completion rewiring, and deterministic injected runtime providers in production are not fully shipped. | Trusted Core | P0/P1 |
 | TD5 | History/analytics paths still use bounded record caps and need long-history query semantics, indexes, and measured regression thresholds. | Phase 4 | P1 |
-| TD6 | Backup/restore, migration preflight/recovery, privacy/retention, structured redacted logs, capability/CSP hardening, and raw-error redaction remain unfinished. | Phases 4–5 | P0/P1 |
+| TD6 | Backup/restore, migration preflight/recovery, privacy/retention enforcement, structured redacted logs, capability/CSP hardening, and raw-error redaction remain unfinished. | Phases 4–5 | P0/P1 |
 | TD7 | Packaging signing, SBOM/reproducibility evidence, and cross-platform clean-install smoke tests remain release work. | Phase 6 | P0 |
 
 ## Dependency debt
@@ -38,3 +38,15 @@
 | TD-OLD8 | Missing daily statistics/streak persistence | Phase 2 |
 | TD-OLD9 | Missing consistency/graph output and persisted text length | Phase 2 |
 | TD-OLD10 | Command-module raw SQL and monolithic `commands.rs` | Phase 2 |
+
+## Resolved baseline work
+
+| ID | Work | Resolved in |
+|---|---|---|
+| TD-NEW1 | Durable session identity (UUIDv7), session ledger, completion intents, finalization ledger, startup recovery coordinator, process-crash campaign | Phase 3B.3 |
+| TD-NEW2 | GitHub Actions pinned to full commit SHAs; dependabot update group added | Phase 6 partial |
+| TD-NEW3 | Toolchain pinning: `rust-toolchain.toml` (Rust 1.96.0), `.nvmrc` + `engines` (Node >=22) | Phase 6 partial |
+| TD-NEW4 | CSP removed `unsafe-inline` from `script-src`; inline style exception retained and documented | Phase 5 partial |
+| TD-NEW5 | Bug/feature issue templates, PR template, SECURITY.md | Phase 7 partial |
+| TD-NEW6 | Data privacy/retention documentation in `docs/data/privacy.md` | Phase 4 partial |
+| TD-NEW7 | Unused `@tauri-apps/plugin-shell` dependency removed | Phase 5 |

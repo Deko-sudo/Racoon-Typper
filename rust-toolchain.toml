@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: Apache-2.0
+# Copyright 2026 Racoon Typper Contributors
+#
+# Toolchain pinning policy (Phase 6): the supported development toolchain is
+# pinned here so CI and local builds use the same Rust version.
+# Keep this aligned with the version recorded in SUPPORT_MATRIX.md.
+
+[toolchain]
+channel = "1.96.0"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

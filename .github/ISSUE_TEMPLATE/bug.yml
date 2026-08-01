@@ -1,0 +1,50 @@
+name: Bug report
+description: Report a defect in Racoon Typper
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting. Fill in the fields below. If your report involves a security vulnerability, do **not** file it here — use SECURITY.md instead.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Version shown in the app or the release tag (e.g. v1.1.0, dev build commit)
+      placeholder: v1.1.0
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Linux (Arch Linux)
+        - Linux (Ubuntu)
+        - Linux (other)
+        - Windows
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What did you do to trigger the bug?
+      placeholder: "1. Open the app\n2. Start a time test\n3. ..."
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include error messages, screenshots, or logs if available.
+    validations:
+      required: true

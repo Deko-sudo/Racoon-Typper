@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a product feature
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Feature requests are evaluated against the product roadmap. Small, focused requests are reviewed faster.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What user problem does this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: How should the feature behave?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What else did you consider?
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Data migration, privacy, security, or performance considerations?
