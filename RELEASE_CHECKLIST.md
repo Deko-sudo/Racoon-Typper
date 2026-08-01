@@ -6,49 +6,49 @@ This checklist describes the current baseline and the gates required for a produ
 
 ### Version and worktree
 
-- [ ] Worktree contains only reviewed changes.
-- [ ] `Cargo.toml` `[workspace.package]` contains the intended release version.
-- [ ] `npm run check:version --prefix frontend` passes.
+- [x] Worktree contains only reviewed changes (clean since 2026-08-01).
+- [x] `Cargo.toml` `[workspace.package]` contains the intended release version.
+- [x] `npm run check:version --prefix frontend` passes.
 - [ ] Tag is exactly `v<canonical-version>`.
-- [ ] [BASELINE.md](BASELINE.md) separates reviewed baseline files from work in progress.
+- [x] [BASELINE.md](BASELINE.md) separates reviewed baseline files from work in progress.
 
 ### Code and frontend validation
 
-- [ ] `cargo fmt --all --check` passes.
-- [ ] `cargo clippy --workspace --all-targets -- -D warnings` passes.
-- [ ] `cargo test --workspace` passes.
-- [ ] `npm run check --prefix frontend` passes.
-- [ ] `npm run build --prefix frontend` passes.
-- [ ] `git diff --check` passes.
+- [x] `cargo fmt --all --check` passes.
+- [x] `cargo clippy --workspace --all-targets -- -D warnings` passes.
+- [x] `cargo test --workspace` passes.
+- [x] `npm run check --prefix frontend` passes.
+- [x] `npm run build --prefix frontend` passes.
+- [x] `git diff --check` passes.
 
 ### Tauri topology
 
-- [ ] `npm ci --prefix frontend` succeeds from a clean checkout.
-- [ ] `npm run tauri:dev --prefix frontend` starts the frontend and desktop process.
-- [ ] `npm run tauri:build:binary --prefix frontend` locates `frontend/dist` and produces the release binary.
+- [x] `npm ci --prefix frontend` succeeds from a clean checkout.
+- [x] `npm run tauri:dev --prefix frontend` starts the frontend and desktop process.
+- [x] `npm run tauri:build:binary --prefix frontend` locates `frontend/dist` and produces the release binary.
 - [ ] `npm run tauri:build --prefix frontend` completes for each claimed platform/bundle target.
 
 ## Required before production release
 
 ### Licensing and provenance — Phase 1
 
-- [ ] Project-owned code/assets/content have Apache-2.0 provenance.
-- [ ] GPL/LGPL/AGPL and unknown project content is removed or separately cleared.
-- [ ] `THIRD_PARTY_NOTICES.md` and machine-readable inventory are generated.
-- [ ] CI license policy passes.
+- [x] Project-owned code/assets/content have Apache-2.0 provenance.
+- [x] GPL/LGPL/AGPL and unknown project content is removed or separately cleared.
+- [x] `THIRD_PARTY_NOTICES.md` and machine-readable inventory are generated.
+- [x] CI license policy passes.
 - [ ] SBOM is generated for the release.
 
 ### Foundation — Phase 2
 
-- [ ] In-process completion/retry and persistence tests pass; do not describe this as durable crash recovery.
-- [ ] Related persistence writes use an atomic transaction.
-- [ ] Monotonic timing, replay, validation, and typed endpoint responses are verified.
-- [ ] Startup, shutdown, error, and retry paths are tested.
+- [x] In-process completion/retry and persistence tests pass; do not describe this as durable crash recovery.
+- [x] Related persistence writes use an atomic transaction.
+- [x] Monotonic timing, replay, validation, and typed endpoint responses are verified.
+- [x] Startup, shutdown, error, and retry paths are tested.
 
 ### Trusted Core, architecture, and data — Phases 3–4
 
-- [ ] Stable durable session IDs, crash recovery, deterministic injected seams, and restart-safe idempotency are separately designed and verified.
-- [ ] Application ports/contracts and frontend state ownership have passed Phase 3 review.
+- [x] Stable durable session IDs, crash recovery, deterministic injected seams, and restart-safe idempotency are separately designed and verified (Phases 3A–3B.3).
+- [x] Application ports/contracts and frontend state ownership have passed Phase 3 review.
 - [ ] Database foreign keys, migration fixtures, backup/restore, and long-history behavior are verified.
 
 ### Packaging and release engineering — Phase 6
@@ -57,19 +57,19 @@ This checklist describes the current baseline and the gates required for a produ
 - [ ] Windows NSIS artifact installs/launches on clean Windows.
 - [ ] Checksums, source revision, version, SBOM, and provenance are attached.
 - [ ] Signing or attestation is verified where supported.
-- [ ] Release actions use least-privilege permissions and reviewed action versions.
+- [x] Release actions use least-privilege permissions and reviewed action versions (SHA-pinned).
 - [ ] Smoke journey completes a short test, persists it, restarts, exports data, and exits cleanly.
 
 ### Public repository — Phase 7
 
 - [ ] README, install guide, architecture, support matrix, and roadmap are accurate.
 - [ ] Screenshots come from a cleared release candidate.
-- [ ] Security reporting and contribution workflows are published.
+- [x] Security reporting and contribution workflows are published (`SECURITY.md`, issue/PR templates).
 - [ ] Release notes match the actual artifacts.
 
 ## Database and migration safety
 
-The current schema contains migrations V001 through V004. Every future schema change must:
+The current schema contains migrations V001 through V008. Every future schema change must:
 
 - include a fixture from each supported prior version;
 - create and verify a backup before migration;

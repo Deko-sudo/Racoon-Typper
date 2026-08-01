@@ -29,12 +29,16 @@ Install Rust with [rustup](https://rustup.rs/) and Node.js from the supported di
 ### Development
 
 ```bash
-git clone https://github.com/racoon-typper/racoon-typper.git
+git clone https://github.com/Deko-sudo/Racoon-Typper.git
 cd racoon-typper
 npm ci --prefix frontend
 npm run check:version --prefix frontend
 npm run tauri:dev --prefix frontend
 ```
+
+The Rust toolchain is pinned by `rust-toolchain.toml`; `rustup` installs the
+pinned version automatically. The frontend Node version is pinned by
+`frontend/.nvmrc` (use `nvm use`/`fnm use` or install Node >= 22 manually).
 
 ### Validation and binary build
 
@@ -57,7 +61,7 @@ It may require platform-specific bundler tools. Installer support is only establ
 
 ## Release artifacts
 
-When a verified release exists, download artifacts from [GitHub Releases](https://github.com/racoon-typper/racoon-typper/releases) and verify the published checksums. AppImage, Debian, RPM, Arch, Flatpak, and Windows installation instructions will be enabled only after the corresponding artifact passes the support matrix.
+When a verified release exists, download artifacts from [GitHub Releases](https://github.com/Deko-sudo/Racoon-Typper/releases) and verify the published checksums. AppImage, Debian, RPM, Arch, Flatpak, and Windows installation instructions will be enabled only after the corresponding artifact passes the support matrix.
 
 Do not use the old `v0.9.0` filenames or the obsolete `cargo tauri` commands from historical documentation.
 

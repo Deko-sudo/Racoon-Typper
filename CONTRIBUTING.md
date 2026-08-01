@@ -7,7 +7,7 @@ Thank you for contributing. Racoon Typper is being developed as a long-term open
 Install the platform prerequisites from [INSTALL.md](INSTALL.md), then run:
 
 ```bash
-git clone https://github.com/racoon-typper/racoon-typper.git
+git clone https://github.com/Deko-sudo/Racoon-Typper.git
 cd racoon-typper
 npm ci --prefix frontend
 npm run check:version --prefix frontend

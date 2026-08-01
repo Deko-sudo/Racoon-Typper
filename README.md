@@ -1,6 +1,6 @@
 # Racoon Typper
 
-[![CI](https://github.com/racoon-typper/racoon-typper/actions/workflows/ci.yml/badge.svg)](https://github.com/racoon-typper/racoon-typper/actions/workflows/ci.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
+[![CI](https://github.com/Deko-sudo/Racoon-Typper/actions/workflows/ci.yml/badge.svg)](https://github.com/Deko-sudo/Racoon-Typper/actions/workflows/ci.yml) [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 Racoon Typper is a local-first desktop touch-typing trainer for focused practice, measurable progress, and offline use. It combines a Rust/Tauri desktop application with a Svelte interface and a local SQLite data store.
 
@@ -28,7 +28,7 @@ Feature availability can vary between the committed baseline and the current wor
 Install the platform prerequisites listed in [INSTALL.md](INSTALL.md), then run:
 
 ```bash
-git clone https://github.com/racoon-typper/racoon-typper.git
+git clone https://github.com/Deko-sudo/Racoon-Typper.git
 cd racoon-typper
 npm ci --prefix frontend
 npm run check:version --prefix frontend
@@ -81,7 +81,7 @@ Other platform paths remain unverified; see the support matrix. Export, retentio
 
 ## Downloads
 
-Public release artifacts will be published on the [GitHub Releases page](https://github.com/racoon-typper/racoon-typper/releases) after the release pipeline and clean-install smoke tests pass. Configured package formats are not a support promise until they appear in [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) as verified.
+Public release artifacts will be published on the [GitHub Releases page](https://github.com/Deko-sudo/Racoon-Typper/releases) after the release pipeline and clean-install smoke tests pass. Configured package formats are not a support promise until they appear in [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) as verified.
 
 ## Roadmap and documentation
 

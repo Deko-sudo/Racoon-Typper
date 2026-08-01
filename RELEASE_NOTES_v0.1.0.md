@@ -67,7 +67,7 @@ Racoon Typper is a local desktop touch-typing trainer for Linux, combining focus
 
 ```bash
 sudo pacman -S rust webkit2gtk-4.1 base-devel npm
-git clone https://github.com/racoon-typper/racoon-typper.git
+git clone https://github.com/Deko-sudo/Racoon-Typper.git
 cd racoon-typper
 makepkg -si
 ```

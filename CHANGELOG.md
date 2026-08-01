@@ -1,5 +1,54 @@
 # Changelog — Racoon Typper
 
+## Modernization baseline (2026-08-01) — unreleased development state
+
+This section records foundation and release-engineering work merged into
+`master` after the v1.1.0 release notes. It is development work and is not a
+production release claim (see `ROADMAP.md`).
+
+### Foundation — Phases 0–3B.3
+
+- Apache-2.0 licensing migration: workspace license, `PKGBUILD` metadata,
+  removed imported GPL theme catalog, provenance inventories under `licenses/`,
+  `THIRD_PARTY_NOTICES.md`, CI license policy (`cargo-deny` + npm policy).
+- Deterministic build topology: canonical Tauri wrapper (`scripts/tauri.mjs`),
+  version source of truth in `[workspace.package]`, `check:version` gate.
+- In-process exactly-once completion: explicit engine lifecycle, retry-safe
+  persistence, backend-authoritative scoring, single `IMMEDIATE` transaction.
+- Durable session identity (Phase 3A): backend-issued UUIDv7 `SessionId`,
+  migration `V005` with deterministic legacy backfill and immutability guards.
+- Application layer (Phase 3B.1–3B.2): infrastructure-free `racoon-application`
+  crate, `SessionKernel`, provider ports (identity, monotonic time, wall clock,
+  randomness).
+- Crash recovery (Phase 3B.3): durable recovery vocabulary, canonical
+  SHA-256 completion intents, session ledger (`V006`), completion intents
+  (`V007`), finalization ledger (`V008`), startup recovery coordinator,
+  test-only process-crash campaign (`crash-test-support` feature).
+
+### Release engineering — Phase 6 partial
+
+- GitHub Actions pinned to full commit SHAs; dependabot group for action
+  updates; checkout upgraded to v5 (Node 24 runtime).
+- Toolchain pinning: `rust-toolchain.toml` (Rust 1.96.0), `.nvmrc` + `engines`
+  (Node >=22).
+- CRLF-safe version check and `.gitattributes` (normalizes line endings so the
+  version gate works on Windows checkouts).
+
+### Security — Phase 5 partial
+
+- CSP: removed `unsafe-inline` from `script-src`; inline style exception
+  retained and documented.
+
+### Repository and documentation — Phase 7 partial
+
+- Issue templates (bug, feature), pull request template, `SECURITY.md`.
+- Data, privacy, and retention documentation in `docs/data/privacy.md`.
+
+### Tests
+
+- 587 workspace tests passing; crash-recovery campaign (16 default + 115
+  extended child-process crashes) passing.
+
 ## v1.1.0 (2026-06-23) — Community & Polish Release
 
 ### New Features
