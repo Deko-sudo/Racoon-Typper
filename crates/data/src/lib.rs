@@ -2,6 +2,7 @@
 //! Sprint 4: Database init, migrations, TestRepository, PersonalBestsRepository.
 //! Sprint 5: CustomTextRepository (full CRUD).
 
+pub mod backup;
 pub mod db;
 pub mod error;
 pub mod models;

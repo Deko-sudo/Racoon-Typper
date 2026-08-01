@@ -46,9 +46,26 @@ pub struct Database {
 impl Database {
     /// Открывает БД по пути и применяет миграции.
     pub fn open(path: &Path) -> Result<Self, DbError> {
+        Self::open_with_pre_migration(path, |_| {})
+    }
+
+    /// Opens the database at `path`, invokes `pre_migration` after configuring the
+    /// connection but **before** running migrations, then applies migrations.
+    ///
+    /// The callback is the seam used to take a pre-migration backup: it receives
+    /// the configured-but-not-yet-migrated connection's path and runs while the
+    /// on-disk file still reflects the previous schema. A failure in `pre_migration`
+    /// aborts opening before any migration runs, so a broken backup hook can never
+    /// leave the database half-migrated. Callers that want warn-and-continue
+    /// semantics must swallow the error inside the callback.
+    pub fn open_with_pre_migration(
+        path: &Path,
+        pre_migration: impl FnOnce(&Path),
+    ) -> Result<Self, DbError> {
         let mut conn =
             Connection::open(path).map_err(|error| DbError::from_sqlite("open database", error))?;
         configure_connection(&conn)?;
+        pre_migration(path);
         run_migrations(&mut conn)?;
 
         Ok(Self {

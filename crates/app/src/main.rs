@@ -45,8 +45,29 @@ fn main() {
     let application = tauri::Builder::default()
         .setup(|app| {
             let paths = paths::resolve(app)?;
-            let database = Database::open(&paths.db_path)
-                .map_err(|error| std::io::Error::other(error.to_string()))?;
+            let data_dir = paths.data_dir.clone();
+            let db_path = paths.db_path.clone();
+            // Take a rotating pre-migration backup before any schema work. A
+            // failure here is warn-and-continue: migrations V005–V008 are
+            // additive and low-risk, and a transient permissions/IO error must
+            // not brick the application. The backup is defense-in-depth; the
+            // operational recovery path remains "restore the most recent
+            // snapshot or ship a forward fix".
+            let database = Database::open_with_pre_migration(&paths.db_path, |live_path| {
+                if let Err(error) = racoon_data::backup::create_pre_migration_backup(
+                    live_path,
+                    &data_dir,
+                    "data",
+                    chrono::Utc::now(),
+                    racoon_data::backup::DEFAULT_KEEP,
+                ) {
+                    // Structured logging arrives in Phase 5; until then this
+                    // stderr warning is the visible surface. It records only the
+                    // backup path and error class, never typed content.
+                    eprintln!("warn: pre-migration backup failed for {db_path:?}: {error}");
+                }
+            })
+            .map_err(|error| std::io::Error::other(error.to_string()))?;
 
             let startup_recovery = StartupRecoveryGate::new();
             let recovery_ledger = SqliteSessionRecoveryLedger::new(&database);

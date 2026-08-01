@@ -146,6 +146,12 @@ impl From<racoon_data::DbError> for AppError {
             racoon_data::DbError::LockPoisoned => AppError::StateUnavailable,
             racoon_data::DbError::NotFound(msg) => AppError::ResourceNotFound(msg),
             racoon_data::DbError::Migration(msg) => AppError::DbConnection(msg),
+            // A failed backup/restore is surfaced as a DB connection issue so it
+            // is visible at the IPC boundary and never silently swallowed. Pre-
+            // migration backup failures are warn-and-continue at startup and do
+            // not reach this mapping; this arm covers on-demand restore paths.
+            racoon_data::DbError::Backup(msg) => AppError::DbConnection(msg),
+            racoon_data::DbError::Restore(msg) => AppError::DbConnection(msg),
         }
     }
 }

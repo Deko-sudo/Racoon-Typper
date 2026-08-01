@@ -20,7 +20,12 @@ crash-test-support = ["test-support"]
 racoon-application = { workspace = true }
 racoon-domain = { workspace = true }
 racoon-core = { workspace = true }
-rusqlite = { version = "0.31", features = ["bundled"] }
+# `backup` exposes SQLite's Online Backup API (rusqlite::backup::Backup), which
+# produces a transactionally consistent single-file snapshot with the WAL fully
+# applied. This is the only safe way to copy a WAL-mode database; an `fs::copy`
+# of `data.db` alone loses un-checkpointed WAL contents, and a multi-file copy
+# of `data.db` + `-wal` + `-shm` is not atomic across the three files.
+rusqlite = { version = "0.31", features = ["bundled", "backup"] }
 refinery = { version = "0.8", features = ["rusqlite"] }
 chrono = "0.4"
 serde = { workspace = true }

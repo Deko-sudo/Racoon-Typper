@@ -22,6 +22,14 @@ pub enum DbError {
     Validation(String),
     LockPoisoned,
     NotFound(String),
+    /// A pre-migration or on-demand online backup failed. Backups use SQLite's
+    /// Online Backup API, so this covers source/destination connection failures,
+    /// the backup step itself, and the atomic file-rename of the snapshot.
+    Backup(String),
+    /// A restore-from-backup failed (missing source, copy/backup step failure,
+    /// or path validation). Restore always operates on file paths while the live
+    /// `Database` connection is closed.
+    Restore(String),
 }
 
 impl fmt::Display for DbError {
@@ -44,6 +52,8 @@ impl fmt::Display for DbError {
             DbError::Validation(msg) => write!(f, "Validation error: {}", msg),
             DbError::LockPoisoned => write!(f, "Database state is unavailable after a panic"),
             DbError::NotFound(msg) => write!(f, "Not found: {}", msg),
+            DbError::Backup(msg) => write!(f, "DB backup error: {}", msg),
+            DbError::Restore(msg) => write!(f, "DB restore error: {}", msg),
         }
     }
 }
