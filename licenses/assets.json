@@ -40,6 +40,18 @@
       "notes": "Generated distribution size; do not edit independently."
     },
     {
+      "path": "crates/app/icons/icon.ico",
+      "checksum_sha256": "4f155e0efcd06dd9250330e4f65107b02e206ff293c6507bed56a2b6f6c5b7f6",
+      "asset_name": "Racoon Typper generated icon (icon.ico)",
+      "owner": "Racoon Typper Contributors",
+      "source": "crates/app/icons/source/racoon-typper.svg",
+      "license": "Apache-2.0",
+      "provenance_status": "generated-from-original-project-asset",
+      "modified": true,
+      "generation": "rsvg-convert from the Apache-2.0 SVG source",
+      "notes": "Generated distribution size; do not edit independently."
+    },
+    {
       "path": "crates/app/icons/icon.png",
       "checksum_sha256": "ac10d2d64572a4375f4fb79c8caf5633d1a18085fa3957b85a954a213e40bdde",
       "asset_name": "Racoon Typper generated icon (icon.png)",
