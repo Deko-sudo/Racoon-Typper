@@ -1,7 +1,7 @@
 # Technical Debt — Racoon Typper
 
 **Last updated:** 2026-08-01
-**Scope:** Current debt after the Phase 0–3B.3 baseline commit and Phase 6 CI hardening.
+**Scope:** Current debt after the Phase 0–3B.3 baseline commit, Phase 6 CI hardening, and the GLib/GTK3 dependency-decision (ADR 0001).
 
 ## Active debt
 
@@ -22,7 +22,7 @@
 | DD1 | `rusqlite` 0.31 → newer releases require a compatibility review. | Low | Post-v1.0 / dependency decision |
 | DD2 | `refinery` 0.8 → newer releases require a compatibility review. | Low | Post-v1.0 / dependency decision |
 | DD3 | `toml` 0.8 → newer releases require a compatibility review. | Low | Post-v1.0 / dependency decision |
-| DD4 | GTK3-related Tauri transitive dependencies have maintenance/advisory debt. | High | Security/dependency review |
+| DD4 | GTK3-related Tauri transitive dependencies have maintenance/advisory debt (RUSTSEC-2024-0429 `glib` unsound + gtk3-rs unmaintained cluster). **Decision recorded:** documented acceptance scoped to the Linux-only Tauri webview backend; the unsound `VariantStrIter` path is transitive and not reached by our code. Revisit on Tauri gtk4-rs/glib≥0.20 migration or any reachable soundness advisory. See `docs/adr/0001-glib-gtk3-advisory.md`. | High → monitored | Phase 5 G5 / upstream Tauri gtk4 migration |
 
 ## Resolved foundation debt
 
@@ -50,3 +50,4 @@
 | TD-NEW5 | Bug/feature issue templates, PR template, SECURITY.md | Phase 7 partial |
 | TD-NEW6 | Data privacy/retention documentation in `docs/data/privacy.md` | Phase 4 partial |
 | TD-NEW7 | Unused `@tauri-apps/plugin-shell` dependency removed | Phase 5 |
+| TD-NEW8 | GLib/GTK3 advisory chain (DD4, R-009) decided: documented acceptance scoped to the Linux-only Tauri webview backend, with bounded revisit trigger. ADR `docs/adr/0001-glib-gtk3-advisory.md`. | Phase 5 G5 |
