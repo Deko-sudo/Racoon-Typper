@@ -6,9 +6,10 @@ use racoon_core::consistency::ConsistencyReport;
 use racoon_data::repository::{
     DailyStats, DailyStatsRepository, LessonRepository, PersonalBestsRepository, ReplayRepository,
     SqliteDailyStatsRepository, SqliteLessonRepository, SqlitePersonalBestsRepository,
-    SqliteReplayRepository, SqliteTestRepository, TestRepository,
+    SqliteReplayRepository, SqliteStreakRepository, SqliteTestRepository, StreakRepository,
+    TestRepository,
 };
-use racoon_domain::{PersonalBest, TestSummary};
+use racoon_domain::PersonalBest;
 use tauri::State;
 
 use crate::commands::contracts::{DashboardStatsResponse, ProgressPoint, StatsHistoryResponse};
@@ -71,9 +72,15 @@ pub(crate) fn get_dashboard_stats(
             .as_ref()
             .is_some_and(|stats| stats.daily_goal_met);
         let week_stats = daily_repository.get_range(&week_ago, &today)?;
-        let history = test_repository.get_history(MAX_PAGE_LIMIT, 0, None)?;
-        let (current_streak, longest_streak) =
-            racoon_core::StreakEngine::streak_from_dates(&test_dates(&history));
+        // Streaks are read from the maintained `streaks` row instead of recomputed
+        // from a bounded slice of test history. The stored `current_streak` and
+        // `longest_streak` are authoritative and global; the previous bounded
+        // `streak_from_dates(get_history(MAX_PAGE_LIMIT))` path silently capped
+        // `longest` to whatever fit in the last 1 000 tests. See
+        // docs/adr/0002-long-history-metrics.md.
+        let streak = SqliteStreakRepository::new(conn).get("daily_test")?;
+        let current_streak = streak.as_ref().map_or(0, |row| row.current_streak);
+        let longest_streak = streak.as_ref().map_or(0, |row| row.longest_streak);
 
         Ok(DashboardStatsResponse {
             current_streak,
@@ -119,15 +126,24 @@ pub(crate) fn get_achievements(
     with_db(&state, |conn| {
         let test_repository = SqliteTestRepository::new(conn);
         let lesson_repository = SqliteLessonRepository::new(conn);
+        let personal_bests = SqlitePersonalBestsRepository::new(conn);
+        let streak_repository = SqliteStreakRepository::new(conn);
         let total_tests = test_repository.get_count(None)?;
-        let history = test_repository.get_history(500, 0, None)?;
-        let best_wpm = history.iter().map(|test| test.wpm).fold(0.0_f64, f64::max);
-        let best_accuracy = history
+        // best_wpm / best_accuracy are read from the incrementally maintained
+        // `personal_bests` rows (one per mode) instead of folding over a bounded
+        // slice of test history. The previous `get_history(500)` fold silently
+        // ignored any personal best that lived more than 500 tests in the past.
+        let bests = personal_bests.get_bests(None)?;
+        let best_wpm = bests.iter().map(|pb| pb.best_wpm).fold(0.0_f64, f64::max);
+        let best_accuracy = bests
             .iter()
-            .map(|test| test.accuracy)
+            .map(|pb| pb.best_accuracy)
             .fold(0.0_f64, f64::max);
-        let (_, longest_streak) =
-            racoon_core::StreakEngine::streak_from_dates(&test_dates(&history));
+        // longest_streak is the maintained global value from the streaks row,
+        // not a recomputed-from-bounded-history value.
+        let longest_streak = streak_repository
+            .get("daily_test")?
+            .map_or(0, |row| row.longest_streak);
         let lessons_completed = ["en", "ru"]
             .into_iter()
             .map(|language| {
@@ -156,6 +172,16 @@ pub(crate) fn get_achievements(
 /// The nested collection preserves the pre-existing `[[insight...]]` wire
 /// shape while making its element type explicit. Flattening it is Phase 3 IPC
 /// contract work.
+/// Number of most-recent tests feeding the consistency score. Consistency is a
+/// "recent typing rhythm stability" metric, intentionally computed from a
+/// bounded recent window rather than all-time history: a user's rhythm over
+/// their latest sessions is the relevant signal, and a global CV over thousands
+/// of tests would wash out recent progress. This is a product decision, not a
+/// long-history bug; see docs/adr/0002-long-history-metrics.md. Global metrics
+/// that ARE all-time (best_wpm, longest_streak) are read from maintained
+/// aggregates in their respective commands.
+const RECENT_CONSISTENCY_SAMPLE_LIMIT: usize = 100;
+
 #[tauri::command]
 pub(crate) fn get_insights(state: State<'_, AppState>) -> Result<Vec<Vec<Insight>>, AppError> {
     let (week_ago, today) = utc_date_range(7);
@@ -163,7 +189,7 @@ pub(crate) fn get_insights(state: State<'_, AppState>) -> Result<Vec<Vec<Insight
         let daily_repository = SqliteDailyStatsRepository::new(conn);
         let test_repository = SqliteTestRepository::new(conn);
         let week_stats = daily_repository.get_range(&week_ago, &today)?;
-        let history = test_repository.get_history(100, 0, None)?;
+        let history = test_repository.get_history(RECENT_CONSISTENCY_SAMPLE_LIMIT, 0, None)?;
         let wpm_samples: Vec<f64> = history.iter().map(|test| test.wpm).collect();
         let consistency = racoon_core::consistency::calc_consistency(&wpm_samples);
 
@@ -180,7 +206,11 @@ pub(crate) fn get_insights(state: State<'_, AppState>) -> Result<Vec<Vec<Insight
 #[tauri::command]
 pub(crate) fn get_consistency(state: State<'_, AppState>) -> Result<ConsistencyReport, AppError> {
     with_db(&state, |conn| {
-        let history = SqliteTestRepository::new(conn).get_history(100, 0, None)?;
+        let history = SqliteTestRepository::new(conn).get_history(
+            RECENT_CONSISTENCY_SAMPLE_LIMIT,
+            0,
+            None,
+        )?;
         let samples: Vec<f64> = history.iter().map(|test| test.wpm).collect();
         Ok(racoon_core::consistency::calc_consistency(&samples))
     })
@@ -251,18 +281,6 @@ fn utc_date_range(days: i64) -> (String, String) {
         (now - Duration::days(days)).format("%Y-%m-%d").to_string(),
         now.format("%Y-%m-%d").to_string(),
     )
-}
-
-fn test_dates(history: &[TestSummary]) -> Vec<String> {
-    history
-        .iter()
-        .filter_map(|test| {
-            test.created_at
-                .split_once('T')
-                .map(|(date, _)| date.to_string())
-        })
-        .filter(|date| !date.is_empty())
-        .collect()
 }
 
 fn weighted_daily_average(stats: &[DailyStats], metric: impl Fn(&DailyStats) -> f64) -> f64 {

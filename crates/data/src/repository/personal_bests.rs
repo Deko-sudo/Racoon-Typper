@@ -173,7 +173,8 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
                     "SELECT id, mode_type, mode_config_hash, mode_config, best_wpm,
                      best_wpm_test_id, best_accuracy, best_accuracy_test_id,
                      best_consistency, best_consistency_test_id, updated_at
-                     FROM personal_bests WHERE mode_type = ?1 ORDER BY updated_at DESC",
+                     FROM personal_bests WHERE mode_type = ?1
+                     ORDER BY updated_at DESC, mode_config_hash ASC",
                 )
                 .map_err(|e| DbError::Query(e.to_string()))?
         } else {
@@ -182,7 +183,8 @@ impl<'a> PersonalBestsRepository for SqlitePersonalBestsRepository<'a> {
                     "SELECT id, mode_type, mode_config_hash, mode_config, best_wpm,
                      best_wpm_test_id, best_accuracy, best_accuracy_test_id,
                      best_consistency, best_consistency_test_id, updated_at
-                     FROM personal_bests ORDER BY updated_at DESC",
+                     FROM personal_bests
+                     ORDER BY updated_at DESC, mode_type ASC, mode_config_hash ASC",
                 )
                 .map_err(|e| DbError::Query(e.to_string()))?
         };
@@ -373,6 +375,32 @@ mod tests {
 
         let words_bests = pb_repo.get_bests(Some("words")).unwrap();
         assert_eq!(words_bests.len(), 0);
+    }
+
+    #[test]
+    fn get_bests_has_a_stable_dimension_tie_breaker() {
+        let db = Database::open_in_memory().unwrap();
+        let conn = db.conn();
+        let pb_repo = SqlitePersonalBestsRepository::new(&conn);
+
+        for (mode, hash) in [
+            ("time", "hash-time"),
+            ("custom", "hash-custom"),
+            ("quote", "hash-quote"),
+        ] {
+            conn.execute(
+                "INSERT INTO personal_bests (
+                    mode_type, mode_config_hash, mode_config, best_wpm, best_accuracy, updated_at
+                 ) VALUES (?1, ?2, '{}', 50.0, 95.0, '2026-01-01T00:00:00Z')",
+                params![mode, hash],
+            )
+            .unwrap();
+        }
+
+        let bests = pb_repo.get_bests(None).unwrap();
+        let modes: Vec<&str> = bests.iter().map(|best| best.mode_type.as_str()).collect();
+
+        assert_eq!(modes, ["custom", "quote", "time"]);
     }
 
     #[test]

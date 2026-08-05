@@ -1291,7 +1291,7 @@ fn descriptor_privacy_rejection_prevents_any_ledger_write() {
 }
 
 #[test]
-fn refinery_history_fixtures_upgrade_through_v007_and_reopen_idempotently() {
+fn refinery_history_fixtures_upgrade_through_v009_and_reopen_idempotently() {
     for starting_version in 1..=7 {
         let path = temporary_database_path(&format!("refinery-v{starting_version}"));
         remove_database(&path);
@@ -1314,7 +1314,7 @@ fn refinery_history_fixtures_upgrade_through_v007_and_reopen_idempotently() {
                 .expect("history rows")
                 .collect::<Result<_, _>>()
                 .expect("history values");
-            assert_eq!(versions, (1..=8).collect::<Vec<_>>());
+            assert_eq!(versions, (1..=9).collect::<Vec<_>>());
             let session_identity: String = connection
                 .query_row("SELECT session_id FROM tests WHERE id = 1", [], |row| {
                     row.get(0)

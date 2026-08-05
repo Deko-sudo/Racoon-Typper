@@ -117,14 +117,14 @@ impl<'a> TestRepository for SqliteTestRepository<'a> {
         let mut stmt = if mode_filter.is_some() {
             self.conn
                 .prepare(&format!(
-                    "SELECT {} FROM tests WHERE mode_type = ?1 ORDER BY created_at DESC LIMIT ?2 OFFSET ?3",
+                    "SELECT {} FROM tests WHERE mode_type = ?1 ORDER BY created_at DESC, session_id DESC LIMIT ?2 OFFSET ?3",
                     SELECT_HISTORY_COLS
                 ))
                 .map_err(|e| DbError::Query(e.to_string()))?
         } else {
             self.conn
                 .prepare(&format!(
-                    "SELECT {} FROM tests ORDER BY created_at DESC LIMIT ?1 OFFSET ?2",
+                    "SELECT {} FROM tests ORDER BY created_at DESC, session_id DESC LIMIT ?1 OFFSET ?2",
                     SELECT_HISTORY_COLS
                 ))
                 .map_err(|e| DbError::Query(e.to_string()))?
@@ -330,6 +330,34 @@ mod repository_tests {
         assert!(history
             .iter()
             .any(|test| test.id == without_replay && !test.has_replay));
+    }
+
+    #[test]
+    fn history_pages_have_a_stable_session_id_tie_breaker() {
+        let db = Database::open_in_memory().unwrap();
+        let conn = db.conn();
+        let repo = SqliteTestRepository::new(&conn);
+        let timestamp = "2026-06-21T22:00:00Z";
+
+        for session_id in ["history-tie-a", "history-tie-c", "history-tie-b"] {
+            let mut record = make_test_record(45.0, 95.0);
+            record.session_id = SessionId::from(session_id);
+            record.created_at = timestamp.to_string();
+            repo.save_test(record).unwrap();
+        }
+
+        let first_page = repo.get_history(2, 0, None).unwrap();
+        let second_page = repo.get_history(2, 2, None).unwrap();
+        let page_ids: Vec<&str> = first_page
+            .iter()
+            .chain(&second_page)
+            .map(|test| test.session_id.as_str())
+            .collect();
+
+        assert_eq!(
+            page_ids,
+            ["history-tie-c", "history-tie-b", "history-tie-a"]
+        );
     }
 
     #[test]

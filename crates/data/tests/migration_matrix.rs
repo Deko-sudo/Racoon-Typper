@@ -30,8 +30,8 @@ use rusqlite::Connection;
 
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
-/// (migration name, embedded SQL) for V1..V8, in order.
-const MIGRATION_FILES: [(&str, &str); 8] = [
+/// (migration name, embedded SQL) for V1..V9, in order.
+const MIGRATION_FILES: [(&str, &str); 9] = [
     (
         "V001__initial.sql",
         include_str!("../migrations/V001__initial.sql"),
@@ -64,10 +64,14 @@ const MIGRATION_FILES: [(&str, &str); 8] = [
         "V008__session_finalizations.sql",
         include_str!("../migrations/V008__session_finalizations.sql"),
     ),
+    (
+        "V009__analytics_indexes.sql",
+        include_str!("../migrations/V009__analytics_indexes.sql"),
+    ),
 ];
 
 /// Current schema level applied by the production runner.
-const CURRENT_LEVEL: usize = 8;
+const CURRENT_LEVEL: usize = 9;
 
 fn temp_path(name: &str) -> PathBuf {
     let sequence = NEXT_TEMP.fetch_add(1, Ordering::Relaxed);
@@ -340,8 +344,11 @@ fn assert_full_schema_present(conn: &Connection) {
         "idx_session_ledger_state_recovery_order",
         "idx_tests_created_at",
         "idx_tests_mode_config",
+        "idx_tests_created_at_session_id",
+        "idx_tests_mode_created_at_session_id",
         "idx_tests_session_id",
         "idx_tests_wpm",
+        "idx_personal_bests_updated_at_config_hash",
         "uniq_pb_mode_config_hash",
     ] {
         assert!(
