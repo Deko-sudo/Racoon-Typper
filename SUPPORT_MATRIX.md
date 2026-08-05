@@ -1,19 +1,19 @@
 # Support Matrix
 
-**Status:** Release Baseline (Phase 0)  
-**Last reviewed:** 2026-07-12
+**Status:** Foundation (Phases 0–3B) + Phase 6 partial  
+**Last reviewed:** 2026-08-01
 
 This matrix distinguishes the environments used for development from platforms that are actually supported for public releases. A configured bundle target is not evidence of support.
 
 | Platform / artifact | Development | CI/build target | Release support | Baseline evidence |
 |---|---:|---:|---:|---|
-| Linux x86_64 — Arch Linux | **Primary** | Not currently the hosted runner | **Primary development target** | Repository reviewed and local Rust/frontend checks run on Arch Linux x86_64 |
-| Linux x86_64 — Ubuntu 24.04 | Supported build environment candidate | **Configured** | Pending Phase 6 smoke validation | Dependencies are documented; clean artifact launch is not yet evidenced |
-| Linux x86_64 — AppImage | Build target configured | Configured but not release-verified | **Experimental / not supported yet** | Clean AppImage build and launch evidence is still required |
-| Linux x86_64 — Debian package | Build target configured | Configured but not release-verified | **Experimental / not supported yet** | Package install/launch smoke test is still required |
-| Linux x86_64 — RPM package | Build target configured | Configured but not release-verified | **Experimental / not supported yet** | RPM toolchain and install/launch test are still required |
+| Linux x86_64 — Arch Linux | **Primary** | Not the hosted CI runner | **Primary development target** | Repository reviewed and local Rust/frontend checks run on Arch Linux x86_64 |
+| Linux x86_64 — Ubuntu 24.04 | Supported build environment candidate | **Verified — every CI run** | Pending Phase 6 smoke validation | CI runner is `ubuntu-latest` (24.04); full workspace checks and Linux bundles build and upload green on every push |
+| Linux x86_64 — AppImage | Build target configured | **Verified build on every CI run** | **Experimental / not supported yet** | `tauri:build:ci` produces the AppImage as a CI artifact; clean-install launch evidence still required (Phase 6 smoke) |
+| Linux x86_64 — Debian package | Build target configured | **Verified build on every CI run** | **Experimental / not supported yet** | `tauri:build:ci` produces the `.deb` as a CI artifact; package install/launch smoke test still required |
+| Linux x86_64 — RPM package | Build target configured | **Verified build on every CI run** | **Experimental / not supported yet** | `tauri:build:ci` produces the `.rpm` as a CI artifact; RPM toolchain and install/launch test still required |
 | Arch package (`PKGBUILD`) | Packaging recipe present | Not currently validated in CI | **Community recipe / not supported yet** | Reproducible `makepkg` verification belongs to Phase 6 |
-| Windows x86_64 — NSIS | Not locally verified | **Configured target** | **Not supported yet** | Workflow invocation was corrected in Phase 0; real Windows smoke testing belongs to Phase 6 |
+| Windows x86_64 — NSIS | Not locally verified | **Verified build on every CI run** | **Not supported yet** | NSIS installer is produced and uploaded by `build-windows`; local launch and clean-Windows smoke testing belong to Phase 6 (Task Q) |
 | macOS x86_64/Apple Silicon | Not configured | Not configured | **Unsupported** | No build workflow or artifact is claimed |
 | Linux ARM/aarch64 | Not configured | Not configured | **Unsupported** | No target, performance baseline, or package is claimed |
 | Flatpak | Manifest present | Not a verified source build | **Unsupported / pending redesign** | Current manifest installs a prebuilt binary and needs Phase 6 work |
