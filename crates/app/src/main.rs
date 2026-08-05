@@ -137,6 +137,10 @@ fn main() {
             commands::reporting::get_insights,
             commands::reporting::get_consistency,
             commands::reporting::export_data,
+            // Versioned portable profile transfer
+            commands::profile_transfer::export_profile,
+            commands::profile_transfer::preview_profile_import,
+            commands::profile_transfer::import_profile,
             // Replay
             commands::reporting::get_replay,
             // Sound

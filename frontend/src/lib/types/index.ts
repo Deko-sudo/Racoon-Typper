@@ -224,3 +224,21 @@ export interface ProgressPoint {
   accuracy: number;
   tests: number;
 }
+
+export type ProfileImportPolicy = 'merge' | 'replace';
+
+export interface CollectionImportPlan {
+  incoming: number;
+  existing: number;
+  to_insert: number;
+}
+
+export interface ProfileImportPlan {
+  policy: ProfileImportPolicy;
+  tests: CollectionImportPlan;
+  personal_bests: CollectionImportPlan;
+  daily_stats: CollectionImportPlan;
+  streaks: CollectionImportPlan;
+  custom_texts: CollectionImportPlan;
+  lesson_progress: CollectionImportPlan;
+}

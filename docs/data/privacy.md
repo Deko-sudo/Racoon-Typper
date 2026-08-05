@@ -44,14 +44,21 @@ types or imports. This content never leaves the machine:
   - data: `${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper/`
   - settings: `${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper/`
 
-## Backup
+## Backup and recovery
 
-Before any migration, users should back up the database file (`data.db` plus
-`data.db-wal` and `data.db-shm` while the app is closed). A structured backup
-and restore workflow is planned in Phase 4.
+The data layer creates transactionally consistent, single-file SQLite backups
+with SQLite's Online Backup API and retains rotating pre-migration snapshots.
+Database-file restore remains a data-layer API and is not exposed through the
+application UI: it must never run while a live `Database` is open on the same
+path. Do not manually copy a live WAL-mode `data.db` file. See the [Profile
+Transfer and Recovery Runbook](profile-transfer.md) for the current recovery
+constraints.
 
-## Export
+## Export and portable profile transfer
 
-`export_data` currently exports history in JSON or CSV. Full profile export and
-import (settings, custom texts, lessons, preferences) is Phase 4 work and is not
-yet available.
+`export_data` exports history in JSON or CSV. The current IPC also provides a
+versioned portable JSON profile export/import with a no-write preview and
+`merge`/`replace` policies. The portable profile includes practice data and
+custom texts, but excludes settings, replays, raw SQLite backups, and operational
+recovery/finalization ledgers. The detailed procedure and limits are documented
+in the [Profile Transfer and Recovery Runbook](profile-transfer.md).

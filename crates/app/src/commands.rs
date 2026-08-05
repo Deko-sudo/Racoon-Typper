@@ -13,6 +13,7 @@ use crate::state::AppState;
 pub(crate) mod content;
 pub(crate) mod contracts;
 pub(crate) mod preferences;
+pub(crate) mod profile_transfer;
 pub(crate) mod reporting;
 pub(crate) mod session;
 pub(crate) mod system;

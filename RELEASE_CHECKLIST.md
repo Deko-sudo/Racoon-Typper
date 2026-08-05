@@ -54,6 +54,8 @@ This checklist describes the current baseline and the gates required for a produ
   - [x] Migration fixtures: every historical schema V1..V7 upgrades cleanly to V8 through the production Refinery runner with era-appropriate data (`crates/data/tests/migration_matrix.rs`).
   - [x] Backup/restore data-layer and rotating pre-migration backups verified (`crates/data/tests/backup_restore.rs`, Task B).
   - [x] History surfaces paginate with deterministic ordering and 10 000+ query-plan/timing evidence; dashboard and achievement summaries use complete maintained projections with >100k-history coverage. Insights/consistency intentionally summarize the documented recent window (Tasks D–E, ADR 0002).
+  - [x] Portable profile transfer has strict versioned JSON validation, bounds, no-write preview, merge/replace policies, atomic portable-table import, and Tauri IPC coverage (`crates/data/tests/profile_transfer.rs`, `crates/app/src/commands/profile_transfer.rs`; Task F partial).
+  - [ ] Whole-file restore is safely coordinated through Tauri/UI: the current restore API requires the live `Database` to be closed first, and no application handoff, platform/manual recovery smoke, or clean-install transfer validation is claimed. See `docs/data/profile-transfer.md`.
 
 ### Packaging and release engineering — Phase 6
 

@@ -8,7 +8,7 @@ the repository as the source of truth for anything not covered here.
 **Working copy:** `/home/yago/Desktop/racoon-typper` (mixed working tree shared with other agents)
 **Product version:** 1.1.0 (source: `[workspace.package]` in root `Cargo.toml`)
 **Commit author identity:** `Racoon Typper <racoon@typper.dev>`
-**Updated:** 2026-08-05 — local `master` HEAD = `2007bc7`; verify with `git log --oneline -1` before starting.
+**Updated:** 2026-08-06 — verify the local `master` HEAD with `git log --oneline -1` before starting.
 
 ---
 
@@ -80,19 +80,22 @@ de79132  feat(data): migration matrix V1..V7 -> V8 with epoch data, FK and backu
 
 ### Block A — Phase 4 Data integrity (close Gate G4)
 
-Gate G4 status: migration matrix ✓, backup/restore ✓, FK ✓. Remaining: indexes for real query patterns,
-long-history ("bounded record caps"), complete aggregates, versioned export/import, migration runbook.
+Gate G4 status: migration matrix ✓, backup/restore data layer ✓, FK ✓, indexes/long-history semantics ✓,
+complete aggregates ✓, and portable profile transfer/runbook ✓. Remaining: lifecycle-safe whole-file
+restore IPC/UI and its platform/manual recovery evidence.
 
-The "bounded record caps" live in `crates/application/src/reporting.rs:22-40`:
-`MAX_REPORTING_PAGE_LIMIT=1000`, `DEFAULT_HISTORY_PAGE_LIMIT=50`, `DEFAULT_EXPORT_PAGE_LIMIT=1000`,
-`DASHBOARD_ACTIVITY_HISTORY_LIMIT=1000`, `ACHIEVEMENT_HISTORY_LIMIT=500`, `ANALYTICS_HISTORY_LIMIT=100`,
-`MAX_REPORTING_PAGE_OFFSET`. Concern (risk R-010): aggregates misstate progress beyond the caps.
+The retained bounded record caps in `crates/application/src/reporting.rs:22-40`
+limit paginated/history and intentionally recent summary surfaces. Task E moved
+global dashboard/achievement aggregate reads to maintained projections and added
+more-than-100k-record evidence, resolving the prior R-010 aggregate-misstatement
+concern. ADR `docs/adr/0002-long-history-metrics.md` records the remaining
+recent-window semantics.
 
 | Task | Scope & acceptance criteria |
 |---|---|
 | **D.** Indexes + long-history semantics (TD5) | Measure real query patterns in repositories; add indexes proven by `EXPLAIN QUERY PLAN` (with failing tests if necessary); ensure pagination/cursor + explicit `ORDER BY` on every history surface; keep 1..10k+ fixture tests, add regression time thresholds; no behavior change to aggregate values. |
 | **E.** Complete aggregates without old caps | `daily_stats` stay sparse; history/dashboard/achievement/analytics aggregate reads are correct beyond the caps above; long-history tests prove correctness at >100k records; document which surfaces paginate vs summarise. |
-| **F.** Versioned export/import + restore IPC | Versioned schema, bounded input, validation-before-write, dry-run preview, conflict policy (merge/replace) and atomic replacement (temp store + swap); expose restore via Tauri IPC replacing current file-path-only `restore_from_path` (today the API deletes destination first — move recoverable behavior to temp+swap to close that risk); backup/restore runbook in `docs/`. A restore must never run while a live `Database` is open on the same path (coordinate the take-over in the IPC command). |
+| **F.** Versioned export/import + restore IPC | **Partial:** versioned bounded portable JSON, validation-before-write, dry-run preview, merge/replace policy, transactional portable-table import, Tauri IPC, and `docs/data/profile-transfer.md` are implemented in the worktree. `restore_from_path` now validates a sibling temporary replacement before atomic file replacement, but no Tauri restore IPC/UI coordinates closing and reopening a live `Database`. Keep that lifecycle handoff and its platform/manual recovery evidence as the remaining Task F scope. |
 
 ### Block B — Phase 5 Security (close Gate G5)
 

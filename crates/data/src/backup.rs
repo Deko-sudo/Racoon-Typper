@@ -93,12 +93,12 @@ pub fn backup_to_path(source: &Database, dest: &Path) -> Result<PathBuf, DbError
 /// paths rather than an open `Database` precisely because restore requires the
 /// live connection to be torn down first.
 ///
-/// `backup_path` must exist and be a regular file. Any existing destination
-/// file at `live_db_path` is **removed first** along with its `-wal`/`-shm`
-/// companions, then the backup is copied in through the Online Backup API. This
-/// never layers a restore onto a suspect or corrupt live file: the destination
-/// always starts empty, so the snapshot is written cleanly. Returns the restored
-/// path on success.
+/// `backup_path` must exist and be a regular file. The source is copied and
+/// integrity-checked at a sibling temporary path before the live file changes.
+/// A failed source validation or copy therefore preserves the live database.
+/// Once the replacement is valid, it atomically replaces the live database and
+/// stale `-wal`/`-shm` companions are removed. Returns the restored path on
+/// success.
 pub fn restore_from_path(backup_path: &Path, live_db_path: &Path) -> Result<PathBuf, DbError> {
     if backup_path.as_os_str().is_empty() || live_db_path.as_os_str().is_empty() {
         return Err(DbError::Restore("empty backup or live path".to_string()));
@@ -110,6 +110,11 @@ pub fn restore_from_path(backup_path: &Path, live_db_path: &Path) -> Result<Path
             "backup source is not a regular file".to_string(),
         ));
     }
+    if backup_path == live_db_path {
+        return Err(DbError::Restore(
+            "backup source and live destination must differ".to_string(),
+        ));
+    }
     if let Some(parent) = live_db_path.parent() {
         if !parent.as_os_str().is_empty() {
             std::fs::create_dir_all(parent)
@@ -117,22 +122,53 @@ pub fn restore_from_path(backup_path: &Path, live_db_path: &Path) -> Result<Path
         }
     }
 
-    // Remove any existing live database and its WAL/SHM companions before
-    // restoring. Layering an Online Backup onto a garbage or partial file is
-    // unreliable (SQLite can refuse with NOTADB); starting from a clean path is
-    // correct and avoids leaving stale -wal/-shm behind.
-    remove_database_companions(live_db_path);
-
-    // Open the backup as source and the live path as destination. The Online
-    // Backup API copies the source into the destination, overwriting it.
+    let temp_path = sibling_temp_path(live_db_path, "restore");
+    remove_database_companions(&temp_path);
     let source = Connection::open(backup_path)
         .map_err(|error| DbError::Restore(format!("open backup source: {error}")))?;
-    let mut dest = Connection::open(live_db_path)
-        .map_err(|error| DbError::Restore(format!("open live destination: {error}")))?;
-    copy_via_online_backup(&source, &mut dest, "restore")?;
-    // A checkpoint+truncate ensures the restored snapshot has no lingering WAL.
-    let _ = dest.pragma_update(None, "wal_checkpoint", "TRUNCATE");
+    let replacement = (|| -> Result<(), DbError> {
+        let mut dest = Connection::open(&temp_path)
+            .map_err(|error| DbError::Restore(format!("open restore destination: {error}")))?;
+        copy_via_online_backup(&source, &mut dest, "restore").map_err(restore_error)?;
+        validate_sqlite_snapshot(&dest)?;
+        let _ = dest.pragma_update(None, "wal_checkpoint", "TRUNCATE");
+        Ok(())
+    })();
+    drop(source);
+    if let Err(error) = replacement {
+        remove_database_companions(&temp_path);
+        return Err(error);
+    }
+
+    replace_database_file(&temp_path, live_db_path)?;
     Ok(live_db_path.to_path_buf())
+}
+
+fn restore_error(error: DbError) -> DbError {
+    match error {
+        DbError::Backup(message) => DbError::Restore(message),
+        other => other,
+    }
+}
+
+fn validate_sqlite_snapshot(conn: &Connection) -> Result<(), DbError> {
+    let result: String = conn
+        .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+        .map_err(|error| DbError::Restore(format!("validate restored snapshot: {error}")))?;
+    if result == "ok" {
+        Ok(())
+    } else {
+        Err(DbError::Restore(format!(
+            "restored snapshot integrity check failed: {result}"
+        )))
+    }
+}
+
+fn replace_database_file(replacement: &Path, live_db_path: &Path) -> Result<(), DbError> {
+    std::fs::rename(replacement, live_db_path)
+        .map_err(|error| DbError::Restore(format!("finalize restore replacement: {error}")))?;
+    remove_database_companions_except_main(live_db_path);
+    Ok(())
 }
 
 /// Removes a database file and its `-wal` / `-shm` companions if present. Used
@@ -140,6 +176,13 @@ pub fn restore_from_path(backup_path: &Path, live_db_path: &Path) -> Result<Path
 fn remove_database_companions(db_path: &Path) {
     let _ = std::fs::remove_file(db_path);
     if let Some(stem) = db_path.file_name().and_then(|n| n.to_str()) {
+        let _ = std::fs::remove_file(db_path.with_file_name(format!("{stem}-wal")));
+        let _ = std::fs::remove_file(db_path.with_file_name(format!("{stem}-shm")));
+    }
+}
+
+fn remove_database_companions_except_main(db_path: &Path) {
+    if let Some(stem) = db_path.file_name().and_then(|name| name.to_str()) {
         let _ = std::fs::remove_file(db_path.with_file_name(format!("{stem}-wal")));
         let _ = std::fs::remove_file(db_path.with_file_name(format!("{stem}-shm")));
     }

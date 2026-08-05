@@ -77,7 +77,7 @@ The application is designed to keep typing data locally. The currently verified 
 | SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper/data.db` |
 | Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper/settings.toml` |
 
-Other platform paths remain unverified; see the support matrix. Export, retention, deletion, and migration behavior are being formalized before a production release. See [Data, Privacy, and Retention](docs/data/privacy.md) for the current policy.
+Other platform paths remain unverified; see the support matrix. Export, retention, deletion, and migration behavior are being formalized before a production release. See [Data, Privacy, and Retention](docs/data/privacy.md) and the [Profile Transfer and Recovery Runbook](docs/data/profile-transfer.md) for the current policy and safe-transfer constraints.
 
 ## Downloads
 
@@ -90,6 +90,7 @@ Public release artifacts will be published on the [GitHub Releases page](https:/
 - [Support matrix](SUPPORT_MATRIX.md)
 - [Installation guide](INSTALL.md)
 - [Contributing guide](CONTRIBUTING.md)
+- [Profile transfer and recovery runbook](docs/data/profile-transfer.md)
 - [Release checklist](RELEASE_CHECKLIST.md)
 - [Changelog](CHANGELOG.md)
 - [Security policy](SECURITY.md)

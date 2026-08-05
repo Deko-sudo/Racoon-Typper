@@ -6,6 +6,7 @@ pub mod backup;
 pub mod db;
 pub mod error;
 pub mod models;
+pub mod profile_transfer;
 pub mod repository;
 
 pub use db::Database;

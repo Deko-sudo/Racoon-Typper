@@ -248,6 +248,42 @@ fn restore_rejects_non_file_backup() {
 }
 
 #[test]
+fn restore_rejects_an_invalid_backup_without_touching_the_live_database() {
+    let live = temp_path("restore-invalid-live");
+    let invalid_backup = temp_path("restore-invalid-backup");
+    remove_database(&live);
+    remove_database(&invalid_backup);
+    {
+        let db = Database::open(&live).expect("open live");
+        db.with_transaction(|tx| {
+            SqliteTestRepository::new(tx)
+                .save_test(make_record(1))
+                .map(|_| ())
+        })
+        .expect("save live row");
+    }
+    std::fs::write(&invalid_backup, b"not a sqlite database").expect("write invalid backup");
+
+    let result = restore_from_path(&invalid_backup, &live);
+    assert!(
+        matches!(result, Err(racoon_data::DbError::Restore(_))),
+        "invalid backup must return a typed restore error, got {result:?}"
+    );
+    assert!(
+        integrity_ok(&live),
+        "failed restore must preserve live integrity"
+    );
+    assert_eq!(
+        count_tests(&live),
+        1,
+        "failed restore must preserve the original live database"
+    );
+
+    remove_database(&live);
+    remove_database(&invalid_backup);
+}
+
+#[test]
 fn rotate_backups_keeps_latest_n() {
     let dir = temp_dir("rotate");
     remove_dir_all(&dir);

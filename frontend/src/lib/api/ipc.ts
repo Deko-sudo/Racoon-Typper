@@ -12,6 +12,8 @@ import type {
   Insight,
   LessonProgressRecord,
   PersonalBest,
+  ProfileImportPlan,
+  ProfileImportPolicy,
   ProgressPoint,
   ReplayFrame,
   StatsHistoryResponse,
@@ -149,6 +151,26 @@ export async function getConsistency(): Promise<ConsistencyReport> {
 
 export async function exportData(format: 'json' | 'csv'): Promise<string> {
   return invoke<string>('export_data', { format });
+}
+
+// Versioned portable profile transfer. `replace` is destructive for portable
+// profile tables, so callers should always display the preview before applying it.
+export async function exportProfile(): Promise<string> {
+  return invoke<string>('export_profile');
+}
+
+export async function previewProfileImport(
+  document: string,
+  policy: ProfileImportPolicy,
+): Promise<ProfileImportPlan> {
+  return invoke<ProfileImportPlan>('preview_profile_import', { document, policy });
+}
+
+export async function importProfile(
+  document: string,
+  policy: ProfileImportPolicy,
+): Promise<ProfileImportPlan> {
+  return invoke<ProfileImportPlan>('import_profile', { document, policy });
 }
 
 // Replay
