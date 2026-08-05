@@ -57,6 +57,14 @@ This checklist describes the current baseline and the gates required for a produ
   - [x] Portable profile transfer has strict versioned JSON validation, bounds, no-write preview, merge/replace policies, atomic portable-table import, and Tauri IPC coverage (`crates/data/tests/profile_transfer.rs`, `crates/app/src/commands/profile_transfer.rs`; Task F partial).
   - [ ] Whole-file restore is safely coordinated through Tauri/UI: the current restore API requires the live `Database` to be closed first, and no application handoff, platform/manual recovery smoke, or clean-install transfer validation is claimed. See `docs/data/profile-transfer.md`.
 
+### Security surface — Phase 5
+
+- [x] Threat-model baseline inventories current assets, trust boundaries, abuse cases, implementation evidence, tests, and residual risk for IPC, local files, custom content, diagnostics, packaging, and restore (`docs/security/THREAT_MODEL.md`, Task G).
+- [ ] Tauri capabilities are derived from the registered command/window surface and reduced to least privilege; the current main-window capability grants broad `core:*:default` permissions (Task H).
+- [ ] Local diagnostics are opt-in, bounded, structured, and demonstrably redact typed content, paths, and raw error payloads; current diagnostics use stderr only (Task I).
+- [ ] Hostile-input and error-disclosure regression coverage proves malformed/oversized IPC, imported content, and repeated requests do not bypass validation or leak sensitive data (Task J).
+- [x] GLib/GTK3 advisory-chain acceptance is documented with reachability analysis and revisit triggers; it remains monitored dependency debt, not a resolved upstream vulnerability (`docs/adr/0001-glib-gtk3-advisory.md`).
+
 ### Packaging and release engineering — Phase 6
 
 - [ ] Linux artifacts install/launch on clean supported environments.
