@@ -231,12 +231,14 @@ pub trait ProgressReportingPort {
         range: InclusiveDateRange,
     ) -> Result<Vec<crate::reporting::DailyStatisticsPoint>, ReportingError>;
 
-    /// Returns unique UTC activity days in strictly ascending order for the
-    /// requested bounded recent-history window.
-    fn load_recent_activity_days(
+    /// Returns the complete maintained streak projection relative to `as_of`.
+    ///
+    /// This must not be derived from a bounded test-history page: long-lived
+    /// profiles can have streaks older than any UI or analytics sample window.
+    fn load_streak_report(
         &self,
-        history_limit: usize,
-    ) -> Result<Vec<ReportingDay>, ReportingError>;
+        as_of: ReportingDay,
+    ) -> Result<crate::reporting::StreakReport, ReportingError>;
 }
 
 /// Read capability for the accepted persisted personal-best projections.

@@ -52,9 +52,9 @@ pub use reporting::{
     OffsetPagination, PersonalBestConfigurationKey, PersonalBestDimension, PersonalBestEntry,
     RelativeReportingPeriod, ReplayFrame, ReplayPage, ReplayPageSource, ReplayQuery, ReportingDay,
     ReportingError, ReportingLanguage, ReportingLessonId, ReportingMetricSample, ReportingMode,
-    ReportingModeFilter, ReportingSummary, StreakReport, TestDetails, ACHIEVEMENT_HISTORY_LIMIT,
-    ANALYTICS_HISTORY_LIMIT, DASHBOARD_ACTIVITY_HISTORY_LIMIT, DEFAULT_EXPORT_PAGE_LIMIT,
-    DEFAULT_HISTORY_PAGE_LIMIT, MAX_REPORTING_PAGE_LIMIT, MAX_REPORTING_PAGE_OFFSET,
+    ReportingModeFilter, ReportingSummary, StreakReport, TestDetails, ANALYTICS_HISTORY_LIMIT,
+    DEFAULT_EXPORT_PAGE_LIMIT, DEFAULT_HISTORY_PAGE_LIMIT, MAX_REPORTING_PAGE_LIMIT,
+    MAX_REPORTING_PAGE_OFFSET,
 };
 pub use session::{SessionCompletion, SessionPersistenceReceipt, SessionStartRequest};
 pub use startup_recovery::{

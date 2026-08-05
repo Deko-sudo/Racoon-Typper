@@ -5,7 +5,7 @@
 
 - Status: Accepted
 - Date: 2026-08-05
-- Scope: Task D / Gate G4
+- Scope: Tasks D–E / Gate G4
 
 ## Context
 
@@ -25,7 +25,7 @@ Several legacy dashboard and achievement reads previously derived all-time value
 
 ## Verification
 
-`crates/data/tests/long_history.rs` seeds 10,000 records and verifies exact production ordering/index planner paths, an acceptable full-count scan, and bounded read timing. Repository regressions cover timestamp tie-break pagination. Migration-matrix tests verify V1..V8 upgrades through the production Refinery runner to the V009 index set.
+`crates/data/tests/long_history.rs` seeds 10,000 records for production ordering/index planner paths, an acceptable full-count scan, and bounded read timing. It separately seeds 100,001 records to prove global personal-best and streak projections remain available beyond former dashboard and achievement caps. Application reporting-contract tests verify that dashboard and achievement use those complete projections while insight consistency retains its bounded recent sample. Repository regressions cover timestamp tie-break pagination. Migration-matrix tests verify V1..V8 upgrades through the production Refinery runner to the V009 index set.
 
 ## Consequences
 

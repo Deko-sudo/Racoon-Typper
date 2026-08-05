@@ -29,6 +29,7 @@ use rusqlite::Connection;
 static NEXT_TEMP: AtomicU64 = AtomicU64::new(0);
 
 const ROW_COUNT: usize = 10_000;
+const COMPLETE_AGGREGATE_ROW_COUNT: usize = 100_001;
 
 fn temp_path(name: &str) -> PathBuf {
     let sequence = NEXT_TEMP.fetch_add(1, Ordering::Relaxed);
@@ -268,19 +269,15 @@ fn long_history_reads_complete_within_budget() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn global_best_is_recoverable_from_personal_bests_past_old_window() {
-    // Build a history where the global best WPM lives on a row well past the
-    // old 500-test window, and a PB row records it. The Task D fix reads
-    // best_wpm from personal_bests; this test pins that the global best is
-    // recoverable from PB regardless of how long the history is.
+fn global_best_is_recoverable_from_personal_bests_beyond_100k_history() {
+    // A completed profile is larger than every former reporting cap. Its global
+    // best comes from the maintained PB projection, never a UI/history window.
     let path = temp_path("metric-best");
     remove_database(&path);
     let db = Database::open(&path).expect("open db");
     {
         let mut conn = db.conn();
-        // Insert 1000 ordinary rows (well beyond the old 500 window) with
-        // modest WPM, then the global best as an explicit personal_best row.
-        seed_history(&mut conn, 1000);
+        seed_history(&mut conn, COMPLETE_AGGREGATE_ROW_COUNT);
         // The PB row is the source of truth for global best.
         conn.execute(
             "INSERT INTO personal_bests (
@@ -297,24 +294,22 @@ fn global_best_is_recoverable_from_personal_bests_past_old_window() {
         let global_best_wpm = bests.iter().map(|pb| pb.best_wpm).fold(0.0_f64, f64::max);
         assert_eq!(
             global_best_wpm, 120.0,
-            "global best WPM must be recoverable from personal_bests past the old 500-test window"
+            "global best WPM must be recoverable from personal_bests beyond 100k history"
         );
     }
     remove_database(&path);
 }
 
 #[test]
-fn global_longest_streak_survives_in_maintained_streaks_row() {
-    // Seed a streaks row with a large longest_streak that no bounded history
-    // window could ever recompute correctly. The Task D fix reads longest_streak
-    // from the maintained row; this pins that the global value survives there.
+fn global_longest_streak_survives_in_maintained_row_beyond_100k_history() {
+    // The maintained streak projection must remain authoritative regardless of
+    // the number of historical test records available to a reporting surface.
     let path = temp_path("metric-streak");
     remove_database(&path);
     let db = Database::open(&path).expect("open db");
     {
         let mut conn = db.conn();
-        // A short history that could not produce a 42-day streak.
-        seed_history(&mut conn, 50);
+        seed_history(&mut conn, COMPLETE_AGGREGATE_ROW_COUNT);
         conn.execute(
             "INSERT INTO streaks (type, current_streak, longest_streak, last_date, started_date)
              VALUES ('daily_test', 1, 42, '2026-01-01', '2025-12-01')",

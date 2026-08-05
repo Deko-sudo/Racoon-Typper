@@ -30,12 +30,6 @@ pub const DEFAULT_HISTORY_PAGE_LIMIT: usize = 50;
 /// Existing export callers request one maximum-size page.
 pub const DEFAULT_EXPORT_PAGE_LIMIT: usize = MAX_REPORTING_PAGE_LIMIT;
 
-/// Existing dashboard streak calculation considers this many recent tests.
-pub const DASHBOARD_ACTIVITY_HISTORY_LIMIT: usize = 1_000;
-
-/// Existing achievement calculations inspect this many recent tests.
-pub const ACHIEVEMENT_HISTORY_LIMIT: usize = 500;
-
 /// Existing insight and consistency calculations inspect this many tests.
 pub const ANALYTICS_HISTORY_LIMIT: usize = 100;
 
@@ -1275,29 +1269,21 @@ pub struct ReportingMetricSample {
     accuracy: f64,
 }
 
-/// The bounded input selection needed by the existing achievements policy.
+/// The selection needed by the achievements policy.
+///
+/// Achievement values are maintained aggregates, rather than a bounded history
+/// window. This keeps milestone eligibility correct for long-lived profiles.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AchievementInputQuery {
-    history_limit: usize,
     lesson_languages: Vec<ReportingLanguage>,
 }
 
 impl AchievementInputQuery {
-    pub fn new(
-        history_limit: usize,
-        lesson_languages: Vec<ReportingLanguage>,
-    ) -> Result<Self, ReportingError> {
-        if history_limit == 0 || lesson_languages.is_empty() || lesson_languages.len() > 16 {
+    pub fn new(lesson_languages: Vec<ReportingLanguage>) -> Result<Self, ReportingError> {
+        if lesson_languages.is_empty() || lesson_languages.len() > 16 {
             return Err(ReportingError::InvariantViolation);
         }
-        Ok(Self {
-            history_limit,
-            lesson_languages,
-        })
-    }
-
-    pub const fn history_limit(&self) -> usize {
-        self.history_limit
+        Ok(Self { lesson_languages })
     }
 
     pub fn lesson_languages(&self) -> &[ReportingLanguage] {
@@ -1358,40 +1344,49 @@ impl ReportingMetricSample {
     }
 }
 
-/// Bounded analytics input for the existing achievements calculation.
+/// Complete maintained aggregates required by the achievements calculation.
 #[derive(Debug, Clone, PartialEq)]
 pub struct AchievementInputs {
     total_tests: u64,
-    recent_metrics: Vec<ReportingMetricSample>,
-    activity_days: Vec<ReportingDay>,
+    best_wpm: f64,
+    best_accuracy: f64,
+    longest_streak: u64,
     lessons_completed: u64,
 }
 
 impl AchievementInputs {
     pub fn new(
         total_tests: u64,
-        recent_metrics: Vec<ReportingMetricSample>,
-        activity_days: Vec<ReportingDay>,
+        best_wpm: f64,
+        best_accuracy: f64,
+        longest_streak: u64,
         lessons_completed: u64,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, ReportingError> {
+        validate_score(best_wpm)?;
+        validate_percentage(best_accuracy)?;
+        Ok(Self {
             total_tests,
-            recent_metrics,
-            activity_days,
+            best_wpm,
+            best_accuracy,
+            longest_streak,
             lessons_completed,
-        }
+        })
     }
 
     pub const fn total_tests(&self) -> u64 {
         self.total_tests
     }
 
-    pub fn recent_metrics(&self) -> &[ReportingMetricSample] {
-        &self.recent_metrics
+    pub const fn best_wpm(&self) -> f64 {
+        self.best_wpm
     }
 
-    pub fn activity_days(&self) -> &[ReportingDay] {
-        &self.activity_days
+    pub const fn best_accuracy(&self) -> f64 {
+        self.best_accuracy
+    }
+
+    pub const fn longest_streak(&self) -> u64 {
+        self.longest_streak
     }
 
     pub const fn lessons_completed(&self) -> u64 {
@@ -1735,10 +1730,7 @@ impl<'a, P: ProgressReportingPort + ?Sized, C: SessionWallClock + ?Sized>
         let daily_statistics = self.port.load_daily_statistics(period)?;
         validate_daily_statistics(&daily_statistics, period)?;
         let total_tests = self.port.count_tests()?;
-        let activity_days = self
-            .port
-            .load_recent_activity_days(DASHBOARD_ACTIVITY_HISTORY_LIMIT)?;
-        let streak = calculate_streak(&activity_days, as_of)?;
+        let streak = self.port.load_streak_report(as_of)?;
         let today = daily_statistics
             .iter()
             .find(|statistics| statistics.day() == as_of);
@@ -1799,10 +1791,7 @@ impl<'a, P: ProgressReportingPort + ?Sized, C: SessionWallClock + ?Sized>
     pub fn execute(&self) -> Result<StreakReport, ReportingError> {
         let now = self.clock.utc_now();
         let as_of = ReportingDay::from_utc(now);
-        let days = self
-            .port
-            .load_recent_activity_days(DASHBOARD_ACTIVITY_HISTORY_LIMIT)?;
-        calculate_streak(&days, as_of)
+        self.port.load_streak_report(as_of)
     }
 }
 
@@ -1828,7 +1817,7 @@ impl<'a, P: PersonalBestReportingPort + ?Sized> ListPersonalBests<'a, P> {
     }
 }
 
-/// Produces the existing bounded achievements, insights, and consistency
+/// Produces complete achievement aggregates plus bounded insights and consistency
 /// calculations without reading a system clock directly.
 pub struct GetAnalyticsSnapshot<
     'a,
@@ -1848,14 +1837,10 @@ impl<'a, P: AnalyticsReportingPort + ?Sized, C: SessionWallClock + ?Sized>
 
     pub fn execute(&self) -> Result<AnalyticsSnapshot, ReportingError> {
         let now = self.clock.utc_now();
-        let as_of = ReportingDay::from_utc(now);
-        let achievement_query = AchievementInputQuery::new(
-            ACHIEVEMENT_HISTORY_LIMIT,
-            vec![
-                ReportingLanguage::parse("en")?,
-                ReportingLanguage::parse("ru")?,
-            ],
-        )?;
+        let achievement_query = AchievementInputQuery::new(vec![
+            ReportingLanguage::parse("en")?,
+            ReportingLanguage::parse("ru")?,
+        ])?;
         let achievement_inputs = self.port.load_achievement_inputs(&achievement_query)?;
         validate_achievement_inputs(&achievement_inputs)?;
         let insight_period = RelativeReportingPeriod::DashboardWeek.range_ending_at(now)?;
@@ -1865,28 +1850,17 @@ impl<'a, P: AnalyticsReportingPort + ?Sized, C: SessionWallClock + ?Sized>
         ))?;
         validate_insight_inputs(&insight_inputs, insight_period)?;
 
-        let best_wpm = achievement_inputs
-            .recent_metrics()
-            .iter()
-            .map(ReportingMetricSample::wpm)
-            .fold(0.0_f64, f64::max);
-        let best_accuracy = achievement_inputs
-            .recent_metrics()
-            .iter()
-            .map(ReportingMetricSample::accuracy)
-            .fold(0.0_f64, f64::max);
-        let longest_streak =
-            calculate_streak(achievement_inputs.activity_days(), as_of)?.longest_streak();
         let consistency = calc_consistency(insight_inputs.recent_wpm());
 
         Ok(AnalyticsSnapshot::new(
             check_achievements(
                 i64::try_from(achievement_inputs.total_tests())
                     .map_err(|_| ReportingError::InvariantViolation)?,
-                best_wpm,
-                best_accuracy,
+                achievement_inputs.best_wpm(),
+                achievement_inputs.best_accuracy(),
                 0,
-                i64::try_from(longest_streak).map_err(|_| ReportingError::InvariantViolation)?,
+                i64::try_from(achievement_inputs.longest_streak())
+                    .map_err(|_| ReportingError::InvariantViolation)?,
                 i64::try_from(achievement_inputs.lessons_completed())
                     .map_err(|_| ReportingError::InvariantViolation)?,
             ),
@@ -2002,41 +1976,6 @@ fn validate_daily_statistics(
     Ok(())
 }
 
-fn calculate_streak(
-    activity_days: &[ReportingDay],
-    as_of: ReportingDay,
-) -> Result<StreakReport, ReportingError> {
-    if activity_days.is_empty() {
-        return Ok(StreakReport::new(0, 0, as_of));
-    }
-    if activity_days
-        .windows(2)
-        .any(|window| window[0] >= window[1])
-    {
-        return Err(ReportingError::InvariantViolation);
-    }
-
-    let mut current = 1_u64;
-    let mut longest = 1_u64;
-    for window in activity_days.windows(2) {
-        match window[1].signed_days_since(window[0]) {
-            1 => {
-                current = current
-                    .checked_add(1)
-                    .ok_or(ReportingError::InvariantViolation)?;
-                longest = longest.max(current);
-            }
-            difference if difference > 1 => current = 1,
-            _ => return Err(ReportingError::InvariantViolation),
-        }
-    }
-
-    if as_of.signed_days_since(*activity_days.last().expect("non-empty checked")) > 1 {
-        current = 0;
-    }
-    Ok(StreakReport::new(current, longest, as_of))
-}
-
 fn weighted_daily_average(
     statistics: &[DailyStatisticsPoint],
     metric: impl Fn(&DailyStatisticsPoint) -> f64,
@@ -2066,15 +2005,8 @@ fn is_stably_ordered_personal_bests(entries: &[PersonalBestEntry]) -> bool {
 }
 
 fn validate_achievement_inputs(inputs: &AchievementInputs) -> Result<(), ReportingError> {
-    if inputs.recent_metrics().len() > ACHIEVEMENT_HISTORY_LIMIT
-        || inputs
-            .activity_days()
-            .windows(2)
-            .any(|window| window[0] >= window[1])
-    {
-        return Err(ReportingError::InvariantViolation);
-    }
-    Ok(())
+    validate_score(inputs.best_wpm())?;
+    validate_percentage(inputs.best_accuracy())
 }
 
 fn validate_insight_inputs(

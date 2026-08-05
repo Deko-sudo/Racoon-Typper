@@ -85,10 +85,6 @@ fn frame(index: u64) -> ReplayFrame {
     ReplayFrame::new(index, index * 10, index, 'a', Some('a'), true)
 }
 
-fn metric(completed_at: &str, wpm: f64, accuracy: f64) -> ReportingMetricSample {
-    ReportingMetricSample::new(timestamp(completed_at), wpm, accuracy).expect("valid metric")
-}
-
 fn personal_best(updated_at: &str) -> PersonalBestEntry {
     PersonalBestEntry::new(
         PersonalBestDimension::new(
@@ -165,9 +161,9 @@ impl HistoryReportingPort for FakeHistoryPort {
 struct FakeProgressPort {
     total: Result<u64, ReportingError>,
     daily: Result<Vec<DailyStatisticsPoint>, ReportingError>,
-    activity_days: Result<Vec<ReportingDay>, ReportingError>,
+    streak: Result<StreakReport, ReportingError>,
     daily_ranges: RefCell<Vec<InclusiveDateRange>>,
-    activity_limits: RefCell<Vec<usize>>,
+    streak_as_of: RefCell<Vec<ReportingDay>>,
 }
 
 impl FakeProgressPort {
@@ -175,9 +171,9 @@ impl FakeProgressPort {
         Self {
             total: Ok(0),
             daily: Ok(vec![]),
-            activity_days: Ok(vec![]),
+            streak: Ok(StreakReport::new(0, 0, day(2026, 1, 1))),
             daily_ranges: RefCell::new(vec![]),
-            activity_limits: RefCell::new(vec![]),
+            streak_as_of: RefCell::new(vec![]),
         }
     }
 }
@@ -195,12 +191,9 @@ impl ProgressReportingPort for FakeProgressPort {
         self.daily.clone()
     }
 
-    fn load_recent_activity_days(
-        &self,
-        history_limit: usize,
-    ) -> Result<Vec<ReportingDay>, ReportingError> {
-        self.activity_limits.borrow_mut().push(history_limit);
-        self.activity_days.clone()
+    fn load_streak_report(&self, as_of: ReportingDay) -> Result<StreakReport, ReportingError> {
+        self.streak_as_of.borrow_mut().push(as_of);
+        self.streak
     }
 }
 
@@ -507,9 +500,9 @@ fn reporting_summary_uses_fixed_utc_clock_weighted_daily_averages_and_streak_pol
             DailyStatisticsPoint::new(day(2026, 7, 16), 3, 3_000, 15, 30.0, 30.0, 96.0, 0, true)
                 .unwrap(),
         ]),
-        activity_days: Ok(vec![day(2026, 7, 14), day(2026, 7, 15), day(2026, 7, 16)]),
+        streak: Ok(StreakReport::new(3, 512, day(2026, 7, 16))),
         daily_ranges: RefCell::new(vec![]),
-        activity_limits: RefCell::new(vec![]),
+        streak_as_of: RefCell::new(vec![]),
     };
     let clock = FixedClock(timestamp("2026-07-16T12:00:00Z"));
 
@@ -521,14 +514,11 @@ fn reporting_summary_uses_fixed_utc_clock_weighted_daily_averages_and_streak_pol
     assert_eq!(summary.tests_in_period(), 4);
     assert_eq!(summary.total_tests(), 4);
     assert_eq!(summary.current_streak(), 3);
-    assert_eq!(summary.longest_streak(), 3);
+    assert_eq!(summary.longest_streak(), 512);
     assert!((summary.average_wpm() - 25.0).abs() < f64::EPSILON);
     assert!((summary.average_accuracy() - 94.5).abs() < f64::EPSILON);
     assert!(summary.daily_goal_met());
-    assert_eq!(
-        port.activity_limits.borrow().as_slice(),
-        &[DASHBOARD_ACTIVITY_HISTORY_LIMIT]
-    );
+    assert_eq!(port.streak_as_of.borrow().as_slice(), &[day(2026, 7, 16)]);
 }
 
 #[test]
@@ -541,7 +531,7 @@ fn summary_and_streak_handle_empty_and_missed_activity_deterministically() {
     assert_eq!(summary.average_wpm(), 0.0);
 
     let missed = FakeProgressPort {
-        activity_days: Ok(vec![day(2026, 7, 10), day(2026, 7, 11)]),
+        streak: Ok(StreakReport::new(0, 2, day(2026, 7, 16))),
         ..FakeProgressPort::empty()
     };
     let streak = GetStreakReport::new(&missed, &clock).execute().unwrap();
@@ -620,14 +610,9 @@ fn personal_bests_allow_empty_results_and_reject_unstable_dimension_ordering() {
 }
 
 #[test]
-fn analytics_preserve_existing_caps_and_are_deterministic_with_a_fixed_clock() {
+fn analytics_use_complete_maintained_aggregates_and_a_bounded_recent_consistency_window() {
     let port = FakeAnalyticsPort {
-        achievement: Ok(AchievementInputs::new(
-            1,
-            vec![metric("2026-07-16T12:00:00Z", 60.0, 98.0)],
-            vec![day(2026, 7, 16)],
-            0,
-        )),
+        achievement: Ok(AchievementInputs::new(100_001, 120.0, 99.0, 512, 0).unwrap()),
         insight: Ok(InsightInputs::new(
             vec![daily(day(2026, 7, 16), 1, 60.0, 98.0)],
             vec![60.0],
@@ -644,10 +629,7 @@ fn analytics_preserve_existing_caps_and_are_deterministic_with_a_fixed_clock() {
         .iter()
         .any(|achievement| achievement.id == "first_test" && achievement.unlocked));
     assert!(!snapshot.insights().is_empty());
-    assert_eq!(
-        port.achievement_queries.borrow()[0].history_limit(),
-        ACHIEVEMENT_HISTORY_LIMIT
-    );
+
     assert_eq!(
         port.insight_queries.borrow()[0].history_limit(),
         ANALYTICS_HISTORY_LIMIT
@@ -659,12 +641,9 @@ fn analytics_preserve_existing_caps_and_are_deterministic_with_a_fixed_clock() {
 }
 
 #[test]
-fn analytics_rejects_unbounded_or_corrupt_inputs() {
-    let too_many = (0..ACHIEVEMENT_HISTORY_LIMIT + 1)
-        .map(|index| metric("2026-07-16T12:00:00Z", index as f64, 90.0))
-        .collect();
+fn analytics_rejects_corrupt_complete_aggregate_inputs() {
     let port = FakeAnalyticsPort {
-        achievement: Ok(AchievementInputs::new(1, too_many, vec![], 0)),
+        achievement: AchievementInputs::new(1, f64::NAN, 90.0, 0, 0),
         insight: Ok(InsightInputs::new(vec![], vec![])),
         achievement_queries: RefCell::new(vec![]),
         insight_queries: RefCell::new(vec![]),
@@ -672,14 +651,14 @@ fn analytics_rejects_unbounded_or_corrupt_inputs() {
     let clock = FixedClock(timestamp("2026-07-16T12:00:00Z"));
     assert!(matches!(
         GetAnalyticsSnapshot::new(&port, &clock).execute(),
-        Err(ReportingError::InvariantViolation)
+        Err(ReportingError::CorruptReportingRecord)
     ));
 }
 
 #[test]
 fn analytics_empty_inputs_keep_existing_empty_data_semantics() {
     let port = FakeAnalyticsPort {
-        achievement: Ok(AchievementInputs::new(0, vec![], vec![], 0)),
+        achievement: Ok(AchievementInputs::new(0, 0.0, 0.0, 0, 0).unwrap()),
         insight: Ok(InsightInputs::new(vec![], vec![])),
         achievement_queries: RefCell::new(vec![]),
         insight_queries: RefCell::new(vec![]),

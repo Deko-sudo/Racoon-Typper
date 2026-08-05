@@ -53,7 +53,7 @@ This checklist describes the current baseline and the gates required for a produ
   - [x] Foreign keys enforced on every connection; cascade (replays) and RESTRICT (session ledger chain incl. V008 composite fingerprint FK) verified (`crates/data/tests/migration_matrix.rs`).
   - [x] Migration fixtures: every historical schema V1..V7 upgrades cleanly to V8 through the production Refinery runner with era-appropriate data (`crates/data/tests/migration_matrix.rs`).
   - [x] Backup/restore data-layer and rotating pre-migration backups verified (`crates/data/tests/backup_restore.rs`, Task B).
-  - [x] Long-history (10 000+ sessions) analytics, deterministic ordering, indexes, and regression thresholds are verified (Task D, ADR 0002).
+  - [x] History surfaces paginate with deterministic ordering and 10 000+ query-plan/timing evidence; dashboard and achievement summaries use complete maintained projections with >100k-history coverage. Insights/consistency intentionally summarize the documented recent window (Tasks D–E, ADR 0002).
 
 ### Packaging and release engineering — Phase 6
 
