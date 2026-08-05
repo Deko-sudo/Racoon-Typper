@@ -1,5 +1,28 @@
 # Session ledger migrations
 
+## Migration level summary
+
+Each migration is additive and forward-only. This table records only facts
+expressed by the SQL files; it is not a behavioral spec.
+
+| Level | Migration file | What it changes | Data it touches |
+|---|---|---|---|
+| V001 | `V001__initial.sql` | Creates the six base tables (`tests`, `personal_bests`, `lesson_progress`, `daily_stats`, `streaks`, `custom_texts`) and their indexes | None (fresh schema) |
+| V002 | `V002__lesson_language.sql` | `ALTER TABLE lesson_progress ADD COLUMN language TEXT NOT NULL DEFAULT 'en'` | Existing `lesson_progress` rows receive the `'en'` default |
+| V003 | `V003__replays.sql` | Creates `test_replays` with `test_id … REFERENCES tests(id) ON DELETE CASCADE` and indexes | None (new table) |
+| V004 | `V004__custom_text_language.sql` | `ALTER TABLE custom_texts ADD COLUMN language TEXT NOT NULL DEFAULT 'en'` | Existing `custom_texts` rows receive the `'en'` default |
+| V005 | `V005__session_identity.sql` | `ALTER TABLE tests ADD COLUMN session_id TEXT`; deterministic backfill; unique index; `required`/`immutable` triggers | Pre-V005 `tests` rows are backfilled as `legacy-test-%016x` of `id` |
+| V006 | `V006__session_ledger.sql` | Creates `session_ledger` (no foreign keys; CHECK + terminal-state triggers) and recovery-order indexes | None — historical `tests` rows are intentionally not backfilled |
+| V007 | `V007__session_completion_intents.sql` | Creates `session_completion_intents` with `session_id … REFERENCES session_ledger(session_id) ON DELETE RESTRICT`; immutability/delete/replace triggers | None (new table) |
+| V008 | `V008__session_finalizations.sql` | Unique index on `(session_id, fingerprint)`; creates `session_finalizations` with `session_id … REFERENCES session_ledger … ON DELETE RESTRICT` and a composite `FOREIGN KEY (session_id, fingerprint) … ON DELETE RESTRICT ON UPDATE RESTRICT`; state-transition triggers | None (new table) |
+
+The matrix upgrade tests in `crates/data/tests/migration_matrix.rs` exercise
+every path V1..V7 → V8 through the production Refinery runner, seeding
+era-appropriate data before the upgrade and asserting schema, foreign keys,
+journal mode, and data survival (including the V005 backfill) afterwards.
+
+## Session ledger detail
+
 `V006__session_ledger.sql` adds durable lifecycle records for newly accepted
 sessions. It does not backfill historical `tests` rows, because completed test
 history is not a recoverable active session. The table stores only bounded,

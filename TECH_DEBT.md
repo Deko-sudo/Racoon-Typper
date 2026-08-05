@@ -1,7 +1,7 @@
 # Technical Debt — Racoon Typper
 
 **Last updated:** 2026-08-01
-**Scope:** Current debt after the Phase 0–3B.3 baseline commit, Phase 6 CI hardening, the GLib/GTK3 dependency-decision (ADR 0001), and the SQLite backup/restore data-layer (Task B).
+**Scope:** Current debt after the Phase 0–3B.3 baseline commit, Phase 6 CI hardening, the GLib/GTK3 dependency-decision (ADR 0001), the SQLite backup/restore data-layer (Task B), and the migration matrix upgrade evidence (Task C).
 
 ## Active debt
 
@@ -12,7 +12,7 @@
 | TD3 | `App.svelte` still owns broad interaction state; feature stores and explicit cache/session ownership are not established. | Phase 3 | P1 |
 | TD4 | Durable crash recovery is implemented for the recovery/finalization ledger; backup/restore, restart-safe live completion rewiring, and deterministic injected runtime providers in production are not fully shipped. | Trusted Core | P0/P1 |
 | TD5 | History/analytics paths still use bounded record caps and need long-history query semantics, indexes, and measured regression thresholds. | Phase 4 | P1 |
-| TD6 | Backup/restore data-layer API and rotating pre-migration backups are implemented (Task B); restore IPC wiring/runbook, migration preflight/recovery, privacy/retention enforcement, structured redacted logs, capability/CSP hardening, and raw-error redaction remain unfinished. | Phases 4–5 | P0/P1 |
+| TD6 | Backup/restore data-layer API, rotating pre-migration backups (Task B), and the V1..V7→V8 migration matrix with FK/epoch/backup evidence (Task C) are implemented. Restore IPC wiring/runbook, privacy/retention enforcement, structured redacted logs, capability/CSP hardening, and raw-error redaction remain unfinished. | Phases 4–5 | P0/P1 |
 | TD7 | Packaging signing, SBOM/reproducibility evidence, and cross-platform clean-install smoke tests remain release work. | Phase 6 | P0 |
 
 ## Dependency debt
@@ -52,3 +52,4 @@
 | TD-NEW7 | Unused `@tauri-apps/plugin-shell` dependency removed | Phase 5 |
 | TD-NEW8 | GLib/GTK3 advisory chain (DD4, R-009) decided: documented acceptance scoped to the Linux-only Tauri webview backend, with bounded revisit trigger. ADR `docs/adr/0001-glib-gtk3-advisory.md`. | Phase 5 G5 |
 | TD-NEW9 | SQLite online backup/restore data-layer API (`crates/data/src/backup.rs`) using rusqlite's Online Backup API for transactionally consistent snapshots; rotating N=5 pre-migration backups with warn-and-continue; restore removes destination + WAL/SHM before writing. Tauri restore IPC remains Task F. | Phase 4 G4 |
+| TD-NEW10 | Migration matrix evidence (`crates/data/tests/migration_matrix.rs`): every historical schema V1..V7 upgrades cleanly to V8 through the production Refinery runner with era-appropriate seed data; asserts refinery history, full schema (tables+indexes), `foreign_keys=ON`, `journal_mode=wal`, epoch data survival incl. the V005 `session_id` backfill, FK integrity (cascade on replays; RESTRICT on ledger→intents→finalizations incl. the V008 composite fingerprint FK), orphan rejection, idempotent reopen, and a V1→V8 pre-migration backup round-trip via the Task B seam. Observation recorded: `session_ledger` (V006) has no foreign keys by design; FK enforcement begins at V007 (child → ledger) and V008 (composite fingerprint → intents). | Phase 4 G4 |

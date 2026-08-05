@@ -50,6 +50,10 @@ This checklist describes the current baseline and the gates required for a produ
 - [x] Stable durable session IDs, crash recovery, deterministic injected seams, and restart-safe idempotency are separately designed and verified (Phases 3A–3B.3).
 - [x] Application ports/contracts and frontend state ownership have passed Phase 3 review.
 - [ ] Database foreign keys, migration fixtures, backup/restore, and long-history behavior are verified.
+  - [x] Foreign keys enforced on every connection; cascade (replays) and RESTRICT (session ledger chain incl. V008 composite fingerprint FK) verified (`crates/data/tests/migration_matrix.rs`).
+  - [x] Migration fixtures: every historical schema V1..V7 upgrades cleanly to V8 through the production Refinery runner with era-appropriate data (`crates/data/tests/migration_matrix.rs`).
+  - [x] Backup/restore data-layer and rotating pre-migration backups verified (`crates/data/tests/backup_restore.rs`, Task B).
+  - [ ] Long-history (10 000+ sessions) analytics, indexes, and regression thresholds remain Task D (TD5).
 
 ### Packaging and release engineering — Phase 6
 
