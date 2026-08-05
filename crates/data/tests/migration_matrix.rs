@@ -329,14 +329,20 @@ fn assert_full_schema_present(conn: &Connection) {
         .collect();
     for expected in [
         "idx_daily_stats_date",
+        "idx_lesson_progress_difficulty",
         "idx_lesson_progress_lesson_id",
+        "idx_lesson_progress_module_id",
+        "idx_replays_frame",
         "idx_replays_test_id",
-        "idx_session_ledger_recovery_order",
-        "idx_session_finalizations_diagnostic_order",
-        "idx_tests_created_at",
-        "idx_tests_session_id",
-        "uniq_pb_mode_config_hash",
         "idx_session_completion_intents_session_fingerprint",
+        "idx_session_finalizations_diagnostic_order",
+        "idx_session_ledger_recovery_order",
+        "idx_session_ledger_state_recovery_order",
+        "idx_tests_created_at",
+        "idx_tests_mode_config",
+        "idx_tests_session_id",
+        "idx_tests_wpm",
+        "uniq_pb_mode_config_hash",
     ] {
         assert!(
             indexes.iter().any(|i| i == expected),
@@ -634,6 +640,159 @@ fn finalization_rejects_mismatched_intent_fingerprint() {
         assert!(
             result.is_err(),
             "finalization with mismatched fingerprint must be rejected by composite FK"
+        );
+    }
+    remove_database(&path);
+}
+
+#[test]
+fn ledger_delete_blocked_when_completion_intent_exists() {
+    // V007 declares session_completion_intents.session_id REFERENCES
+    // session_ledger(session_id) ON DELETE RESTRICT. Deleting a ledger row that
+    // still has an intent must be rejected, so an intent can never be orphaned.
+    let path = temp_path("fk-ledger-delete-restrict");
+    remove_database(&path);
+    let db = Database::open(&path).expect("open fresh db");
+    {
+        let conn = db.conn();
+        conn.execute(
+            "INSERT INTO session_ledger (
+                session_id, state, mode_type, mode_descriptor, language, created_at, updated_at
+             ) VALUES (
+                'restrict-ledger', 'finalization_pending', 'time', '{\"duration\":30}', 'en',
+                '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z'
+             )",
+            [],
+        )
+        .expect("insert ledger");
+        let payload: Vec<u8> = vec![0u8; 4];
+        conn.execute(
+            "INSERT INTO session_completion_intents (
+                session_id, canonicalization_version, payload_version, fingerprint,
+                canonical_payload, payload_byte_length, created_at
+             ) VALUES (
+                'restrict-ledger', 1, 1,
+                '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                ?, 4, '2026-01-01T00:00:00Z'
+             )",
+            [&payload],
+        )
+        .expect("insert intent");
+
+        // Direct delete of the referenced ledger row must fail with RESTRICT.
+        let result = conn.execute(
+            "DELETE FROM session_ledger WHERE session_id = 'restrict-ledger'",
+            [],
+        );
+        assert!(
+            result.is_err(),
+            "deleting a ledger row with an existing intent must be rejected (ON DELETE RESTRICT)"
+        );
+        // The ledger row and intent must both still be present.
+        let ledger: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM session_ledger WHERE session_id = 'restrict-ledger'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("count ledger");
+        let intents: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM session_completion_intents WHERE session_id = 'restrict-ledger'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("count intents");
+        assert_eq!(ledger, 1, "ledger row must survive the blocked delete");
+        assert_eq!(intents, 1, "intent row must survive the blocked delete");
+    }
+    remove_database(&path);
+}
+
+#[test]
+fn finalization_orphan_session_is_rejected() {
+    // V008 finalizations.session_id REFERENCES session_ledger ON DELETE
+    // RESTRICT. Inserting a finalization for a session that has no ledger row
+    // must be rejected before the composite fingerprint FK is even considered.
+    let path = temp_path("fk-finalization-orphan");
+    remove_database(&path);
+    let db = Database::open(&path).expect("open fresh db");
+    {
+        let conn = db.conn();
+        let result = conn.execute(
+            "INSERT INTO session_finalizations (
+                session_id, fingerprint, state, claimed_at
+             ) VALUES (
+                'never-in-ledger',
+                '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+                'pending', '2026-01-01T00:00:00Z'
+             )",
+            [],
+        );
+        assert!(
+            result.is_err(),
+            "finalization referencing a session absent from session_ledger must be rejected"
+        );
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM session_finalizations", [], |row| {
+                row.get(0)
+            })
+            .expect("count finalizations");
+        assert_eq!(count, 0, "no finalization row may be written on FK failure");
+    }
+    remove_database(&path);
+}
+
+#[test]
+fn personal_best_reference_blocks_parent_test_delete() {
+    // personal_bests.best_wpm_test_id REFERENCES tests(id) with no ON DELETE
+    // clause, so SQLite applies NO ACTION: deleting the referenced tests row
+    // while a personal_best still points at it must fail, keeping the reference
+    // intact rather than silently orphaning the PB columns.
+    let path = temp_path("fk-pb-no-action");
+    remove_database(&path);
+    let db = Database::open(&path).expect("open fresh db");
+    {
+        let conn = db.conn();
+        conn.execute(
+            "INSERT INTO tests (
+                session_id, created_at, mode_type, mode_config, language, text_length,
+                duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency,
+                correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data,
+                graph_data, is_pb, tags
+             ) VALUES (
+                'pb-session', '2026-01-01T00:00:00Z', 'time', '{}', 'en', 10, 1000,
+                90.0, 95.0, 99.0, 98.0, NULL, 9, 1, 0, '{}', '{}', NULL, 0, ''
+             )",
+            [],
+        )
+        .expect("insert parent test");
+        conn.execute(
+            "INSERT INTO personal_bests (
+                mode_type, mode_config_hash, mode_config, best_wpm, best_wpm_test_id,
+                best_accuracy, best_accuracy_test_id, updated_at
+             ) SELECT 'time', 'hash-pb', '{}', wpm, id, accuracy, id, '2026-01-01T00:00:00Z'
+               FROM tests WHERE session_id = 'pb-session'",
+            [],
+        )
+        .expect("insert personal_best referencing tests(id)");
+
+        // Deleting the referenced tests row must be rejected (NO ACTION).
+        let result = conn.execute("DELETE FROM tests WHERE session_id = 'pb-session'", []);
+        assert!(
+            result.is_err(),
+            "deleting a tests row referenced by personal_bests must be rejected (NO ACTION)"
+        );
+        let tests: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM tests WHERE session_id = 'pb-session'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("count tests");
+        assert_eq!(
+            tests, 1,
+            "referenced tests row must survive the blocked delete"
         );
     }
     remove_database(&path);
