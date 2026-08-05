@@ -194,8 +194,6 @@ mod tests {
         AppState::new(
             Database::open_in_memory().expect("database"),
             settings_path,
-            PathBuf::from("data"),
-            PathBuf::from("config"),
             gate,
         )
     }

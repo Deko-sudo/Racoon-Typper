@@ -138,13 +138,7 @@ mod tests {
         )
         .run(&gate)
         .expect("startup recovery");
-        AppState::new(
-            database,
-            PathBuf::from("settings.toml"),
-            PathBuf::from("data"),
-            PathBuf::from("config"),
-            gate,
-        )
+        AppState::new(database, PathBuf::from("settings.toml"), gate)
     }
 
     #[test]

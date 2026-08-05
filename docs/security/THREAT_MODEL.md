@@ -21,7 +21,7 @@
 
 | Boundary | Untrusted side | Trusted side | Current boundary evidence |
 |---|---|---|---|
-| Webview ↔ Rust | Renderer-originated Tauri `invoke` arguments | Tauri command adapters, core engine, SQLite/filesystem | `main.rs` registers 35 commands. `frontend/src/lib/api/ipc.ts` wraps many of them, but registration is authoritative. |
+| Webview ↔ Rust | Renderer-originated Tauri `invoke` arguments | Tauri command adapters, core engine, SQLite/filesystem | The local `main` window has 31 explicitly permitted application commands. `capability_audit.rs` verifies exact equality among the handler, frontend wrappers, build-time manifest, and capability. |
 | IPC adapter ↔ persistence/runtime | Command inputs, including text and JSON | `AppState`, `CoreEngine`, `racoon-data` | Command-specific validation plus startup-recovery and engine-state guards are present, but contracts are still hand-maintained. |
 | Local filesystem ↔ app | Existing database/settings, legacy XDG paths, backups, package inputs | Path resolver, SQLite, settings store | `paths.rs` uses Tauri's app data/config resolver and performs a one-way Linux legacy copy only when the destination is absent. |
 | User-supplied content ↔ stored/rendered content | Custom text, test text, profile JSON, query/filter strings | Validation, SQLite repositories, IPC responses | Inputs are accepted as data, not executable code. This is not a sanitizer or access-control boundary for another local process. |
@@ -29,22 +29,21 @@
 
 ### Current IPC inventory
 
-The `tauri::generate_handler!` registration in `crates/app/src/main.rs` exposes these command groups to the main window:
+The `tauri::generate_handler!` registration in `crates/app/src/main.rs` exposes only the commands wrapped by `frontend/src/lib/api/ipc.ts` to the local `main` window:
 
-- System: `ping`, `get_app_info`.
 - Session: `start_test`, `process_key`, `abort_session`, `start_custom_text_test`, `start_lesson`.
 - Reporting/replay: `get_stats_history`, `get_personal_bests`, `get_dashboard_stats`, `get_progress_history`, `get_achievements`, `get_insights`, `get_consistency`, `export_data`, `get_replay`.
-- Custom content/course/weak keys: `get_custom_texts`, `get_custom_text`, `save_custom_text`, `update_custom_text`, `delete_custom_text`, `search_custom_texts`, `get_course`, `get_lesson_progress`, `analyze_weak_keys`, `generate_weak_keys_training`.
+- Custom content/course/weak keys: `get_custom_texts`, `save_custom_text`, `update_custom_text`, `delete_custom_text`, `search_custom_texts`, `get_course`, `get_lesson_progress`, `analyze_weak_keys`, `generate_weak_keys_training`.
 - Preferences/themes/sound: `get_settings`, `set_setting`, `get_themes`, `get_theme_css`, `get_sound_event`.
 - Portable profile transfer: `export_profile`, `preview_profile_import`, `import_profile`.
 
-The capability declaration currently says "allow all IPC commands" and grants `core:default`, `core:event:default`, `core:window:default`, `core:webview:default`, and `core:app:default` to the `main` window. It is not yet an audited least-privilege command/window policy; that is Task H.
+`crates/app/build.rs` generates Tauri 2 application-command permissions from the exact 31-command set. `crates/app/capabilities/main.json` grants each generated `allow-*` permission only to the local `main` window. It grants no `core:*` permission: the frontend imports only `invoke`, and neither the Rust application nor frontend uses Tauri window, webview, event, app, path, resource, image, menu, or tray IPC APIs. The capability has no remote URL association; the bundled local content is the sole permitted origin. `crates/app/tests/capability_audit.rs` is the regression control for unexpected or missing handler/frontend/manifest/capability coverage.
 
 ## Abuse cases, controls, and evidence
 
 | Surface / abuse case | Current controls and directly relevant evidence | Residual risk / required follow-up |
 |---|---|---|
-| A compromised or unintended renderer invokes a mutating command with malformed, oversized, or state-inconsistent arguments. | Central validation bounds page limits, offsets, key fields, duration, word count, language, settings keys, and direct test text (`crates/app/src/validation.rs`). Mutations that affect recovery are gated by `AppState::require_startup_recovery_ready`; profile import also rejects a running/finalizing engine. Unit tests cover unsafe/bounded validation and active-session import rejection. | Not every command has a versioned request DTO or contract test. The main capability is broad. Task H must derive and restrict the actual capability/window surface; Task J must make hostile-input coverage systematic. |
+| A compromised or unintended renderer invokes a mutating command with malformed, oversized, or state-inconsistent arguments. | Central validation bounds page limits, offsets, key fields, duration, word count, language, settings keys, and direct test text (`crates/app/src/validation.rs`). Mutations that affect recovery are gated by `AppState::require_startup_recovery_ready`; profile import also rejects a running/finalizing engine. Unit tests cover unsafe/bounded validation and active-session import rejection. Tauri 2 application-command permissions are generated and audited against the 31 registered frontend commands. | Not every command has a versioned request DTO or contract test. An authorized renderer can still invoke each command it is permitted to use. Task J must make hostile-input coverage systematic. |
 | IPC errors disclose typed text, paths, or database details to the renderer. | The data layer has tests that debug recovery/session payloads redact custom text (`crates/application/src/session.rs` and `crates/application/src/recovery.rs`). Some SQLite failures are collapsed to `"SQLite operation failed"` at the app boundary. | `AppError` serializes many underlying error strings, including settings, DB, migration, backup, and restore messages. No comprehensive IPC error-redaction test proves that user content and paths cannot escape. Treat error strings as potentially sensitive until Task I/J adds and verifies a redaction policy. |
 | An untrusted local file or path replaces, mixes with, or corrupts active data/settings. | Tauri resolves app-managed data/config paths. The Linux legacy migration copies only missing destinations through a sibling temporary file and rename; tests prove existing destination preservation and one-time copy. SQLite uses its engine/backup API rather than manual live-WAL copying. | Local user/process access is outside the app's access-control model. The legacy source paths are derived from `HOME`/XDG variables, and no documented permission/ownership hardening or adversarial symlink test exists. Whole-file restore is deliberately not exposed through IPC/UI. |
 | A custom text or direct test text causes resource exhaustion or is interpreted as active content. | Stored custom text is validated for nonblank name/text and a 10,000-character maximum in the repository; direct test text shares that maximum. Theme CSS comes only from three compiled-in names after theme-name validation; there is no arbitrary CSS import command. | Custom text is intentionally returned to the renderer and may be rendered there. The threat model does not claim HTML/CSS sanitization, CSP coverage for future content paths, or an XSS test suite. Task J should add adversarial content regression tests before new import/rendering features. |
@@ -63,7 +62,7 @@ The capability declaration currently says "allow all IPC commands" and grants `c
 
 | ID | Residual risk | Status / owner |
 |---|---|---|
-| TM-1 | Broad Tauri capability defaults and unversioned hand-maintained IPC contracts. | Open — Task H and Task R |
+| TM-1 | IPC request/config contracts remain unversioned and hand-maintained. The Task H capability control limits the local main window to the audited command set, but does not type or version those contracts. | Open — Task R |
 | TM-2 | Raw error-string and stderr disclosure; no bounded redacted application logging. | Open — Task I and Task J |
 | TM-3 | Portable profile JSON is allocated across IPC before its data-layer size check; no file workflow or user-confirmation UI exists. | Open — Task F follow-up / Task J |
 | TM-4 | Whole-file restore lacks app lifecycle coordination and platform/manual recovery evidence. | Open — Task F follow-up |

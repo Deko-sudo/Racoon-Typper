@@ -10,7 +10,6 @@ use racoon_core::CoreEngine;
 use racoon_data::{
     Database, SqliteFinalizationLedger, SqliteSessionFinalizer, SqliteSessionRecoveryLedger,
 };
-use racoon_domain::AppInfo;
 use std::sync::Mutex;
 use tauri::Manager;
 
@@ -91,16 +90,11 @@ fn main() {
             app.manage(AppState::new(
                 database,
                 paths.settings_path,
-                paths.data_dir,
-                paths.config_dir,
                 startup_recovery,
             ));
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            // System
-            commands::system::ping,
-            commands::system::get_app_info,
             // Test
             commands::session::start_test,
             commands::session::process_key,
@@ -110,7 +104,6 @@ fn main() {
             commands::reporting::get_personal_bests,
             // Custom Texts
             commands::content::get_custom_texts,
-            commands::content::get_custom_text,
             commands::content::save_custom_text,
             commands::content::update_custom_text,
             commands::content::delete_custom_text,
@@ -150,25 +143,5 @@ fn main() {
     if let Err(error) = application.run(tauri::generate_context!()) {
         eprintln!("Racoon Typper failed to start: {error}");
         std::process::exit(1);
-    }
-}
-
-pub fn app_info(state: &AppState) -> AppInfo {
-    let profile = if cfg!(debug_assertions) {
-        "debug"
-    } else {
-        "release"
-    };
-    AppInfo {
-        version: env!("CARGO_PKG_VERSION").to_string(),
-        build_profile: profile.to_string(),
-        data_dir: state.data_dir().to_string_lossy().to_string(),
-        config_dir: state.config_dir().to_string_lossy().to_string(),
-        db_path: state
-            .data_dir()
-            .join("data.db")
-            .to_string_lossy()
-            .to_string(),
-        settings_path: state.settings_path().to_string_lossy().to_string(),
     }
 }

@@ -16,8 +16,6 @@ pub struct AppState {
     pub db: Database,
     settings_path: PathBuf,
     settings_lock: Mutex<()>,
-    data_dir: PathBuf,
-    config_dir: PathBuf,
     process_started_at: Instant,
     sound_engine: Mutex<SoundEngine>,
     startup_recovery: StartupRecoveryGate,
@@ -27,16 +25,12 @@ impl AppState {
     pub fn new(
         db: Database,
         settings_path: PathBuf,
-        data_dir: PathBuf,
-        config_dir: PathBuf,
         startup_recovery: StartupRecoveryGate,
     ) -> Self {
         Self {
             db,
             settings_path,
             settings_lock: Mutex::new(()),
-            data_dir,
-            config_dir,
             process_started_at: Instant::now(),
             sound_engine: Mutex::new(SoundEngine::new(SoundConfig::default())),
             startup_recovery,
@@ -83,18 +77,6 @@ impl AppState {
         Ok(sound_engine.try_play(event, self.monotonic_timestamp_ms()))
     }
 
-    pub fn data_dir(&self) -> &std::path::Path {
-        &self.data_dir
-    }
-
-    pub fn config_dir(&self) -> &std::path::Path {
-        &self.config_dir
-    }
-
-    pub fn settings_path(&self) -> &std::path::Path {
-        &self.settings_path
-    }
-
     /// Rejects recovery-relevant mutation before it can touch the engine or
     /// durable stores. Read-only reporting remains available while startup is
     /// blocked so users can inspect existing data.
@@ -108,6 +90,7 @@ impl AppState {
         }
     }
 
+    #[cfg(test)]
     pub fn startup_recovery(&self) -> &StartupRecoveryGate {
         &self.startup_recovery
     }
@@ -135,8 +118,6 @@ mod tests {
         let state = AppState::new(
             database,
             PathBuf::from("settings.toml"),
-            PathBuf::from("data"),
-            PathBuf::from("config"),
             StartupRecoveryGate::new(),
         );
 

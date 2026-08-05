@@ -32,17 +32,6 @@ pub(crate) fn get_custom_texts(
 }
 
 #[tauri::command]
-pub(crate) fn get_custom_text(
-    state: State<'_, AppState>,
-    id: i64,
-) -> Result<racoon_data::CustomText, AppError> {
-    validate_positive_id(id, "custom text")?;
-    with_db(&state, |conn| {
-        SqliteCustomTextRepository::new(conn).get_by_id(id)
-    })
-}
-
-#[tauri::command]
 pub(crate) fn save_custom_text(
     state: State<'_, AppState>,
     name: String,

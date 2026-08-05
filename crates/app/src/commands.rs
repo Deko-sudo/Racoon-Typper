@@ -16,7 +16,6 @@ pub(crate) mod preferences;
 pub(crate) mod profile_transfer;
 pub(crate) mod reporting;
 pub(crate) mod session;
-pub(crate) mod system;
 
 pub(crate) fn with_db<T>(
     state: &AppState,

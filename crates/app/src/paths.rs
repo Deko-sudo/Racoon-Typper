@@ -12,7 +12,6 @@ use tauri::{App, Manager, Wry};
 /// Paths owned by the running application instance.
 pub struct AppPaths {
     pub data_dir: PathBuf,
-    pub config_dir: PathBuf,
     pub db_path: PathBuf,
     pub settings_path: PathBuf,
 }
@@ -34,7 +33,6 @@ pub fn resolve(app: &App<Wry>) -> Result<AppPaths, Box<dyn std::error::Error>> {
 
     Ok(AppPaths {
         data_dir,
-        config_dir,
         db_path,
         settings_path,
     })
