@@ -1,7 +1,7 @@
 # Technical Debt — Racoon Typper
 
 **Last updated:** 2026-08-06
-**Scope:** Current debt after the Phase 0–3B.3 baseline commit, Phase 6 CI hardening, the GLib/GTK3 dependency decision (ADR 0001), the SQLite backup/restore data layer (Task B), migration-matrix upgrade evidence (Task C), long-history reporting (Tasks D–E), committed Task F portable profile transfer, and the Task G threat-model baseline.
+**Scope:** Current debt after the Phase 0–3B.3 baseline commit, Phase 6 CI hardening, the GLib/GTK3 dependency decision (ADR 0001), the SQLite backup/restore data layer (Task B), migration-matrix upgrade evidence (Task C), long-history reporting (Tasks D–E), committed Task F portable profile transfer, the Task G threat-model baseline, the Task H–I security hardening, the Task J hostile-input/error-redaction regression, and the Task K release-workflow split.
 
 ## Active debt
 
@@ -57,3 +57,4 @@
 | TD-NEW13 | Task G threat model: evidence-based inventory of IPC, local files, custom content, diagnostics, packaging, and restore boundaries; records controls, tests, and open residual risks. It cross-references ADR 0001 and does not assert completion of Task H–P controls. See `docs/security/THREAT_MODEL.md`. | Phase 5 G5 (documentation baseline) |
 | TD-NEW14 | Task H least-privilege Tauri capability: a build-time `AppManifest` generates per-command permissions for the exact 31 frontend IPC wrappers; the local `main` window receives only those permissions, with no Tauri core window/webview/event/app or remote-origin permission. `crates/app/tests/capability_audit.rs` fails on unexpected or missing handler/frontend/manifest/capability coverage. | Phase 5 G5 |
 | TD-NEW15 | Task I redacted local diagnostics: `verbose_logging` is false by default and persists through `SettingsStore`; the backup-failure event uses an allowlisted JSONL schema, bounded rotating files, and no fallback diagnostic write on filesystem errors. Unit tests prove disabled mode, retention bounds, and absence of typed text/profile content/supplied paths. | Phase 5 G5 |
+| TD-NEW16 | Task K release-workflow split: `.github/workflows/ci.yml` is PR-checks only (rust/frontend/license, `contents: read`); `release-candidate.yml` rebuilds Linux+Windows artifacts from an immutable tag, validates the tag against the project version, generates `SHA256SUMS`, and creates a draft prerelease; `promote-release.yml` is a `workflow_dispatch` gated by the protected `release-promotion` environment that flips the draft to a published release with generated notes (no rebuild, no secrets). Model and scope limits documented in `docs/release-workflow.md`. SBOM/provenance attach (Task L), signing (TD7), and clean-install smoke (Tasks M/Q) remain separate release tasks. | Phase 6 G6 |
