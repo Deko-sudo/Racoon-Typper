@@ -21,7 +21,7 @@
 
   // SVG chart dimensions
   const W = 1100;
-  const H = 400;
+  const H = 560;
   const PADDING = 50;
 
   let maxWpm = $derived(Math.max(...points.map(p => p.wpm), 1));
@@ -126,7 +126,7 @@
     padding: 0.2rem 0.6rem; font-family: inherit; font-size: 0.7rem; cursor: pointer; border-radius: 4px;
   }
   .period-selector button.active { color: var(--main); border-color: var(--main); }
-  .chart-svg { width: 100%; height: auto; }
+  .chart-svg { width: 100%; height: auto; min-height: 180px; }
   .empty { color: var(--sub); text-align: center; padding: 2rem; }
   .chart-legend { display: flex; gap: 1.5rem; align-items: center; margin-top: 0.5rem; font-size: 0.75rem; }
   .legend-item { display: flex; gap: 0.25rem; align-items: center; color: var(--text); }

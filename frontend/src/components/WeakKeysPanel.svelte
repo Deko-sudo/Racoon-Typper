@@ -2,7 +2,8 @@
   import KeyboardTrainer from './KeyboardTrainer.svelte';
   import type { CharStatus } from '../lib/types/index';
   import { t } from '../lib/i18n';
-  import { VIEWPORT_CHARS, VIEWPORT_PADDING } from '../lib/keyboard';
+  const TRAINING_VIEWPORT_CHARS = 180;
+  const TRAINING_VIEWPORT_PADDING = 45;
 
   let {
     weakKeys = [],
@@ -26,8 +27,8 @@
     trainingLanguage?: string;
   } = $props();
 
-  let viewportStart = $derived(Math.max(0, trainingCaretPos - VIEWPORT_PADDING));
-  let viewportEnd = $derived(Math.min(trainingCharStatuses.length, viewportStart + VIEWPORT_CHARS));
+  let viewportStart = $derived(Math.max(0, trainingCaretPos - TRAINING_VIEWPORT_PADDING));
+  let viewportEnd = $derived(Math.min(trainingCharStatuses.length, viewportStart + TRAINING_VIEWPORT_CHARS));
   let viewportChars = $derived(trainingCharStatuses.slice(viewportStart, viewportEnd));
   let viewportOffset = $derived(trainingCaretPos - viewportStart);
   let progress = $derived(trainingCharStatuses.length === 0 ? 0 : (trainingCaretPos / trainingCharStatuses.length) * 100);
@@ -81,10 +82,10 @@
     cursor: pointer; border-radius: 4px; margin-bottom: 1rem;
   }
   button:hover { background-color: var(--main); color: var(--bg); }
-  .training-card { margin:1.5rem 0; padding:1.25rem; border:1px solid color-mix(in srgb,var(--main) 38%,var(--sub)); border-radius:12px; background:linear-gradient(145deg,color-mix(in srgb,var(--bg-sub) 88%,var(--main)),var(--bg-sub)); box-shadow:0 12px 28px rgba(0,0,0,.16); }
+  .training-card { margin:1.5rem 0; padding:1.25rem; border:1px solid color-mix(in srgb,var(--main) 38%,var(--sub)); border-radius:12px; background:var(--bg-sub); }
   .training-header { display:flex; justify-content:space-between; align-items:end; gap:1rem; margin-bottom:1rem; } .training-eyebrow { color:var(--main); text-transform:uppercase; letter-spacing:.08em; font-size:.62rem; font-weight:700; } .training-header h4 { margin:.15rem 0 0; color:var(--text); font-size:.95rem; } .training-progress { min-width:180px; color:var(--sub); font-size:.72rem; text-align:right; }
   .progress-track { width:100%; height:5px; overflow:hidden; border-radius:999px; background:color-mix(in srgb,var(--sub) 45%,transparent); margin-top:.35rem; } .progress-fill { height:100%; border-radius:inherit; background:var(--main); transition:width .12s ease; }
-  .text-viewport { width:100%; overflow:hidden; background:color-mix(in srgb,var(--bg) 55%,var(--bg-sub)); border:1px solid var(--sub); border-radius:8px; padding:1.5rem; } .text-display { font-size:clamp(1.35rem,3vw,2rem); line-height:1.75; text-align:center; user-select:none; white-space:pre-wrap; word-wrap:break-word; min-height:3.6em; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; } .text-ellipsis { color:var(--sub); opacity:.4; padding:0 .25rem; } .char { position:relative; transition:color .05s,opacity .1s; } .char.pending { color:var(--sub); } .char.correct { color:var(--text); } .char.incorrect { color:var(--error); } .char.backspaced { color:#ff8c42; } .char.past { opacity:.5; } .char.current { opacity:1; font-weight:600; } .char.future { opacity:.35; }
+  .text-viewport { width:100%; overflow:hidden; background:color-mix(in srgb,var(--bg) 55%,var(--bg-sub)); border:1px solid var(--sub); border-radius:8px; padding:clamp(1.25rem,3vw,2rem); } .text-display { font-size:clamp(1.5rem,3.5vw,2.25rem); line-height:1.8; text-align:center; user-select:none; white-space:pre-wrap; word-wrap:break-word; min-height:5.4em; display:flex; flex-wrap:wrap; justify-content:center; align-items:center; } .text-ellipsis { color:var(--sub); opacity:.4; padding:0 .25rem; } .char { position:relative; transition:color .05s,opacity .1s; } .char.pending { color:var(--sub); } .char.correct { color:var(--text); } .char.incorrect { color:var(--error); } .char.backspaced { color:#ff8c42; } .char.past { opacity:.5; } .char.current { opacity:1; font-weight:600; } .char.future { opacity:.35; }
   .char.caret::before { content:''; position:absolute; left:-.16em; top:.14em; bottom:.14em; width:.1em; border-radius:999px; background:var(--caret); box-shadow:0 0 .5em color-mix(in srgb,var(--caret) 70%,transparent); animation:blink .9s ease-in-out infinite; } @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} }
 
 </style>
