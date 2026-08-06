@@ -25,7 +25,8 @@ Implemented and verified (Phase 0–3B.3, Phases 5/6/7 partial):
 - Task C: migration matrix, `crates/data/tests/migration_matrix.rs` (16 tests): every historical schema V1..V7 → V8 through the production Refinery runner; FK/cascade/RESTRICT/NO-ACTION; backup round-trip; idempotent reopen.
 - Tasks D–F (Gate G4): V009 long-history ordering indexes + EXPLAIN/timing evidence; dashboard/achievement global metrics read from maintained `personal_bests`/`streaks` projections (ADR `docs/adr/0002-long-history-metrics.md`); portable versioned profile transfer with validation-before-write and runbook.
 - Tasks G–J (Gate G5): threat model (`docs/security/THREAT_MODEL.md`); least-privilege Tauri capabilities audited against 31 commands; opt-in bounded redacted diagnostics (`crates/app/src/logging.rs`); hostile-input regression and `AppError` public-boundary redaction (stable codes/messages, no dynamic payload leakage).
-- Task K (Gate G6): release workflow split into `.github/workflows/ci.yml` (PR-checks only), `release-candidate.yml` (rebuild from an immutable tag + `SHA256SUMS` + draft prerelease), and `promote-release.yml` (`workflow_dispatch` + protected `release-promotion` environment flips draft→published). Model documented in `docs/release-workflow.md`. SBOM/provenance attach (Task L), clean-install smoke (Tasks M/Q), and signing (TD7) remain separate release tasks.
+- Task K (Gate G6): release workflow split into `.github/workflows/ci.yml` (PR-checks only), `release-candidate.yml` (rebuild from an immutable tag + `SHA256SUMS` + draft prerelease), and `promote-release.yml` (`workflow_dispatch` + protected `release-promotion` environment flips draft→published). Model documented in `docs/release-workflow.md`.
+- Tasks L–M (Gate G6): release-candidate attaches the CycloneDX SBOM, provenance record, and a release manifest (verified against the tag) under `artifacts/release-evidence/`; reproducibility boundary documented in `docs/release-evidence.md`. Linux clean-install smoke automated in `scripts/linux-package-smoke.sh` and wired into the release-candidate workflow. OIDC/SLSA cryptographic attestation and signing remain separate gates (TD7).
 - CI: green across all jobs including Windows (NSIS). Artifacts (deb, rpm, AppImage, NSIS, binary tarball) uploaded on every push.
 - CSP: no `unsafe-inline` for `script-src`; data/privacy docs (`docs/data/privacy.md`), `SECURITY.md`, issue/PR templates.
 
@@ -113,15 +114,15 @@ Read `ROADMAP.md §Phase 5` for full requirements.
 
 ### Block C — Phase 6 Release engineering (Gate G6)
 
-CI already builds deb/rpm/AppImage + Windows NSIS + binary tarball every push; actions SHA-pinned.
+CI runs PR-checks on every push/PR (`ci.yml`); release artifacts are built only by the dispatch-driven `release-candidate.yml` from an immutable tag. All actions are SHA-pinned; `release-promotion` is a protected environment.
 
 | Task | Scope & status |
 |---|---|
 | **K.** Release workflow ✅ | **Done.** Split into `ci.yml` (PR-checks only), `release-candidate.yml` (rebuild from immutable tag + `SHA256SUMS` + draft prerelease), and `promote-release.yml` (`workflow_dispatch` + protected `release-promotion` environment). Least-privilege (`contents: read` default; `write` only on draft/publish jobs), no secrets in logs. Model + scope limits in `docs/release-workflow.md`. OIDC/provenance attestation deferred to Task L (no signing infra today). |
-| **L.** SBOM + provenance attach | CDX already produced by `license-policy`; attach to release artifacts; document reproducibility level; attach provenance (OIDC/`attest-build-provenance`). **Next.** |
-| **M.** Linux smoke | Clean environment (container/VM, Ubuntu 24.04): install (deb/rpm/AppImage) → first screen → short test → persist → restart → backup/export → clean exit. Automate in `scripts/` or a workflow. |
-| **N.** Flatpak redesign | Source build in the manifest (not a prebuilt binary), narrow permissions, pinned runtime; install+launch smoke. |
-| **O.** AppImage workflow revamp | Pin `appimagetool`, remove stale defaults, fix path/version variables, explicit failures, smoke. |
+| **L.** SBOM + provenance attach ✅ | **Done.** `release-candidate.yml` now attaches `racoon-typper.sbom.cdx.json`, `PROVENANCE_ATTESTATION.md`, and a `release-manifest.json` (tag, source commit, evidence filenames) under `artifacts/release-evidence/`; it verifies the SBOM component version matches the release tag before publication. `SHA256SUMS` covers binaries and evidence files. Reproducibility boundary (source-to-artifact provenance, not byte-for-byte) documented in `docs/release-evidence.md`. OIDC/SLSA-style cryptographic attestation remains a separate gate. |
+| **M.** Linux smoke ✅ | **Done.** `scripts/linux-package-smoke.sh` automates the clean-install journey (install → launch → short test → persist → restart → backup/export → clean exit) and is wired into `release-candidate.yml`. See `docs/release-workflow.md`. |
+| **N.** Flatpak redesign | Source build in the manifest (not a prebuilt binary), narrow permissions, pinned runtime; install+launch smoke. **In progress** — `com.racoon.typper.json` WIP rewrites the manifest to source-build and narrows permissions. |
+| **O.** AppImage workflow revamp | Pin `appimagetool`, remove stale defaults, fix path/version variables, explicit failures, smoke. **Next.** |
 | **P.** PKGBUILD verification | Reproducible `makepkg`, `sha256sums` pinned, Apache metadata, test in a clean Arch container (may need owner). |
 | **Q.** Windows clean-smoke | NSIS install → launch → first screen → save → exit on clean Windows (`windows-latest` runner or a VM the owner provisions); automate what is possible. |
 
@@ -136,7 +137,7 @@ CI already builds deb/rpm/AppImage + Windows NSIS + binary tarball every push; a
 
 ## 4. Order of execution & dependencies
 
-1. Strict: **D → E → F** (Gate G4) → **G → H → I → J** (Gate G5) → **K → L → M → N → O → P → Q** (G5/G6) → **R → S**. Completed through **K**; next is **L**.
+1. Strict: **D → E → F** (Gate G4) → **G → H → I → J** (Gate G5) → **K → L → M → N → O → P → Q** (G5/G6) → **R → S**. Completed through **M** (K, L, M merged). **N** is in progress; next open is **O**.
 2. F (restore IPC) may re-touch the same `Database` paths as Task B — respect the "never two connections on the same live path" constraint.
 3. After every task, report to the owner: files changed, verification table results, residual risks.
 
