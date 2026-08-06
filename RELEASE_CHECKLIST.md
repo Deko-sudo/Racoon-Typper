@@ -61,8 +61,8 @@ This checklist describes the current baseline and the gates required for a produ
 
 - [x] Threat-model baseline inventories current assets, trust boundaries, abuse cases, implementation evidence, tests, and residual risk for IPC, local files, custom content, diagnostics, packaging, and restore (`docs/security/THREAT_MODEL.md`, Task G).
 - [x] Tauri capabilities are generated from the 31 registered frontend commands and reduced to least privilege: the local `main` window receives only the corresponding application-command permissions, no `core:*` permission, and no remote-origin association. `crates/app/tests/capability_audit.rs` audits handler/frontend/manifest/capability equality (Task H).
-- [x] Local backup-failure diagnostics are opt-in, bounded JSONL, and demonstrably redact typed content, supplied paths, and raw error payloads. The startup stderr fallback is a fixed generic message only (`crates/app/src/logging.rs`, `crates/app/src/main.rs`; Task I). Comprehensive IPC error-redaction coverage remains Task J.
-- [ ] Hostile-input and error-disclosure regression coverage proves malformed/oversized IPC, imported content, and repeated requests do not bypass validation or leak sensitive data (Task J).
+- [x] Local backup-failure diagnostics are opt-in, bounded JSONL, and demonstrably redact typed content, supplied paths, and raw error payloads. The startup stderr fallback is a fixed generic message only (`crates/app/src/logging.rs`, `crates/app/src/main.rs`; Task I). Task J completes the separate comprehensive IPC error-redaction coverage.
+- [x] Hostile-input and error-disclosure regression coverage proves malformed/oversized IPC, imported content, traversal-like values, and repeated rejected requests do not bypass validation or leak sensitive data (Task J).
 - [x] GLib/GTK3 advisory-chain acceptance is documented with reachability analysis and revisit triggers; it remains monitored dependency debt, not a resolved upstream vulnerability (`docs/adr/0001-glib-gtk3-advisory.md`).
 
 ### Packaging and release engineering — Phase 6

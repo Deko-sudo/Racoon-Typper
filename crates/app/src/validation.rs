@@ -170,7 +170,16 @@ pub fn validate_sound_event(event: &str) -> Result<(), AppError> {
 }
 
 pub fn validate_setting_key(key: &str) -> Result<(), AppError> {
-    validate_bounded_token(key, MAX_SETTING_KEY_CHARS, "setting key")
+    validate_bounded_token(key, MAX_SETTING_KEY_CHARS, "setting key")?;
+    if !key
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || character == '_')
+    {
+        return Err(AppError::InvalidConfig(
+            "setting key contains unsupported characters".to_string(),
+        ));
+    }
+    Ok(())
 }
 
 fn validate_bounded_token(value: &str, max_chars: usize, kind: &str) -> Result<(), AppError> {
@@ -198,5 +207,21 @@ mod tests {
         assert!(validate_page_offset(MAX_PAGE_OFFSET + 1).is_err());
         assert!(validate_theme_name("\u{0000}").is_err());
         assert!(validate_test_mode(&"x".repeat(MAX_MODE_CHARS + 1)).is_err());
+    }
+
+    #[test]
+    fn rejects_traversal_oversize_and_repeated_hostile_inputs() {
+        for identifier in ["../lesson", "lesson/one", "lesson\\one", ".", ".."] {
+            assert!(validate_resource_identifier(identifier, "lesson").is_err());
+        }
+        assert!(validate_resource_identifier(&"a".repeat(129), "lesson").is_err());
+        assert!(validate_setting_key("../verbose_logging").is_err());
+        assert!(validate_search_query(&"q".repeat(MAX_SEARCH_QUERY_CHARS + 1)).is_err());
+
+        let oversized_text = "x".repeat(MAX_CUSTOM_TEST_CHARS + 1);
+        for _ in 0..8 {
+            assert!(validate_test_text(oversized_text.clone()).is_err());
+            assert!(validate_key_event(&"k".repeat(MAX_KEY_CHARS + 1), "KeyK").is_err());
+        }
     }
 }

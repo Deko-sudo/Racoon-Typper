@@ -114,9 +114,11 @@ fn profile_transfer_plans_without_writes_then_merges_or_replaces_atomically() {
         serde_json::from_slice(&document).expect("parse exported profile");
     invalid_export["application_version"] = serde_json::Value::String(String::new());
     let invalid_document = serde_json::to_vec(&invalid_export).expect("serialize invalid profile");
-    assert!(
-        apply_profile_import(&target, &invalid_document, ProfileImportPolicy::Replace).is_err()
-    );
+    for _ in 0..8 {
+        assert!(
+            apply_profile_import(&target, &invalid_document, ProfileImportPolicy::Replace).is_err()
+        );
+    }
     assert_eq!(
         target
             .with_connection(|conn| SqliteTestRepository::new(conn).get_count(None))
