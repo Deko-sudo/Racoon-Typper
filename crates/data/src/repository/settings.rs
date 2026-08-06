@@ -32,6 +32,8 @@ pub struct AppSettings {
     pub show_capslock_warnings: bool,
     #[serde(default)]
     pub sound_enabled: bool,
+    #[serde(default)]
+    pub verbose_logging: bool,
     #[serde(default = "default_sound_volume")]
     pub sound_volume: f64,
     #[serde(default)]
@@ -148,6 +150,7 @@ impl Default for AppSettings {
             show_layout_warnings: true,
             show_capslock_warnings: true,
             sound_enabled: false,
+            verbose_logging: false,
             sound_volume: 0.5,
             zen_mode_enabled: false,
             ui_language: "en".to_string(),
@@ -295,6 +298,9 @@ impl SettingsStore {
             }
             "sound_enabled" => {
                 settings.sound_enabled = boolean_value(&value, key)?;
+            }
+            "verbose_logging" => {
+                settings.verbose_logging = boolean_value(&value, key)?;
             }
             "sound_volume" => {
                 let value = number_value(&value, key)?;
@@ -468,6 +474,21 @@ mod tests {
     }
 
     #[test]
+    fn verbose_logging_is_disabled_by_default_and_can_be_enabled() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert!(!store.load().unwrap().verbose_logging);
+        let settings = store
+            .set("verbose_logging", toml::Value::Boolean(true))
+            .unwrap();
+        assert!(settings.verbose_logging);
+        assert!(store.load().unwrap().verbose_logging);
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
     fn set_unknown_key_fails() {
         let path = temp_settings_path();
         let store = SettingsStore::new(path.clone());
@@ -529,6 +550,7 @@ mod tests {
             show_layout_warnings: true,
             show_capslock_warnings: true,
             sound_enabled: false,
+            verbose_logging: false,
             sound_volume: 0.5,
             zen_mode_enabled: false,
             ui_language: "ru".to_string(),
@@ -562,6 +584,7 @@ show_accuracy = true
 
         assert_eq!(normalize_theme(&settings.theme), "racoon_dark");
         assert!(!settings.sound_enabled);
+        assert!(!settings.verbose_logging);
         assert_eq!(settings.sound_volume, 0.5);
         assert!(!settings.zen_mode_enabled);
         assert!(settings.show_keyboard_trainer);

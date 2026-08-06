@@ -23,8 +23,11 @@ types or imports. This content never leaves the machine:
 
 - it is not transmitted over the network;
 - it is not included in crash reports (crash reporting is not implemented);
-- logs, when structured logging is introduced, must redact typed content by
-  policy (Phase 5 work).
+- Optional local diagnostics are disabled by default. When explicitly enabled
+  through `verbose_logging`, the current backup-failure event is stored as
+  bounded JSONL under the data directory's `logs/` folder. Its schema contains
+  only an allowlisted event name, error class, path kind, and fixed file label;
+  it never records typed content, a supplied path, or a raw error payload.
 
 ## Retention
 

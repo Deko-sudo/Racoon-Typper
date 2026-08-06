@@ -8,13 +8,15 @@ use racoon_application::{
 };
 use racoon_core::CoreEngine;
 use racoon_data::{
-    Database, SqliteFinalizationLedger, SqliteSessionFinalizer, SqliteSessionRecoveryLedger,
+    repository::SettingsStore, Database, SqliteFinalizationLedger, SqliteSessionFinalizer,
+    SqliteSessionRecoveryLedger,
 };
 use std::sync::Mutex;
 use tauri::Manager;
 
 mod commands;
 mod error;
+mod logging;
 mod paths;
 mod session_service;
 mod state;
@@ -45,7 +47,12 @@ fn main() {
         .setup(|app| {
             let paths = paths::resolve(app)?;
             let data_dir = paths.data_dir.clone();
-            let db_path = paths.db_path.clone();
+            let logger = SettingsStore::new(paths.settings_path.clone())
+                .load()
+                .ok()
+                .filter(|settings| settings.verbose_logging)
+                .map(|_| logging::LocalLogger::enabled(&data_dir, logging::LogRetention::default()))
+                .unwrap_or_else(logging::LocalLogger::disabled);
             // Take a rotating pre-migration backup before any schema work. A
             // failure here is warn-and-continue: migrations V005–V008 are
             // additive and low-risk, and a transient permissions/IO error must
@@ -53,17 +60,16 @@ fn main() {
             // operational recovery path remains "restore the most recent
             // snapshot or ship a forward fix".
             let database = Database::open_with_pre_migration(&paths.db_path, |live_path| {
-                if let Err(error) = racoon_data::backup::create_pre_migration_backup(
+                if racoon_data::backup::create_pre_migration_backup(
                     live_path,
                     &data_dir,
                     "data",
                     chrono::Utc::now(),
                     racoon_data::backup::DEFAULT_KEEP,
-                ) {
-                    // Structured logging arrives in Phase 5; until then this
-                    // stderr warning is the visible surface. It records only the
-                    // backup path and error class, never typed content.
-                    eprintln!("warn: pre-migration backup failed for {db_path:?}: {error}");
+                )
+                .is_err()
+                {
+                    logger.record_pre_migration_backup_failure(logging::ErrorClass::Io, live_path);
                 }
             })
             .map_err(|error| std::io::Error::other(error.to_string()))?;
@@ -140,8 +146,8 @@ fn main() {
             commands::preferences::get_sound_event,
         ]);
 
-    if let Err(error) = application.run(tauri::generate_context!()) {
-        eprintln!("Racoon Typper failed to start: {error}");
+    if application.run(tauri::generate_context!()).is_err() {
+        eprintln!("Racoon Typper failed to start");
         std::process::exit(1);
     }
 }
