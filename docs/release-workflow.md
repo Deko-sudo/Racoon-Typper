@@ -25,4 +25,4 @@ A maintainer runs **Promote release** with the same tag only after release evide
 
 ## Scope limits
 
-This workflow produces release artifacts and checksums. SBOM/provenance attachments and clean-install smoke evidence are separate release tasks and must be complete before promotion.
+This workflow produces release artifacts and checksums. It also blocks draft publication on the isolated Debian-package install/launch/persistence/restart smoke. SBOM/provenance attachments are a separate release task and must be complete before promotion. The runtime smoke intentionally does not claim browser-download export coverage; export remains covered by the application integration suite until a stable desktop automation contract exists.
