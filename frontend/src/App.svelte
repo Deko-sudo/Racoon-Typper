@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import * as ipc from './lib/api/ipc';
   import { t } from './lib/i18n';
+  import { createNavigationStore } from './lib/stores/navigation.svelte';
   import { createNotificationStore } from './lib/stores/notifications.svelte';
   import type {
     CharStatus, EngineOutput, TestSessionResponse, FinalStats, TestSummary,
@@ -25,7 +26,8 @@
   import AchievementGallery from './components/AchievementGallery.svelte';
 
   // Navigation
-  let view = $state<ViewName>('test');
+  const navigation = createNavigationStore('test');
+  const view = $derived(navigation.view);
 
   // Test state
   let text = $state('');
@@ -545,7 +547,7 @@
       await snapshotAchievements();
       const resp = await ipc.startCustomTextTest(id);
       startTestFromResponse(resp);
-      view = 'test';
+      switchView('test');
     } catch (error) {
       errorMsg = `Start custom text error: ${error}`;
     }
@@ -561,7 +563,7 @@
   }
 
   function switchView(v: ViewName) {
-    view = v;
+    navigation.navigate(v);
     if (v === 'history') loadHistory();
     if (v === 'bests') loadBests();
     if (v === 'custom') loadCustomTexts();
@@ -626,7 +628,7 @@
       await snapshotAchievements();
       const resp = await ipc.startLesson(lessonId, language);
       startTestFromResponse(resp, lessonId);
-      view = 'test';
+      switchView('test');
     } catch (e) {
       errorMsg = `Start lesson error: ${e}`;
     }
