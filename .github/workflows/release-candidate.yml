@@ -103,9 +103,41 @@ jobs:
     permissions:
       contents: write
     steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ needs.validate-tag.outputs.tag }}
+          fetch-depth: 0
       - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
         with:
           path: artifacts
+      - name: Attach SBOM and provenance records
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.validate-tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          export RELEASE_COMMIT="$(git rev-parse HEAD)"
+          test -s licenses/sbom.cdx.json
+          test -s licenses/PROVENANCE_ATTESTATION.md
+          mkdir -p artifacts/release-evidence
+          cp licenses/sbom.cdx.json artifacts/release-evidence/racoon-typper.sbom.cdx.json
+          cp licenses/PROVENANCE_ATTESTATION.md artifacts/release-evidence/PROVENANCE_ATTESTATION.md
+          node - <<'NODE' > artifacts/release-evidence/release-manifest.json
+          const fs = require('node:fs');
+          const sbom = JSON.parse(fs.readFileSync('licenses/sbom.cdx.json', 'utf8'));
+          const tag = process.env.RELEASE_TAG;
+          if (sbom.metadata?.component?.version !== tag.slice(1)) {
+            throw new Error('SBOM component version does not match release tag');
+          }
+          process.stdout.write(`${JSON.stringify({
+            schema: 1,
+            tag,
+            commit: process.env.RELEASE_COMMIT,
+            sbom: 'racoon-typper.sbom.cdx.json',
+            provenance: 'PROVENANCE_ATTESTATION.md',
+            reproducibility: 'Native builds are rebuilt from tagged source on GitHub-hosted runners; byte-for-byte reproducibility is not claimed.',
+          }, null, 2)}\n`);
+          NODE
       - name: Generate checksums
         shell: bash
         run: |

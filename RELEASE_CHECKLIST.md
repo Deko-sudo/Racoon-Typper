@@ -36,7 +36,7 @@ This checklist describes the current baseline and the gates required for a produ
 - [x] GPL/LGPL/AGPL and unknown project content is removed or separately cleared.
 - [x] `THIRD_PARTY_NOTICES.md` and machine-readable inventory are generated.
 - [x] CI license policy passes.
-- [ ] SBOM is generated for the release.
+- [x] The release candidate attaches the checked CycloneDX SBOM, content provenance record, source-commit manifest, and checksums (`docs/release-evidence.md`; Task L).
 
 ### Foundation — Phase 2
 
@@ -69,7 +69,7 @@ This checklist describes the current baseline and the gates required for a produ
 
 - [ ] Linux artifacts install/launch on clean supported environments.
 - [ ] Windows NSIS artifact installs/launches on clean Windows.
-- [ ] Checksums, source revision, version, SBOM, and provenance are attached.
+- [x] Checksums, source revision, version, SBOM, and provenance are attached to each release candidate (`docs/release-evidence.md`; Task L).
 - [ ] Signing or attestation is verified where supported.
 - [x] Release actions use least-privilege permissions and reviewed action versions (SHA-pinned).
 - [x] Release-candidate creation and promotion are separate manual workflows; promotion is guarded by the repository-managed `release-promotion` environment (`docs/release-workflow.md`; Task K).
