@@ -2,6 +2,21 @@
 
 This checklist describes the current baseline and the gates required for a production release. Phase 0 does not authorize a public release; licensing, foundation, security, and release-engineering gates remain mandatory.
 
+## v1.1.0 candidate preparation (2026-08-07)
+
+- [x] Canonical version is consistently `1.1.0`.
+- [x] Task F guarded portable profile restore UI is implemented and reviewed.
+- [x] `cargo test --workspace --all-targets` passes (638 tests).
+- [x] Rust formatting and clippy `-D warnings` gates pass.
+- [x] Frontend unit, Svelte, IPC-contract, version, license, and production-build gates pass.
+- [x] Local `tauri:build:binary` produces `target/release/racoon-app`.
+- [x] Changelog, release notes, transfer runbook, threat model, and release evidence boundaries are synchronized.
+- [ ] Recreate the stale local `v1.1.0` tag from the final reviewed release commit. The current local tag points to `89b0ed38`; no remote tag exists.
+- [ ] Replace the `PKGBUILD` checksum placeholder from the immutable canonical source archive.
+- [ ] Push the final reviewed commit and immutable tag, then run the release-candidate workflow.
+- [ ] Verify the exact tagged workflow, candidate assets, checksums, evidence, and Linux/Windows clean-install smoke.
+- [ ] Promote only after maintainer review; this preparation does not publish a release.
+
 ## Phase 0 baseline checks
 
 ### Version and worktree
@@ -51,11 +66,11 @@ This checklist describes the current baseline and the gates required for a produ
 - [x] Application ports/contracts and frontend state ownership have passed Phase 3 review.
 - [x] Database foreign keys, migration fixtures, backup/restore, and long-history behavior are verified.
   - [x] Foreign keys enforced on every connection; cascade (replays) and RESTRICT (session ledger chain incl. V008 composite fingerprint FK) verified (`crates/data/tests/migration_matrix.rs`).
-  - [x] Migration fixtures: every historical schema V1..V7 upgrades cleanly to V8 through the production Refinery runner with era-appropriate data (`crates/data/tests/migration_matrix.rs`).
+  - [x] Migration fixtures: every historical schema V1..V7 upgrades cleanly to V9 through the production Refinery runner with era-appropriate data (`crates/data/tests/migration_matrix.rs`).
   - [x] Backup/restore data-layer and rotating pre-migration backups verified (`crates/data/tests/backup_restore.rs`, Task B).
   - [x] History surfaces paginate with deterministic ordering and 10 000+ query-plan/timing evidence; dashboard and achievement summaries use complete maintained projections with >100k-history coverage. Insights/consistency intentionally summarize the documented recent window (Tasks D–E, ADR 0002).
-  - [x] Portable profile transfer has strict versioned JSON validation, bounds, no-write preview, merge/replace policies, atomic portable-table import, and Tauri IPC coverage (`crates/data/tests/profile_transfer.rs`, `crates/app/src/commands/profile_transfer.rs`; Task F partial).
-  - [ ] Whole-file restore is safely coordinated through Tauri/UI: the current restore API requires the live `Database` to be closed first, and no application handoff, platform/manual recovery smoke, or clean-install transfer validation is claimed. See `docs/data/profile-transfer.md`.
+  - [x] Portable profile transfer has strict versioned JSON validation, pre-read UI bounds, no-write preview, merge/replace policies, explicit destructive confirmation, atomic portable-table import, and backend/frontend coverage (`crates/data/tests/profile_transfer.rs`, `crates/app/src/commands/profile_transfer.rs`, `scripts/profile-transfer-ui.test.mjs`; Task F release scope).
+  - [x] Whole-file restore is not exposed in v1.1.0. The data-layer API requires the live `Database` to be closed first, so lifecycle coordination and platform/manual recovery evidence remain explicitly deferred rather than being bypassed by an unsafe UI. See `docs/data/profile-transfer.md` and `TECH_DEBT.md` TD6.
 
 ### Security surface — Phase 5
 

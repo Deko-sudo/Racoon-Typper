@@ -1,20 +1,20 @@
 //! Migration matrix — systematic upgrade evidence from every historical schema
-//! version (V1..V7) to the current V8.
+//! version (V1..V7) to the current V9.
 //!
 //! These tests complement the focused migration tests in `migration_and_perf.rs`
 //! and the backup round-trip in `backup_restore.rs`; they do not replace them.
 //!
 //! What the matrix proves, for each starting level V1..V7 upgraded through the
 //! production runner (`Database::open`):
-//!   * every schema object from V1..V8 exists afterwards (tables + indexes);
-//!   * `refinery_schema_history` records exactly migrations V1..V8;
+//!   * every schema object from V1..V9 exists afterwards (tables + indexes);
+//!   * `refinery_schema_history` records exactly migrations V1..V9;
 //!   * PRAGMA `foreign_keys = ON`, `journal_mode = wal`;
 //!   * epoch data inserted before the upgrade survives unchanged, including the
 //!     deterministic V005 `session_id` backfill for pre-V005 `tests` rows;
 //!   * a reopen is a Refinery no-op and changes nothing.
 //!
 //! Separate tests cover FK integrity (cascade on replays, RESTRICT on the
-//! session ledger chain, orphan-child rejection) and a V1→V8 pre-migration
+//! session ledger chain, orphan-child rejection) and a V1→V9 pre-migration
 //! backup round-trip using the Task B backup seam.
 
 // SPDX-License-Identifier: Apache-2.0
@@ -297,7 +297,7 @@ fn seed_epoch_data(conn: &Connection, version: usize) {
 
 /// Asserts the post-upgrade schema carries every table and index the matrix
 /// cares about. (Not an exhaustive `sqlite_master` dump — focused on objects
-/// introduced across V1..V8.)
+/// introduced across V1..V9.)
 fn assert_full_schema_present(conn: &Connection) {
     let tables: Vec<String> = conn
         .prepare("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
@@ -358,7 +358,7 @@ fn assert_full_schema_present(conn: &Connection) {
     }
 }
 
-/// Asserts refinery reports exactly migrations V1..V8 applied and no later
+/// Asserts refinery reports exactly migrations V1..V9 applied and no later
 /// version pending.
 fn assert_refinery_history_complete(conn: &Connection) {
     let versions: Vec<i64> = conn
@@ -456,41 +456,41 @@ fn assert_epoch_data_survived(conn: &Connection, seeded_version: usize) {
 }
 
 // ---------------------------------------------------------------------------
-// 1. Matrix: every historical version upgrades cleanly to V8.
+// 1. Matrix: every historical version upgrades cleanly to V9.
 // ---------------------------------------------------------------------------
 
 #[test]
-fn matrix_upgrade_from_v1_to_v8_preserves_data_and_schema() {
+fn matrix_upgrade_from_v1_to_v9_preserves_data_and_schema() {
     run_matrix_upgrade(1);
 }
 
 #[test]
-fn matrix_upgrade_from_v2_to_v8_preserves_data_and_schema() {
+fn matrix_upgrade_from_v2_to_v9_preserves_data_and_schema() {
     run_matrix_upgrade(2);
 }
 
 #[test]
-fn matrix_upgrade_from_v3_to_v8_preserves_data_and_schema() {
+fn matrix_upgrade_from_v3_to_v9_preserves_data_and_schema() {
     run_matrix_upgrade(3);
 }
 
 #[test]
-fn matrix_upgrade_from_v4_to_v8_preserves_data_and_schema() {
+fn matrix_upgrade_from_v4_to_v9_preserves_data_and_schema() {
     run_matrix_upgrade(4);
 }
 
 #[test]
-fn matrix_upgrade_from_v5_to_v8_preserves_data_and_schema() {
+fn matrix_upgrade_from_v5_to_v9_preserves_data_and_schema() {
     run_matrix_upgrade(5);
 }
 
 #[test]
-fn matrix_upgrade_from_v6_to_v8_preserves_data_and_schema() {
+fn matrix_upgrade_from_v6_to_v9_preserves_data_and_schema() {
     run_matrix_upgrade(6);
 }
 
 #[test]
-fn matrix_upgrade_from_v7_to_v8_preserves_data_and_schema() {
+fn matrix_upgrade_from_v7_to_v9_preserves_data_and_schema() {
     run_matrix_upgrade(7);
 }
 
@@ -865,7 +865,7 @@ fn reopen_upgraded_historical_db_is_idempotent() {
 #[test]
 fn pre_migration_backup_roundtrip_from_v1_fixture() {
     // Build a V1 fixture with epoch data, take a pre-migration backup through
-    // the Task B seam, upgrade to V8, then restore the backup into a fresh path
+    // the Task B seam, upgrade to V9, then restore the backup into a fresh path
     // and confirm the restored file is a working V1-era database with the seed
     // data intact. The live Database is dropped before restore per the contract.
     let live = temp_path("premig-v1-live");
@@ -891,9 +891,9 @@ fn pre_migration_backup_roundtrip_from_v1_fixture() {
     .expect("pre-migration backup of V1 fixture");
     assert!(snapshot.is_file(), "backup file must exist");
 
-    // Production upgrade to V8 via the pre-migration seam (no-op callback).
+    // Production upgrade to V9 via the pre-migration seam (no-op callback).
     {
-        let _db = Database::open_with_pre_migration(&live, |_| {}).expect("upgrade V1 -> V8");
+        let _db = Database::open_with_pre_migration(&live, |_| {}).expect("upgrade V1 -> V9");
     }
 
     // Restore the V1 snapshot into a fresh path and confirm it is a usable V1

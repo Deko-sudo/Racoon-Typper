@@ -1,10 +1,10 @@
 # Changelog — Racoon Typper
 
-## Modernization baseline (2026-08-01) — unreleased development state
+## v1.1.0 — release candidate (not published)
 
-This section records foundation and release-engineering work merged into
-`master` after the v1.1.0 release notes. It is development work and is not a
-production release claim (see `ROADMAP.md`).
+This section records the audited release-candidate baseline on `master`. Public
+release still requires tagged CI, artifact smoke, evidence review, and maintainer
+promotion approval.
 
 ### Foundation — Phases 0–3B.3
 
@@ -44,36 +44,23 @@ production release claim (see `ROADMAP.md`).
 - Issue templates (bug, feature), pull request template, `SECURITY.md`.
 - Data, privacy, and retention documentation in `docs/data/privacy.md`.
 
+### Product and data transfer
+
+- Sound controls, Zen mode, achievement notifications, extended statistics,
+  original Racoon themes, and durable session recovery.
+- Guarded portable profile export, no-write import preview, merge, and
+  destructive replace with pre-read bounds and explicit acknowledgement.
+- Stable long-history reporting beyond 100,000 records.
+- Refined physical keyboard geometry, theme-aware status icons, and hand
+  silhouettes that highlight the required finger.
+
 ### Tests
 
-- 587 workspace tests passing; crash-recovery campaign (16 default + 115
+- 638 workspace/all-target tests passing; crash-recovery campaign (16 default + 115
   extended child-process crashes) passing.
 
-## v1.1.0 (2026-06-23) — Community & Polish Release
-
-### New Features
-
-- **Sound Engine**: key press, error, lesson complete, achievement sounds with volume control and cooldown
-- **Zen Mode**: distraction-free typing — hides navbar, stats, panels during test
-- **Original Racoon Themes**: dark, light, and high-contrast practice palettes
-- **Achievement Notifications**: toast notifications when achievements unlock
-- **Session Recovery**: restore previous session after app crash/close
-- **Extended Statistics**: best day, most active hour, avg session duration, total chars/words
-- **Profile Export**: full profile export (settings, tests, lessons, PBs, custom texts) as JSON
-- **Sound Settings**: sound_enabled, sound_volume in settings.toml
-- **Zen Mode Setting**: zen_mode_enabled in settings.toml
-
-### Improvements
-
-- Dashboard extended with 5 new stat cards
-- Settings page: 3 new controls (sound toggle, volume slider, zen mode toggle)
-- 3 original themes with documented provenance
-
-### Testing
-
-- 418 tests (was 405)
-- 0 clippy warnings
-- 13 new sound engine tests
+Product-facing highlights, upgrade behavior, and current limitations are in
+[RELEASE_NOTES_v1.1.md](RELEASE_NOTES_v1.1.md).
 
 ## v1.0.0 (2026-06-23) — Initial Release
 
