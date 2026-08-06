@@ -2,6 +2,8 @@
   // NotificationStack — правая боковая панель уведомлений.
   // Максимум 3 одновременно, автоудаление через 5 секунд.
 
+  import StatusIcon from './StatusIcon.svelte';
+
   type NotificationType = string;
   interface Notification {
     id: number;
@@ -20,9 +22,10 @@
   {#if visible.length > 0}
     {#each visible as n (n.id)}
       <div class="notification {n.type.toLowerCase()}">
-        <span class="notification-icon">
-          {#if n.type === 'INFO'}ℹ️{:else if n.type === 'WARNING'}⚠️{:else}✅{/if}
-        </span>
+        <StatusIcon
+          kind={n.type === 'SUCCESS' ? 'check' : 'cross'}
+          label={n.type === 'SUCCESS' ? 'Success' : 'Warning'}
+        />
         <span class="notification-msg">{n.message}</span>
       </div>
     {/each}
@@ -42,7 +45,6 @@
   .notification.info { background: rgba(85,85,85,0.9); color: var(--text); }
   .notification.warning { background: rgba(226,183,20,0.2); border: 1px solid var(--main); color: var(--text); }
   .notification.success { background: rgba(100,200,100,0.15); border: 1px solid #6c8; color: var(--text); }
-  .notification-icon { font-size: 1rem; }
   .notification-msg { font-size: 0.75rem; }
   @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 </style>
