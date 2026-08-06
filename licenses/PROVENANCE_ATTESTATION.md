@@ -10,11 +10,11 @@ This record documents the provenance basis for project-owned content shipped by 
 The following content is marked Apache-2.0 in the asset inventory:
 
 - theme CSS and metadata under `resources/themes/racoon_*`;
-- the source SVG and generated PNG icon sizes under `crates/app/icons/`;
+- the canonical branding PNG under `assets/branding/` and generated platform icons under `crates/app/icons/`;
 - quote packs under `resources/quotes/`;
 - course packs under `resources/courses/`.
 
-The word packs, course packs, and quote packs were generated specifically for Racoon Typper using GLM-5.2 and GPT-5.6 (Codex) during project development. They were not imported from, copied from, or derived from an external repository, website, dataset, book, or application. The themes and icon source were created in this repository; PNGs are mechanical outputs of the SVG source.
+The word packs, course packs, and quote packs were generated specifically for Racoon Typper using GLM-5.2 and GPT-5.6 (Codex) during project development. They were not imported from, copied from, or derived from an external repository, website, dataset, book, or application. The themes were created in this repository. The approved icon source was supplied by the project owner, and platform icon files are mechanical outputs of that canonical PNG.
 
 ## Repository-authored attestation
 

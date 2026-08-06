@@ -51,28 +51,28 @@ function sha256(path) {
 
 function assetProvenance(path) {
   const relative = relativePath(path);
-  if (relative === "crates/app/icons/source/racoon-typper.svg") {
+  if (relative === "assets/branding/racoon-typper-icon.png") {
     return {
       asset_name: "Racoon Typper source icon",
       owner: "Racoon Typper Contributors",
-      source: "Original SVG authored for Racoon Typper in this repository",
+      source: "Approved source icon supplied by the Racoon Typper project owner",
       license: projectLicense,
       provenance_status: "original-project-asset",
       modified: false,
       generation: null,
-      notes: "Canonical icon source; PNG sizes are generated from this file.",
+      notes: "Canonical 1024x1024 branding source; platform icon assets are generated from this file.",
     };
   }
   if (relative.startsWith("crates/app/icons/")) {
     return {
       asset_name: `Racoon Typper generated icon (${relative.split("/").at(-1)})`,
       owner: "Racoon Typper Contributors",
-      source: "crates/app/icons/source/racoon-typper.svg",
+      source: "assets/branding/racoon-typper-icon.png",
       license: projectLicense,
       provenance_status: "generated-from-original-project-asset",
       modified: true,
-      generation: "rsvg-convert from the Apache-2.0 SVG source",
-      notes: "Generated distribution size; do not edit independently.",
+      generation: "Tauri 2 CLI icon generator from the approved PNG source",
+      notes: "Generated platform icon asset; do not edit independently.",
     };
   }
   if (relative.startsWith("resources/themes/")) {
@@ -127,7 +127,11 @@ function assetProvenance(path) {
 }
 
 function generateAssetInventory() {
-  const roots = [join(repositoryRoot, "resources"), join(repositoryRoot, "crates/app/icons")];
+  const roots = [
+    join(repositoryRoot, "assets/branding"),
+    join(repositoryRoot, "resources"),
+    join(repositoryRoot, "crates/app/icons"),
+  ];
   const files = roots.flatMap(walk).sort();
   const entries = files.map((path) => ({
     path: relativePath(path),
