@@ -101,19 +101,19 @@
     <div class="keyboard-body">
       <div class="main-cluster">
         <div class="main-row">
-          {#each numberRow as key}<div class="key {getKeyClass(key)}" class:special={key.special} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
+          {#each numberRow as key, index}<div class="key {getKeyClass(key)}" class:special={key.special} class:right-edge={index === numberRow.length - 1} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
         </div>
         <div class="main-row">
-          {#each topRow as key}<div class="key {getKeyClass(key)}" class:special={key.special} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
+          {#each topRow as key, index}<div class="key {getKeyClass(key)}" class:special={key.special} class:right-edge={index === topRow.length - 1} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
         </div>
         <div class="main-row">
-          {#each middleRow as key}<div class="key {getKeyClass(key)}" class:special={key.special} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
+          {#each middleRow as key, index}<div class="key {getKeyClass(key)}" class:special={key.special} class:right-edge={index === middleRow.length - 1} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
         </div>
         <div class="main-row">
-          {#each bottomRow as key}<div class="key {getKeyClass(key)}" class:special={key.special} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
+          {#each bottomRow as key, index}<div class="key {getKeyClass(key)}" class:special={key.special} class:right-edge={index === bottomRow.length - 1} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
         </div>
         <div class="main-row">
-          {#each spaceRow as key}<div class="key {getKeyClass(key)}" class:special={key.special} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
+          {#each spaceRow as key, index}<div class="key {getKeyClass(key)}" class:special={key.special} class:right-edge={index === spaceRow.length - 1} style:flex={`0 0 calc(var(--u) * ${key.span})`} title={finger(key)}>{key.label}</div>{/each}
         </div>
       </div>
 
@@ -150,8 +150,9 @@
   .arrows { margin-top: 44px; }
   .numpad { display: grid; grid-template-columns: repeat(4, var(--u)); grid-template-rows: repeat(5, 44px); gap: var(--gap); }
   .key { min-width: 0; height: 44px; display: grid; place-items: center; background: var(--bg-sub); color: var(--text); border: 1px solid var(--sub); border-radius: 5px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease; }
-  .function-key { height: 32px; font-size: 0.62rem; }
+  .function-key { width: var(--u); height: 32px; font-size: 0.62rem; }
   .special { color: var(--sub); font-size: 0.62rem; }
+  .main-row > .right-edge { margin-left: auto; }
   .next-key { background: var(--main); border-color: var(--main); color: var(--bg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--main) 25%, transparent); transform: translateY(-3px) scale(1.04); z-index: 1; }
   .error-key { background: color-mix(in srgb, var(--error) 22%, var(--bg-sub)); border-color: var(--error); }
   .weak-critical { background: color-mix(in srgb, var(--error) 26%, var(--bg-sub)); border-color: var(--error); color: var(--text); }
