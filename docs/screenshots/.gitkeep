@@ -1,0 +1,3 @@
+Placeholder so the screenshots directory is tracked by git. Populate with the
+PNG captures listed in docs/SCREENSHOTS.md, then uncomment the matching image
+lines in the README showcase section.

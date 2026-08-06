@@ -21,6 +21,41 @@
 
 ---
 
+<!-- 📸 Showcase scaffold — captures pending. See docs/SCREENSHOTS.md.
+     To enable: drop PNGs into docs/screenshots/, then uncomment the image
+     lines below and remove the italic placeholders. -->
+
+## 📸 Showcase
+
+<!-- Hero: the running typing test — caret, colored chars, live stats, and the
+     next-key glow on the virtual keyboard. The single image that sells the app. -->
+> _Screenshot pending — `hero-test.png` (Test view, mid-test, `racoon_dark`)_
+<!-- <p align="center"><img src="docs/screenshots/hero-test.png" alt="Racoon Typper typing test in progress" width="720" /></p> -->
+
+### 🎨 Three built-in themes
+
+<!-- Side-by-side theme comparison. Capture the same frame in each theme. -->
+| Dark | Light | High Contrast |
+| :---: | :---: | :---: |
+| _pending_ | _pending_ | _pending_ |
+<!-- | ![](docs/screenshots/theme-dark.png) | ![](docs/screenshots/theme-light.png) | ![](docs/screenshots/theme-hc.png) | -->
+
+### ✨ Key screens
+
+<!-- Feature highlight grid — one captioned screenshot per row. -->
+| | |
+| :--- | :--- |
+| _pending_ — **Results & heatmap** · 4-stat summary plus per-key accuracy heatmap | _pending_ — **Dashboard** · streak, stat cards, 30-day progress chart |
+| _pending_ — **Weak-key trainer** · accuracy-tinted keyboard + adaptive practice | _pending_ — **Replay** · scrub through a past test frame by frame |
+
+<!-- | ![](docs/screenshots/results-heatmap.png) <br/>**Results & heatmap** — 4-stat summary plus per-key accuracy heatmap | ![](docs/screenshots/dashboard.png) <br/>**Dashboard** — streak, stat cards, 30-day progress chart |
+| ![](docs/screenshots/weakkeys.png) <br/>**Weak-key trainer** — accuracy-tinted keyboard + adaptive practice | ![](docs/screenshots/replay.png) <br/>**Replay** — scrub through a past test frame by frame | -->
+
+_Capture instructions and the full shot list live in
+[docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)._
+
+---
+
 Racoon Typper is a local-first desktop touch-typing trainer for focused
 practice, measurable progress, and offline use. It combines a Rust/Tauri
 desktop process with a Svelte interface, embedded learning resources, and a
