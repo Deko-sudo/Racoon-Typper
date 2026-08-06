@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="crates/app/icons/icon.png" width="140" height="140" alt="Racoon Typper logo" />
+  <img src="assets/branding/racoon-typper-icon.png" width="140" height="140" alt="Racoon Typper" />
 </p>
 
 <h1 align="center">Racoon Typper</h1>

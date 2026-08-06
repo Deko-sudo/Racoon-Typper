@@ -1,9 +1,10 @@
 # Profile Transfer and Recovery Runbook
 
-**Status:** Portable profile JSON transfer is implemented in the current worktree.
-Database-file restore is a data-layer API only; it is not exposed through a Tauri
-command or user interface. This runbook does not claim a completed cross-platform
-or manual restore smoke test.
+**Status:** Portable profile JSON export, preview, merge, and replace are exposed
+through the Settings UI. Database-file restore remains a data-layer API only; it
+is deliberately not exposed through a Tauri command or user interface while the
+process owns an open database connection. This runbook does not claim a completed
+cross-platform whole-file recovery smoke test.
 
 ## Choose the right operation
 
@@ -39,17 +40,19 @@ or reproduce every locally stored record.
 1. Finish or cancel any active typing test before beginning. Import is rejected
    while the engine is running or finalizing; application startup recovery must
    also be ready.
-2. Export the source profile with `export_profile` and save the returned JSON
-   outside the application data directory.
-3. On the target profile, call `preview_profile_import` with the exact JSON and
-   intended policy. This is the dry run: it validates the document and returns
-   incoming, existing, and `to_insert` counts for every collection without
-   changing the database.
+2. In Settings, export the source profile and save the downloaded JSON outside
+   the application data directory.
+3. On the target profile, select the JSON and choose merge or replace. The UI
+   rejects empty, non-JSON, and over-64-MiB files before reading them, then calls
+   `preview_profile_import` with the exact document and policy. This dry run
+   returns incoming, existing, and `to_insert` counts without changing the database.
 4. Review the policy and preview. Keep the exported JSON until the target data
    has been inspected after import.
-5. Call `import_profile` with the same document and policy. A successful result
-   returns the import plan; any import error rolls back all portable-table writes
-   from that invocation.
+5. For replace, acknowledge the destructive portable-data replacement after the
+   preview. Any file or policy change invalidates both preview and acknowledgement.
+6. Apply the restore. The UI sends the exact previewed document and policy to
+   `import_profile`; any import error rolls back all portable-table writes. After
+   success, the application reloads so every view reads the restored profile.
 
 ### Import policies
 
@@ -89,9 +92,10 @@ use an older binary as a database downgrade mechanism.
 
 ## Current limitations
 
-- No profile-transfer screen, file picker, or automatic file persistence exists;
-  callers of the IPC contract manage JSON storage and confirmation.
-- No restore IPC/UI currently closes and recreates the live database around a
-  whole-file restore.
+- A compromised renderer can bypass the file-size precheck and invoke IPC
+  directly; the backend still enforces its 64 MiB document limit after IPC
+  deserialization.
+- No whole-file restore IPC/UI currently closes and recreates the live database
+  around a whole-file restore.
 - Platform-specific manual recovery and clean-install validation are not yet
   release evidence. See `SUPPORT_MATRIX.md` and `RELEASE_CHECKLIST.md`.

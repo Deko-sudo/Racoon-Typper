@@ -1,6 +1,7 @@
 <script lang="ts">
   // TypingWarnings — определение неверной раскладки и Caps Lock.
   import { t } from '../lib/i18n';
+  import StatusIcon from './StatusIcon.svelte';
 
   let {
     expectedLanguage = 'en',
@@ -38,7 +39,7 @@
 
 {#if layoutMismatch}
   <div class="warning-card layout-warning">
-    <span class="warning-icon">❌</span>
+    <StatusIcon kind="cross" label="Keyboard layout mismatch" />
     <div class="warning-text">
       <strong>{t(uiLang, 'warning.layout_title')}</strong>
       <p>{t(uiLang, 'warning.layout_message')

@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { AppSettings, ThemeInfo } from '../lib/types/index';
   import { t, UI_LANGUAGES } from '../lib/i18n';
+  import ProfileTransferPanel from './ProfileTransferPanel.svelte';
 
   let {
     settings,
@@ -115,6 +116,7 @@
         </div>
       {/if}
     </div>
+    <ProfileTransferPanel {uiLang} />
     <h3>{t(uiLang, 'settings.theme_preview')}</h3>
     <div class="theme-toolbar">
       <input

@@ -22,7 +22,7 @@ Implemented and verified (Phase 0–3B.3, Phases 5/6/7 partial):
 - In-process exactly-once completion + durable crash recovery (Phases 2, 3A–3B.3): session ledger, completion intents, finalization ledger, migrations V001–V008.
 - Task A: GLib/GTK3 advisory decision (ADR `docs/adr/0001-glib-gtk3-advisory.md`).
 - Task B: SQLite online backup/restore data-layer `crates/data/src/backup.rs` (rusqlite Online Backup API, atomic snapshots, N=5 pre-migration rotation).
-- Task C: migration matrix, `crates/data/tests/migration_matrix.rs` (16 tests): every historical schema V1..V7 → V8 through the production Refinery runner; FK/cascade/RESTRICT/NO-ACTION; backup round-trip; idempotent reopen.
+- Task C plus V009 coverage: migration matrix, `crates/data/tests/migration_matrix.rs` (16 tests): every historical schema V1..V7 → V9 through the production Refinery runner; FK/cascade/RESTRICT/NO-ACTION; backup round-trip; idempotent reopen.
 - Tasks D–F (Gate G4): V009 long-history ordering indexes + EXPLAIN/timing evidence; dashboard/achievement global metrics read from maintained `personal_bests`/`streaks` projections (ADR `docs/adr/0002-long-history-metrics.md`); portable versioned profile transfer with validation-before-write and runbook.
 - Tasks G–J (Gate G5): threat model (`docs/security/THREAT_MODEL.md`); least-privilege Tauri capabilities audited against 31 commands; opt-in bounded redacted diagnostics (`crates/app/src/logging.rs`); hostile-input regression and `AppError` public-boundary redaction (stable codes/messages, no dynamic payload leakage).
 - Task K (Gate G6): release workflow split into `.github/workflows/ci.yml` (PR-checks only), `release-candidate.yml` (rebuild from an immutable tag + `SHA256SUMS` + draft prerelease), and `promote-release.yml` (`workflow_dispatch` + protected `release-promotion` environment flips draft→published). Model documented in `docs/release-workflow.md`.
@@ -84,9 +84,10 @@ de79132  feat(data): migration matrix V1..V7 -> V8 with epoch data, FK and backu
 
 ### Block A — Phase 4 Data integrity (close Gate G4)
 
-Gate G4 status: migration matrix ✓, backup/restore data layer ✓, FK ✓, indexes/long-history semantics ✓,
-complete aggregates ✓, and portable profile transfer/runbook ✓. Remaining: lifecycle-safe whole-file
-restore IPC/UI and its platform/manual recovery evidence.
+Gate G4 release scope: migration matrix ✓, backup/restore data layer ✓, FK ✓,
+indexes/long-history semantics ✓, complete aggregates ✓, and guarded portable
+profile transfer/runbook/Settings UI ✓. Whole-file restore remains a documented
+post-v1.1 lifecycle project and is deliberately not exposed by the running app.
 
 The retained bounded record caps in `crates/application/src/reporting.rs:22-40`
 limit paginated/history and intentionally recent summary surfaces. Task E moved
@@ -99,7 +100,7 @@ recent-window semantics.
 |---|---|
 | **D.** Indexes + long-history semantics (TD5) | Measure real query patterns in repositories; add indexes proven by `EXPLAIN QUERY PLAN` (with failing tests if necessary); ensure pagination/cursor + explicit `ORDER BY` on every history surface; keep 1..10k+ fixture tests, add regression time thresholds; no behavior change to aggregate values. |
 | **E.** Complete aggregates without old caps | `daily_stats` stay sparse; history/dashboard/achievement/analytics aggregate reads are correct beyond the caps above; long-history tests prove correctness at >100k records; document which surfaces paginate vs summarise. |
-| **F.** Versioned export/import + restore IPC | **Partial:** versioned bounded portable JSON, validation-before-write, dry-run preview, merge/replace policy, transactional portable-table import, Tauri IPC, and `docs/data/profile-transfer.md` are implemented in the worktree. `restore_from_path` now validates a sibling temporary replacement before atomic file replacement, but no Tauri restore IPC/UI coordinates closing and reopening a live `Database`. Keep that lifecycle handoff and its platform/manual recovery evidence as the remaining Task F scope. |
+| **F.** Versioned export/import + restore UI ✅ | **v1.1 release scope done:** versioned bounded portable JSON, validation-before-write, dry-run preview, merge/replace policy, transactional portable-table import, Tauri IPC, and `docs/data/profile-transfer.md`. The Settings UI prechecks file metadata before reading, invalidates stale previews, requires explicit replace acknowledgement, and reloads after success. `restore_from_path` validates a sibling temporary replacement, but whole-file restore remains intentionally unexposed until a future process-lifecycle handoff can close and reopen the live `Database`; tracked as TD6 rather than bypassed for v1.1. |
 
 ### Block B — Phase 5 Security (close Gate G5)
 
@@ -137,8 +138,8 @@ CI runs PR-checks on every push/PR (`ci.yml`); release artifacts are built only 
 
 ## 4. Order of execution & dependencies
 
-1. Strict: **D → E → F** (Gate G4) → **G → H → I → J** (Gate G5) → **K → L → M → N → O → P → Q** (G5/G6) → **R → S**. Completed through **M** (K, L, M merged). **N** is in progress; next open is **O**.
-2. F (restore IPC) may re-touch the same `Database` paths as Task B — respect the "never two connections on the same live path" constraint.
+1. Strict: **D → E → F** (Gate G4) → **G → H → I → J** (Gate G5) → **K → L → M → N → O → P → Q** (G5/G6) → **R → S**. The v1.1 Task F scope is complete; whole-file lifecycle coordination remains TD6. Packaging evidence status is tracked independently in `RELEASE_CHECKLIST.md`.
+2. Any future TD6 whole-file restore IPC may re-touch the same `Database` paths as Task B — respect the "never two connections on the same live path" constraint.
 3. After every task, report to the owner: files changed, verification table results, residual risks.
 
 ## 5. Open questions for the owner
