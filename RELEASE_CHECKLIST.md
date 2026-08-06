@@ -72,6 +72,7 @@ This checklist describes the current baseline and the gates required for a produ
 - [ ] Checksums, source revision, version, SBOM, and provenance are attached.
 - [ ] Signing or attestation is verified where supported.
 - [x] Release actions use least-privilege permissions and reviewed action versions (SHA-pinned).
+- [x] Release-candidate creation and promotion are separate manual workflows; promotion is guarded by the repository-managed `release-promotion` environment (`docs/release-workflow.md`; Task K).
 - [ ] Smoke journey completes a short test, persists it, restarts, exports data, and exits cleanly.
 
 ### Public repository — Phase 7
