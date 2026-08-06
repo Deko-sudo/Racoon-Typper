@@ -24,18 +24,17 @@ import type {
 } from '../types/index';
 
 export interface IpcError {
-  code?: string;
-  message?: string;
+  code: string;
+  message: string;
 }
 
 export function ipcErrorMessage(error: unknown): string {
   if (typeof error === 'object' && error !== null) {
-    const typed = error as IpcError;
-    if (typed.message) return typed.message;
-    if (typed.code) return typed.code;
+    const typed = error as Partial<IpcError>;
+    if (typeof typed.message === 'string') return typed.message;
+    if (typeof typed.code === 'string') return typed.code;
   }
-  if (error instanceof Error) return error.message;
-  return String(error);
+  return 'An application error occurred';
 }
 
 export async function startTest(params: {

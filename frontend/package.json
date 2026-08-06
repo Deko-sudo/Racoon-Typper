@@ -13,6 +13,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "preview": "vite preview",
     "check:version": "node ../scripts/check-version.mjs",
+    "check:ipc-contracts": "node ../scripts/check-ipc-contracts.mjs",
     "license:check": "node ../scripts/license-policy.mjs --check",
     "tauri:dev": "node ../scripts/tauri.mjs dev",
     "tauri:build": "node ../scripts/tauri.mjs build",

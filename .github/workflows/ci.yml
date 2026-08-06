@@ -45,6 +45,8 @@ jobs:
         run: npm ci --prefix frontend
       - name: Check project version
         run: npm run check:version --prefix frontend
+      - name: Check IPC command registration contract
+        run: npm run check:ipc-contracts --prefix frontend
       - name: Check frontend
         run: npm run check --prefix frontend
       - name: Build frontend
