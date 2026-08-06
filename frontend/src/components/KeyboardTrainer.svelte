@@ -152,7 +152,10 @@
   .key { min-width: 0; height: 44px; display: grid; place-items: center; background: var(--bg-sub); color: var(--text); border: 1px solid var(--sub); border-radius: 5px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease; }
   .function-key { width: var(--u); height: 32px; font-size: 0.62rem; }
   .special { color: var(--sub); font-size: 0.62rem; }
-  .main-row > .right-edge { margin-left: auto; }
+  /* Let the final special key fill only its row's remaining physical space.
+     This keeps its right edge aligned without introducing a detached gap on
+     the left (notably before Slash, Enter, Shift, and the right Ctrl). */
+  .main-row > .right-edge { flex-grow: 1 !important; }
   .next-key { background: var(--main); border-color: var(--main); color: var(--bg); box-shadow: 0 0 0 3px color-mix(in srgb, var(--main) 25%, transparent); transform: translateY(-3px) scale(1.04); z-index: 1; }
   .error-key { background: color-mix(in srgb, var(--error) 22%, var(--bg-sub)); border-color: var(--error); }
   .weak-critical { background: color-mix(in srgb, var(--error) 26%, var(--bg-sub)); border-color: var(--error); color: var(--text); }
