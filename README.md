@@ -21,6 +21,24 @@
 
 ---
 
+## ⬇️ Download
+
+<p align="center">
+  <a href="https://github.com/Deko-sudo/Racoon-Typper/releases/latest">
+    <img alt="Download the latest release" src="https://img.shields.io/badge/%E2%AC%87%EF%B8%8F%20Download-Latest%20Release-blue?style=for-the-badge&logo=github" />
+  </a>
+  &nbsp;&nbsp;
+  <a href="https://github.com/Deko-sudo/Racoon-Typper/releases/latest" title="Each release also ships a .torrent for the Linux tarball">
+    <img alt="Download via torrent" src="https://img.shields.io/badge/%E2%9A%A1%20via%20Torrent-P2P-orange?style=for-the-badge&logo=github" />
+  </a>
+</p>
+
+> Pick your artifact (`.deb` / `.rpm` / `.AppImage` / Windows `.exe`) from the
+> [Releases page](https://github.com/Deko-sudo/Racoon-Typper/releases). Each
+> release also ships a `.torrent` for the Linux tarball — open it in any
+> BitTorrent client; it carries a GitHub webseed, so it works even with zero
+> peers. Verify with the release's `SHA256SUMS` before installing.
+
 <!-- 📸 Showcase scaffold — captures pending. See docs/SCREENSHOTS.md.
      To enable: drop PNGs into docs/screenshots/, then uncomment the image
      lines below and remove the italic placeholders. -->

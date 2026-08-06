@@ -187,6 +187,27 @@ jobs:
             reproducibility: 'Native builds are rebuilt from tagged source on GitHub-hosted runners; byte-for-byte reproducibility is not claimed.',
           }, null, 2)}\n`);
           NODE
+      - name: Generate torrent for the Linux tarball
+        # Produces a single .torrent for the main Linux tarball. It carries a
+        # webseed pointing at the public release-asset URL, so a BitTorrent
+        # client can still complete the download with zero peers. Placed before
+        # the checksum step so the .torrent itself is covered by SHA256SUMS.
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.validate-tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq transmission-cli
+          TARBALL="racoon-typper-${RELEASE_TAG}-x86_64.tar.gz"
+          TARBALL_PATH="$(find artifacts -name "$TARBALL" -type f | head -1)"
+          test -n "$TARBALL_PATH" || { echo "tarball $TARBALL not found in artifacts/"; exit 1; }
+          WEBSEED="https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/${TARBALL}"
+          transmission-create "$TARBALL_PATH" \
+            --outfile "artifacts/${TARBALL}.torrent" \
+            --comment "Racoon Typper ${RELEASE_TAG} — Linux x86_64 tarball" \
+            --webseed "$WEBSEED" \
+            --anonymous
       - name: Generate checksums
         shell: bash
         run: |
