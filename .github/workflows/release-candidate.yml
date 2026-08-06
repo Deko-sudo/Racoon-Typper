@@ -76,6 +76,18 @@ jobs:
             racoon-typper-*.tar.gz
           if-no-files-found: error
 
+  validate-flatpak-manifest:
+    needs: validate-tag
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ needs.validate-tag.outputs.tag }}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: node scripts/validate-flatpak-manifest.mjs
+
   build-windows:
     needs: validate-tag
     runs-on: windows-latest
@@ -117,7 +129,7 @@ jobs:
           bash scripts/linux-package-smoke.sh "$package"
 
   publish-draft:
-    needs: [validate-tag, build-linux, build-windows, linux-package-smoke]
+    needs: [validate-tag, build-linux, build-windows, linux-package-smoke, validate-flatpak-manifest]
     runs-on: ubuntu-latest
     permissions:
       contents: write

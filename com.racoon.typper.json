@@ -9,6 +9,8 @@
       "name": "racoon-typper",
       "buildsystem": "simple",
       "build-commands": [
+        "npm ci --prefix frontend",
+        "npm run tauri:build:binary --prefix frontend",
         "install -Dm755 target/release/racoon-app /app/bin/racoon-typper",
         "install -Dm644 racoon-typper.desktop /app/share/applications/racoon-typper.desktop",
         "install -Dm644 crates/app/icons/128x128@2x.png /app/share/icons/hicolor/256x256/apps/racoon-typper.png",
@@ -36,8 +38,6 @@
     "--socket=x11",
     "--socket=wayland",
     "--share=ipc",
-    "--device=dri",
-    "--filesystem=xdg-data/racoon-typper",
-    "--filesystem=xdg-config/racoon-typper"
+    "--device=dri"
   ]
 }
