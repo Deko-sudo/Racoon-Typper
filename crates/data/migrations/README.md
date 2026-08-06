@@ -15,9 +15,10 @@ expressed by the SQL files; it is not a behavioral spec.
 | V006 | `V006__session_ledger.sql` | Creates `session_ledger` (no foreign keys; CHECK + terminal-state triggers) and recovery-order indexes | None — historical `tests` rows are intentionally not backfilled |
 | V007 | `V007__session_completion_intents.sql` | Creates `session_completion_intents` with `session_id … REFERENCES session_ledger(session_id) ON DELETE RESTRICT`; immutability/delete/replace triggers | None (new table) |
 | V008 | `V008__session_finalizations.sql` | Unique index on `(session_id, fingerprint)`; creates `session_finalizations` with `session_id … REFERENCES session_ledger … ON DELETE RESTRICT` and a composite `FOREIGN KEY (session_id, fingerprint) … ON DELETE RESTRICT ON UPDATE RESTRICT`; state-transition triggers | None (new table) |
+| V009 | `V009__analytics_indexes.sql` | Two additive indexes: `idx_tests_mode_created_at(mode_type, created_at DESC)` covering filtered history `ORDER BY`; `idx_personal_bests_updated_at(updated_at DESC)` covering PB listing sort | None (indexes only; no data change) |
 
 The matrix upgrade tests in `crates/data/tests/migration_matrix.rs` exercise
-every path V1..V7 → V8 through the production Refinery runner, seeding
+every path V1..V7 → V9 through the production Refinery runner, seeding
 era-appropriate data before the upgrade and asserting schema, foreign keys,
 journal mode, and data survival (including the V005 backfill) afterwards.
 
