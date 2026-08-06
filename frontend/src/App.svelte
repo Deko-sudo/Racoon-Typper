@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import * as ipc from './lib/api/ipc';
   import { t } from './lib/i18n';
+  import { createNotificationStore } from './lib/stores/notifications.svelte';
   import type {
     CharStatus, EngineOutput, TestSessionResponse, FinalStats, TestSummary,
     PersonalBest, CustomText, AppSettings,
@@ -101,8 +102,7 @@
   let capsLockOn = $state(false);
 
   // Notifications
-  let notifications = $state<Array<{ id: number; type: string; message: string; timestamp: number }>>([]);
-  let notifId = 0;
+  const notificationStore = createNotificationStore();
 
   interface QueuedKey {
     key: string;
@@ -124,13 +124,6 @@
     isComplete = nextState === 'persisted';
   }
 
-  function addNotification(type: string, message: string) {
-    const id = ++notifId;
-    notifications = [...notifications, { id, type, message, timestamp: Date.now() }];
-    setTimeout(() => {
-      notifications = notifications.filter(n => n.id !== id);
-    }, 5000);
-  }
 
   async function snapshotAchievements() {
     try {
@@ -149,7 +142,7 @@
       const after = (await ipc.getAchievements()).flat();
       for (const a of after) {
         if (a.unlocked && !preTestAchievements.find(p => p.id === a.id && p.unlocked)) {
-          addNotification('SUCCESS', `🏆 ${a.name} — ${a.description}`);
+          notificationStore.add('SUCCESS', `🏆 ${a.name} — ${a.description}`);
         }
       }
     } catch {
@@ -274,7 +267,7 @@
     elapsedMs = stats.duration_ms;
 
     if (stats.accuracy >= 95) {
-      addNotification('SUCCESS', 'Отличный результат!');
+      notificationStore.add('SUCCESS', 'Отличный результат!');
     }
 
     const lessonId = currentLessonId;
@@ -305,7 +298,7 @@
       testStartedAt = Date.now() - output.live_stats.elapsed_ms;
 
       if (liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05) {
-        addNotification('SUCCESS', 'Точность выше 95%');
+        notificationStore.add('SUCCESS', 'Точность выше 95%');
       }
     }
 
@@ -391,7 +384,7 @@
     if (e.getModifierState && e.getModifierState('CapsLock') !== capsLockOn) {
       capsLockOn = e.getModifierState('CapsLock');
       if (capsLockOn && settings?.show_capslock_warnings) {
-        addNotification('WARNING', 'Caps Lock включён');
+        notificationStore.add('WARNING', 'Caps Lock включён');
       }
     }
 
@@ -789,7 +782,7 @@
   {/if}
 </main>
 
-<NotificationStack {notifications} />
+<NotificationStack notifications={notificationStore.notifications} />
 
 <style>
   :root {
