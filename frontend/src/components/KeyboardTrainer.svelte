@@ -15,7 +15,14 @@
     '!': '1', '@': '2', '#': '3', '$': '4', '%': '5', '^': '6', '&': '7', '*': '8', '(': '9', ')': '0',
     '_': '-', '+': '=', '{': '[', '}': ']', '|': '\\', ':': ';', '"': "'", '<': ',', '>': '.', '?': '/',
   };
-  const functionKeys = ['Esc', 'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'];
+  // Group the function keys like a physical ANSI keyboard. The separate
+  // navigation group is rendered in a column that exactly matches Ins/Home/PgUp.
+  const functionKeyGroups = [
+    ['Esc'],
+    ['F1', 'F2', 'F3', 'F4'],
+    ['F5', 'F6', 'F7', 'F8'],
+    ['F9', 'F10', 'F11', 'F12'],
+  ];
   const numberRow: KeySpec[] = [
     { label: '`', span: 1 }, ...['1','2','3','4','5','6','7','8','9','0','-','='].map(label => ({ label, span: 1 })),
     { label: 'Backspace', span: 2, special: true },
@@ -79,9 +86,16 @@
 <section class="keyboard-trainer" aria-label="Full keyboard trainer">
   <div class="keyboard-board" aria-live="polite">
     <div class="function-row">
-      {#each functionKeys as key}<div class="key function-key">{key}</div>{/each}
-      <div class="function-spacer"></div>
-      <div class="key function-key">PrtSc</div><div class="key function-key">ScrLk</div><div class="key function-key">Pause</div>
+      <div class="function-main" aria-label="Function keys">
+        {#each functionKeyGroups as group}
+          <div class="function-group">
+            {#each group as key}<div class="key function-key">{key}</div>{/each}
+          </div>
+        {/each}
+      </div>
+      <div class="function-navigation" aria-label="System keys">
+        <div class="key function-key">PrtSc</div><div class="key function-key">ScrLk</div><div class="key function-key">Pause</div>
+      </div>
     </div>
 
     <div class="keyboard-body">
@@ -124,8 +138,10 @@
 <style>
   .keyboard-trainer { width: 100%; overflow-x: auto; padding: 0.5rem 0.25rem; display: grid; place-items: center; }
   .keyboard-board { --u: 40px; --gap: 4px; min-width: 1055px; display: flex; flex-direction: column; gap: 14px; }
-  .function-row { display: grid; grid-template-columns: repeat(13, var(--u)) 36px repeat(3, var(--u)); gap: var(--gap); }
-  .function-spacer { width: 36px; }
+  .function-row { display: flex; align-items: flex-start; gap: 18px; }
+  .function-main { width: calc(var(--u) * 15 + var(--gap) * 14); display: flex; justify-content: space-between; }
+  .function-group { display: flex; gap: var(--gap); }
+  .function-navigation { width: calc(var(--u) * 3 + var(--gap) * 2); display: grid; grid-template-columns: repeat(3, var(--u)); gap: var(--gap); }
   .keyboard-body { display: flex; align-items: flex-start; gap: 18px; }
   .main-cluster { width: calc(var(--u) * 15 + var(--gap) * 14); display: flex; flex-direction: column; gap: var(--gap); }
   .main-row { display: flex; gap: var(--gap); min-height: 44px; }
