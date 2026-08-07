@@ -1,0 +1,20 @@
+{
+  "name": "amber_terminal",
+  "display_name": "Amber Terminal",
+  "description": "Modern low-glare amber terminal reinterpretation.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Terminal",
+  "is_dark": true,
+  "preview": {
+    "background": "#10100c",
+    "surface": "#191810",
+    "text": "#eee5c5",
+    "accent": "#c8a74d",
+    "correct": "#a9b56e",
+    "incorrect": "#d97a62",
+    "caret": "#f0cd68"
+  }
+}

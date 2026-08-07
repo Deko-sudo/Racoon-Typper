@@ -2,16 +2,29 @@
 /* Copyright 2026 Racoon Typper Contributors */
 
 :root {
-  --bg: #151a24;
-  --bg-main: #151a24;
-  --bg-sub: #202a38;
-  --main: #5eead4;
-  --caret: #fbbf24;
-  --sub: #7890a8;
-  --text: #e8f0f7;
-  --error: #fb7185;
-  --error-extra: #fb7185;
-  --colorful-error: #fb7185;
+  --color-app-background: #0d0f12;
+  --color-surface-primary: #15181d;
+  --color-surface-raised: #1c2027;
+  --color-text-primary: #e7e9ed;
+  --color-text-secondary: #adb3bd;
+  --color-text-muted: #8a919c;
+  --color-text-disabled: #707885;
+  --color-border-strong: #596270;
+  --color-accent: #c5cbd4;
+  --color-focus-ring: #dde2e9;
+  --color-selection: #3a4655;
+  --color-caret: #f1f3f6;
+  --color-error: #dc8d8d;
+  --bg: var(--color-app-background);
+  --bg-main: var(--color-app-background);
+  --bg-sub: var(--color-surface-primary);
+  --main: var(--color-accent);
+  --caret: var(--color-caret);
+  --sub: var(--color-text-secondary);
+  --text: var(--color-text-primary);
+  --error: var(--color-error);
+  --error-extra: var(--color-error);
+  --colorful-error: var(--color-error);
 }
 
 * {
@@ -57,4 +70,46 @@ h1 {
   color: var(--text);
   font-size: 0.875rem;
   margin-top: 1rem;
+}
+
+::selection {
+  background: var(--color-selection);
+  color: var(--color-text-primary);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-focus-ring);
+  outline-offset: 2px;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+  color: var(--color-text-disabled);
+  cursor: not-allowed;
+}
+
+::placeholder {
+  color: var(--color-text-muted);
+  opacity: 1;
+}
+
+* {
+  scrollbar-color: var(--color-border-strong) var(--color-surface-primary);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border: 2px solid var(--color-surface-primary);
+  border-radius: 999px;
 }

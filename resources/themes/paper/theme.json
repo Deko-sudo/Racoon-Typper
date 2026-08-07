@@ -1,0 +1,20 @@
+{
+  "name": "paper",
+  "display_name": "Paper",
+  "description": "Soft reading-paper daylight without a pure-white canvas.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#edeae2",
+    "surface": "#f5f2eb",
+    "text": "#292b2d",
+    "accent": "#606c78",
+    "correct": "#52755c",
+    "incorrect": "#a95454",
+    "caret": "#333a42"
+  }
+}

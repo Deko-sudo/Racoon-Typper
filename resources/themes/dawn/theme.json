@@ -1,0 +1,20 @@
+{
+  "name": "dawn",
+  "display_name": "Dawn",
+  "description": "Soft warm daylight with a muted sunrise accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#eee8e2",
+    "surface": "#f6f0ea",
+    "text": "#332e2d",
+    "accent": "#ac7469",
+    "correct": "#64806a",
+    "incorrect": "#a95353",
+    "caret": "#87534d"
+  }
+}

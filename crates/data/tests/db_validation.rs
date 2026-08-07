@@ -252,14 +252,14 @@ fn settings_preserved_across_reopen() {
     {
         let store = SettingsStore::new(path.clone());
         store
-            .set("theme", toml::Value::String("racoon_dark".to_string()))
+            .set("theme", toml::Value::String("racoon_silver".to_string()))
             .unwrap();
         store.set("font_size", toml::Value::Integer(28)).unwrap();
     }
     {
         let store = SettingsStore::new(path.clone());
         let s = store.load().unwrap();
-        assert_eq!(s.theme, "racoon_dark");
+        assert_eq!(s.theme, "racoon_silver");
         assert_eq!(s.font_size, 28);
     }
     let _ = std::fs::remove_file(&path);

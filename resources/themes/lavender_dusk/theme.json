@@ -1,0 +1,20 @@
+{
+  "name": "lavender_dusk",
+  "display_name": "Lavender Dusk",
+  "description": "Elegant desaturated purple for quiet evening sessions.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#121017",
+    "surface": "#1b1722",
+    "text": "#eae4ef",
+    "accent": "#9c86b5",
+    "correct": "#91aa91",
+    "incorrect": "#cf7d88",
+    "caret": "#c4afd8"
+  }
+}

@@ -17,7 +17,7 @@ All captures go in [`docs/screenshots/`](screenshots/).
 
 2. Use the default **1200×800** window. Do not resize — every screenshot shares
    that frame so the showcase grid stays uniform.
-3. The default theme is `racoon_dark`. Switch themes in **Settings → Theme**
+3. The default theme is `racoon_graphite`. Switch themes in **Settings → Theme**
    for the theme-comparison row.
 4. For realistic data, complete a few short tests first (so Dashboard,
    History, Analytics, and the heatmap have content to show).
@@ -26,9 +26,10 @@ All captures go in [`docs/screenshots/`](screenshots/).
 
 | File | View | How to set up the frame |
 |---|---|---|
-| `hero-test.png` | Test (running) | Start a `time 30s` test in `racoon_dark`, type ~15 characters so the caret, colored chars, progress bar, and the next-key glow on the virtual keyboard are all visible. |
-| `theme-dark.png` | Dashboard or Test (idle) | `racoon_dark`. Same frame as the other two theme shots for a clean side-by-side. |
-| `theme-light.png` | Same frame | `racoon_light`. |
+| `hero-test.png` | Test (running) | Start a `time 30s` test in `racoon_graphite`, type ~15 characters so the caret, colored chars, progress bar, and the active key on the virtual keyboard are all visible. |
+| `theme-graphite.png` | Dashboard or Test (idle) | `racoon_graphite`. Same frame as the other theme shots for a clean side-by-side. |
+| `theme-silver.png` | Same frame | `racoon_silver`. |
+| `theme-warm.png` | Same frame | `racoon_warm`. |
 | `theme-hc.png` | Same frame | `racoon_high_contrast`. |
 | `results-heatmap.png` | Result overlay | Finish a short test; capture the 4-stat grid (WPM / raw WPM / accuracy / raw accuracy) plus the compact `KeyboardHeatmap`. |
 | `dashboard.png` | Dashboard | Streak card (with 🔥), stat cards, and the `ProgressChart` set to 30d. |

@@ -1,0 +1,20 @@
+{
+  "name": "ocean",
+  "display_name": "Ocean",
+  "description": "Dark muted ocean and teal without a cyberpunk glow.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#0a1417",
+    "surface": "#101e22",
+    "text": "#ddebed",
+    "accent": "#68a2aa",
+    "correct": "#7fae97",
+    "incorrect": "#ce7c7a",
+    "caret": "#99ccd2"
+  }
+}

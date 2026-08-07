@@ -1,0 +1,20 @@
+{
+  "name": "mist",
+  "display_name": "Mist",
+  "description": "Cool light gray with a restrained neutral-blue accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#e5e9eb",
+    "surface": "#eef1f2",
+    "text": "#252b30",
+    "accent": "#647d8d",
+    "correct": "#547866",
+    "incorrect": "#a85559",
+    "caret": "#384d59"
+  }
+}

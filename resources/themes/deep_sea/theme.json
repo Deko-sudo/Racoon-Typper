@@ -1,0 +1,20 @@
+{
+  "name": "deep_sea",
+  "display_name": "Deep Sea",
+  "description": "Very dark blue-green low-light palette.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#071011",
+    "surface": "#0e181a",
+    "text": "#dce6e6",
+    "accent": "#568c91",
+    "correct": "#7da28d",
+    "incorrect": "#c87575",
+    "caret": "#86b7ba"
+  }
+}

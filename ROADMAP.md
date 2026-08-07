@@ -22,9 +22,32 @@
 - **Phase 3B.3.4:** accepted after independent re-review.
 - **Phase 3B.3.5:** accepted after independent re-review.
 - **Phase 3B.3.6:** accepted after independent re-review.
-- **Phase 3B.3.7:** final acceptance complete; Phase 3B.3 recovery architecture accepted and complete. Later Phase 3B milestones remain not started and require separate approval.
+- **Phase 3B.3.7:** final acceptance complete; the durable recovery subsystem is accepted. Normal live-completion wiring through that protocol remains separately deferred. Later Phase 3B milestones remain not started and require separate approval.
 
 The Phase 0 changes are limited to release topology, baseline/version tooling, support documentation, and outdated release-command corrections. Existing feature/resource work in the dirty tree remains separately identified in `BASELINE.md`.
+
+### Current execution sequence — 2026-08-07
+
+This file remains the repository's canonical execution roadmap. The following
+sequence reconciles accepted local work with the published repository without
+changing the historical status of earlier modernization milestones:
+
+1. **Phase 0 — repository reconciliation and accepted-work publication.**
+   Publish the independently accepted 25-theme pack with its resources,
+   registry, settings compatibility, selector integration, documentation,
+   tests, and provenance records. Preserve unrelated local work. The accepted
+   durable recovery subsystem is not reopened; its normal live-completion
+   wiring remains deferred.
+2. **Phase 1 — small correctness fixes.** Do not begin before Phase 0 is
+   published and reviewed. Start with replay-pagination metadata consistency
+   (`offset`, `total`, and `has_more`) and its negative regression coverage.
+3. **Phase 2 — reporting architecture migration.** Migrate one read-only
+   reporting vertical slice at a time from Tauri command adapters to the
+   existing application reporting use cases and ports. Do not create a second
+   reporting architecture or change reporting semantics during Phase 0.
+
+No Phase 1 or Phase 2 implementation is authorized by this Phase 0 publication
+work.
 
 ## 1. Executive decision
 

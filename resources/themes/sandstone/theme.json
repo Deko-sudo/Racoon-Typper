@@ -1,0 +1,20 @@
+{
+  "name": "sandstone",
+  "display_name": "Sandstone",
+  "description": "Subtle sandy daylight with warm, readable contrast.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#e8dfd2",
+    "surface": "#f1e9de",
+    "text": "#342e2a",
+    "accent": "#946e55",
+    "correct": "#617c5f",
+    "incorrect": "#a6534f",
+    "caret": "#63483a"
+  }
+}

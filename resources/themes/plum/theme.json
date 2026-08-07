@@ -1,0 +1,20 @@
+{
+  "name": "plum",
+  "display_name": "Plum",
+  "description": "Warm dark plum with a restrained rose accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#171116",
+    "surface": "#211820",
+    "text": "#efe5ec",
+    "accent": "#b17d9b",
+    "correct": "#97ab8c",
+    "incorrect": "#d27878",
+    "caret": "#d5a9c1"
+  }
+}

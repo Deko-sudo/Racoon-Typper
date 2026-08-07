@@ -1,15 +1,61 @@
-/* SPDX-License-Identifier: Apache-2.0 */
-/* Copyright 2026 Racoon Typper Contributors */
-
 :root {
-  --bg: #000000;
-  --bg-main: #000000;
-  --bg-sub: #171717;
-  --main: #00ff9d;
-  --caret: #facc15;
-  --sub: #a3a3a3;
-  --text: #ffffff;
-  --error: #ff4d6d;
-  --error-extra: #ff4d6d;
-  --colorful-error: #ff4d6d;
+  --color-app-background: #000000;
+  --color-surface-primary: #101010;
+  --color-surface-raised: #181818;
+  --color-surface-hover: #262626;
+  --color-surface-active: #333333;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #e6e6e6;
+  --color-text-muted: #c8c8c8;
+  --color-text-disabled: #a0a0a0;
+  --color-border: #ffffff;
+  --color-border-strong: #ffd84d;
+  --color-accent: #ffd84d;
+  --color-accent-hover: #ffe780;
+  --color-accent-text: #000000;
+  --color-focus-ring: #ffd84d;
+  --color-selection: #634f00;
+  --color-caret: #ffd84d;
+  --color-typing-pending: #e6e6e6;
+  --color-typing-current: #ffffff;
+  --color-typing-correct: #7cff8a;
+  --color-typing-incorrect: #ff7373;
+  --color-typing-corrected: #67d8ff;
+  --color-key-background: #181818;
+  --color-key-border: #ffffff;
+  --color-key-active: #ffd84d;
+  --color-success: #7cff8a;
+  --color-warning: #ffd84d;
+  --color-error: #ff7373;
+  --color-chart-primary: #ffd84d;
+  --color-chart-secondary: #67d8ff;
+  --color-chart-positive: #7cff8a;
+  --color-chart-negative: #ff7373;
+  --color-chart-grid: #ffffff;
+  --color-chart-axis: #ffffff;
+  --color-chart-label: #ffffff;
+  --color-chart-tooltip-background: #101010;
+  --color-chart-tooltip-border: #ffffff;
+  --color-chart-selected: #ffd84d;
+  --color-progress-track: #333333;
+  --color-progress-fill: #ffd84d;
+  --color-overlay: #000000;
+  --shadow-surface: 0 0 0 1px #ffffff;
+  --shadow-elevated: 0 0 0 2px #ffffff;
+
+  --bg: var(--color-app-background);
+  --bg-sub: var(--color-surface-primary);
+  --main: var(--color-accent);
+  --sub: var(--color-text-secondary);
+  --text: var(--color-text-primary);
+  --error: var(--color-error);
+  --color-accent-active: #ffffff;
+  --color-key-pressed: #ffffff;
+  --color-information: #67d8ff;
+  --color-modal-surface: #181818;
+  --color-tooltip-surface: #181818;
+  --color-scrollbar: #ffffff;
+  --color-scrollbar-hover: #ffd84d;
+
+  --caret: var(--color-caret);
 }

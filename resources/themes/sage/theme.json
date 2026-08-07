@@ -1,0 +1,20 @@
+{
+  "name": "sage",
+  "display_name": "Sage",
+  "description": "Quiet desaturated green daylight for professional practice.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Nature",
+  "is_dark": false,
+  "preview": {
+    "background": "#e5e8e0",
+    "surface": "#eff1eb",
+    "text": "#29302b",
+    "accent": "#6e8875",
+    "correct": "#55765e",
+    "incorrect": "#a85b58",
+    "caret": "#496052"
+  }
+}
