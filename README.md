@@ -54,9 +54,16 @@
 
 Racoon Typper includes 25 local themes spanning graphite, light, warm, nature,
 terminal, dark blue-gray and high-contrast variants.
+
 | Graphite | Silver | Warm | High Contrast |
 | :---: | :---: | :---: | :---: |
 | _pending_ | _pending_ | _pending_ | _pending_ |
+
+<!--
+| Graphite | Silver | Warm | High Contrast |
+| :---: | :---: | :---: | :---: |
+| ![Graphite](docs/screenshots/theme-graphite.png) | ![Silver](docs/screenshots/theme-silver.png) | ![Warm](docs/screenshots/theme-warm.png) | ![High Contrast](docs/screenshots/theme-hc.png) |
+-->
 
 ### ✨ Key screens
 
