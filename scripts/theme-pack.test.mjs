@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const themesRoot = path.join(repositoryRoot, 'resources', 'themes');
 const preferencesSourcePath = path.join(repositoryRoot, 'crates', 'app', 'src', 'commands', 'preferences.rs');
+const frontendComponentsRoot = path.join(repositoryRoot, 'frontend', 'src', 'components');
 
 const legacyAliases = new Map([
   ['--bg', 'var(--color-app-background)'],
@@ -181,6 +182,10 @@ async function loadTheme(identifier) {
   return { metadata, css, tokens: parseTokens(css) };
 }
 
+async function loadFrontendComponent(filename) {
+  return readFile(path.join(frontendComponentsRoot, filename), 'utf8');
+}
+
 function tokenColor(tokens, name) {
   const value = tokens.get(name);
   assert.ok(value, `missing ${name}`);
@@ -285,4 +290,44 @@ test('high contrast uses stronger text contrast and distinct typing-state tokens
   assert.notEqual(tokens.get('--color-typing-current'), tokens.get('--color-typing-pending'));
   assert.notEqual(tokens.get('--color-typing-correct'), tokens.get('--color-typing-incorrect'));
   assert.notEqual(tokens.get('--color-caret'), tokens.get('--color-surface-primary'));
+});
+
+test('accent-filled frontend controls use the semantic accent foreground', async () => {
+  const accentConsumers = [
+    'KeyboardTrainer.svelte',
+    'WeakKeysPanel.svelte',
+    'CustomTextsView.svelte',
+    'ResultOverlay.svelte',
+  ];
+
+  for (const filename of accentConsumers) {
+    const source = await loadFrontendComponent(filename);
+    assert.match(
+      source,
+      /background(?:-color)?:\s*var\(--main\)[\s\S]{0,180}color:\s*var\(--color-accent-text\)/,
+      `${filename} must use --color-accent-text on accent-filled controls`,
+    );
+    assert.doesNotMatch(
+      source,
+      /background(?:-color)?:\s*var\(--main\)[\s\S]{0,180}color:\s*var\(--bg\)/,
+      `${filename} must not use --bg as an accent-filled control foreground`,
+    );
+  }
+});
+
+test('primary typing surfaces consume semantic typing-state tokens with explicit current precedence', async () => {
+  for (const filename of ['TestView.svelte', 'WeakKeysPanel.svelte']) {
+    const source = await loadFrontendComponent(filename);
+    for (const [status, token] of [
+      ['pending', '--color-typing-pending'],
+      ['correct', '--color-typing-correct'],
+      ['incorrect', '--color-typing-incorrect'],
+      ['backspaced', '--color-typing-corrected'],
+    ]) {
+      assert.match(source, new RegExp(`\\.char\\.${status}\\s*\\{[^}]*color:\\s*var\\(${token}\\)`), `${filename} must map ${status} to ${token}`);
+    }
+    assert.match(source, /\.char\.current\.pending\s*\{[^}]*color:\s*var\(--color-typing-current\)/, `${filename} must apply the current token only to pending current characters`);
+    assert.match(source, /\.char\.caret::before\s*\{[^}]*background:\s*var\(--color-caret\)/, `${filename} must use the semantic caret token`);
+    assert.doesNotMatch(source, /\.char\.backspaced\s*\{[^}]*#[0-9a-f]{3,8}/i, `${filename} must not hardcode a corrected-character color`);
+  }
 });

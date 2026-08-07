@@ -99,5 +99,5 @@
   .card-actions button { font-size: 0.75rem; padding: 0.25rem 0.75rem; }
   .abort-btn { border-color: var(--sub); color: var(--sub); }
   button { background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main); padding: 0.5rem 1.5rem; font-family: inherit; font-size: 0.875rem; cursor: pointer; border-radius: 4px; }
-  button:hover { background-color: var(--main); color: var(--bg); }
+  button:hover { background-color: var(--main); color: var(--color-accent-text); }
 </style>
