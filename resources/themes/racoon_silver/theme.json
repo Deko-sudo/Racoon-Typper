@@ -1,0 +1,20 @@
+{
+  "name": "racoon_silver",
+  "display_name": "Racoon Silver",
+  "description": "Neutral daylight theme with warm silver surfaces.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Racoon",
+  "is_dark": false,
+  "preview": {
+    "background": "#eeeff1",
+    "surface": "#f8f7f5",
+    "text": "#202329",
+    "accent": "#4e5865",
+    "correct": "#356744",
+    "incorrect": "#a33f46",
+    "caret": "#20272f"
+  }
+}

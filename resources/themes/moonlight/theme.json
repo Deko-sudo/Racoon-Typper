@@ -1,0 +1,20 @@
+{
+  "name": "moonlight",
+  "display_name": "Moonlight",
+  "description": "Soft blue-gray nighttime palette for low eye strain.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#10131b",
+    "surface": "#181d28",
+    "text": "#e5e8f1",
+    "accent": "#8296c0",
+    "correct": "#8da99b",
+    "incorrect": "#cc8189",
+    "caret": "#b8c7ea"
+  }
+}

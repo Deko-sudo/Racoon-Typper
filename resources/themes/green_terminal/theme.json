@@ -1,0 +1,20 @@
+{
+  "name": "green_terminal",
+  "display_name": "Green Terminal",
+  "description": "Modern low-glare green terminal palette.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Terminal",
+  "is_dark": true,
+  "preview": {
+    "background": "#09100b",
+    "surface": "#101912",
+    "text": "#dce8dd",
+    "accent": "#6daa78",
+    "correct": "#8fc596",
+    "incorrect": "#d07c73",
+    "caret": "#9bd5a5"
+  }
+}

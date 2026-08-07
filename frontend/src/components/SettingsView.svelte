@@ -19,6 +19,34 @@
     onUpdateSetting: (key: string, value: unknown) => void;
   } = $props();
 
+  const themeDescriptions: Record<string, string> = {
+    racoon_graphite: 'Calm graphite surfaces with soft silver contrast.',
+    racoon_silver: 'Neutral daylight theme with warm silver surfaces.',
+    racoon_warm: 'Warm charcoal surfaces with a restrained copper accent.',
+    racoon_high_contrast: 'Maximum contrast and clearly separated typing states.',
+    midnight_ink: 'Deep navy-black surfaces for long nighttime sessions.',
+    arctic_slate: 'Cold neutral gray with quiet icy-blue accents.',
+    racoon_forest: 'Deep forest surfaces with muted natural highlights.',
+    moss: 'Relaxed olive and moss tones for focused practice.',
+    coffee: 'Dark coffee, walnut, and cream with a soft copper accent.',
+    paper: 'Soft reading-paper daylight without a pure-white canvas.',
+    sandstone: 'Subtle sandy daylight with warm, readable contrast.',
+    mist: 'Cool light gray with a restrained neutral-blue accent.',
+    lavender_dusk: 'Elegant desaturated purple for quiet evening sessions.',
+    plum: 'Warm dark plum with a restrained rose accent.',
+    ocean: 'Dark muted ocean and teal without a cyberpunk glow.',
+    deep_sea: 'Very dark blue-green low-light palette.',
+    ember: 'Charcoal with restrained ember-red and copper accents.',
+    burgundy: 'Sophisticated subdued wine red with ivory text.',
+    amber_terminal: 'Modern low-glare amber terminal reinterpretation.',
+    green_terminal: 'Modern low-glare green terminal palette.',
+    steel_blue: 'Industrial steel and muted blue for metallic focus.',
+    carbon: 'Near-monochrome dark theme, flatter than Graphite.',
+    moonlight: 'Soft blue-gray nighttime palette for low eye strain.',
+    dawn: 'Soft warm daylight with a muted sunrise accent.',
+    sage: 'Quiet desaturated green daylight for professional practice.',
+  };
+
   let themeSearch = $state('');
   let filteredThemes = $derived.by(() => {
     const query = themeSearch.trim().toLowerCase();
@@ -133,12 +161,18 @@
         <button
           type="button"
           class="theme-card {t2.name === activeTheme ? 'active' : ''}"
+          aria-pressed={t2.name === activeTheme}
           style="background: {t2.preview_colors.bg}; border-color: {t2.preview_colors.main};"
           onclick={() => onSelectTheme(t2.name)}
         >
           <span style="color: {t2.preview_colors.main}">{t2.display_name}</span>
-          <span style="color: {t2.preview_colors.text}">Sample text</span>
-          <span style="color: {t2.preview_colors.error}">error</span>
+          <span class="theme-description" style="color: {t2.preview_colors.text}">{themeDescriptions[t2.name]}</span>
+          <span class="theme-state-preview">
+            <span style="color: {t2.preview_colors.text}">Aa</span>
+            <span style="color: {t2.preview_colors.main}; border-left-color: {t2.preview_colors.main}">caret</span>
+            <span style="color: {t2.preview_colors.error}; text-decoration-color: {t2.preview_colors.error}">error</span>
+          </span>
+          {#if t2.name === activeTheme}<span class="selected-label" style="color: {t2.preview_colors.main}">✓ Selected</span>{/if}
         </button>
       {/each}
     </div>
@@ -156,15 +190,15 @@
     background-color: var(--bg-sub) !important; border: 1px solid var(--sub); color: var(--text) !important;
     padding: 0.5rem; font-family: inherit; border-radius: 4px; font-size: 0.875rem;
   }
-  .setting-row select { appearance: none; min-width: 155px; padding-right: 2rem; background-image: linear-gradient(45deg, transparent 50%, var(--main) 50%), linear-gradient(135deg, var(--main) 50%, transparent 50%); background-position: calc(100% - 14px) 52%, calc(100% - 9px) 52%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; }
+  .setting-row select { min-width: 155px; padding-right: 0.5rem; }
   .setting-row select option { background-color: var(--bg-sub); color: var(--text); }
   .setting-row input[type='checkbox'] { accent-color: var(--main); }
   .setting-row input[type='range'] { accent-color: var(--main); background: transparent !important; }
-  .setting-row input:focus, .setting-row select:focus, .theme-search:focus { outline: 2px solid color-mix(in srgb, var(--main) 55%, transparent); outline-offset: 1px; border-color: var(--main); }
+  .setting-row input:focus-visible, .setting-row select:focus-visible, .theme-search:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-color: var(--color-focus-ring); }
   .theme-toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
   .theme-toolbar span { color: var(--sub); font-size: 0.7rem; }
   .theme-search { min-width: 260px; padding: 0.5rem 0.75rem; border: 1px solid var(--sub); border-radius: 6px; background: var(--bg-sub); color: var(--text); font: inherit; font-size: 0.75rem; }
-  .theme-search:focus { outline: none; border-color: var(--main); }
+  .theme-search:focus-visible { border-color: var(--color-focus-ring); }
   .theme-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 0.65rem; max-height: 460px; overflow-y: auto; padding: 0.25rem; scrollbar-color: var(--sub) var(--bg-sub); }
   .theme-card {
     padding: 0.75rem; border-radius: 8px; border: 2px solid transparent; cursor: pointer;
@@ -172,4 +206,10 @@
     font-family: inherit; text-align: left;
   }
   .theme-card.active { border-color: var(--main); }
+  .theme-card:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+  .theme-description { min-height: 2.7em; font-size: 0.62rem; line-height: 1.35; opacity: 0.85; }
+  .theme-state-preview { display: flex; align-items: center; gap: 0.5rem; font-size: 0.65rem; }
+  .theme-state-preview span:nth-child(2) { border-left: 2px solid; padding-left: 0.25rem; }
+  .theme-state-preview span:last-child { text-decoration: underline 2px; text-underline-offset: 0.16em; }
+  .selected-label { font-size: 0.62rem; font-weight: 700; }
 </style>

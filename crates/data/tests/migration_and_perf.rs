@@ -399,7 +399,7 @@ fn settings_persistence_roundtrip() {
 
     // Save settings
     store
-        .set("theme", toml::Value::String("racoon_dark".to_string()))
+        .set("theme", toml::Value::String("racoon_warm".to_string()))
         .unwrap();
     store.set("font_size", toml::Value::Integer(28)).unwrap();
     store
@@ -410,7 +410,7 @@ fn settings_persistence_roundtrip() {
     let store2 = SettingsStore::new(path.clone());
     let settings = store2.load().unwrap();
 
-    assert_eq!(settings.theme, "racoon_dark");
+    assert_eq!(settings.theme, "racoon_warm");
     assert_eq!(settings.font_size, 28);
     assert!(!settings.show_keyboard_trainer);
 
@@ -454,7 +454,7 @@ fn settings_persistence_update_single_field() {
     assert_eq!(settings.font_size, 32);
     assert_eq!(settings.caret_style, "block");
     // Other fields should be defaults
-    assert_eq!(settings.theme, "racoon_dark");
+    assert_eq!(settings.theme, "racoon_graphite");
 
     let _ = std::fs::remove_file(&path);
 }

@@ -138,9 +138,9 @@
   .text-display { --typing-font-size:clamp(1.1rem,1.8vw,1.5rem); max-width:min(900px, 100%); margin:0 auto; font-size:0; line-height:1.65; letter-spacing:normal; text-align:center; user-select:none; white-space:pre-wrap; overflow-wrap:break-word; min-height:3.3em; display:block; }
   .text-ellipsis { color:var(--sub); opacity:.4; padding:0 .25rem; font-size:var(--typing-font-size); }
   .char { position:relative; display:inline-block; vertical-align:baseline; font-size:var(--typing-font-size); line-height:1.65; transition:color .05s, opacity .1s; }
-  .char.pending { color:var(--sub); } .char.correct { color:var(--text); } .char.incorrect { color:var(--error); animation:shake .2s; } .char.backspaced { color:#ff8c42; }
-  .char.past { opacity:.5; } .char.current { opacity:1; font-weight:600; } .char.future { opacity:.35; }
-  .char.caret::before { content:''; position:absolute; left:-.16em; top:.14em; bottom:.14em; width:.1em; border-radius:999px; background:var(--caret); box-shadow:0 0 .5em color-mix(in srgb,var(--caret) 70%,transparent); animation:blink .9s ease-in-out infinite; }
+  .char.pending { color:var(--color-typing-pending); } .char.correct { color:var(--color-typing-correct); } .char.incorrect { color:var(--color-typing-incorrect); animation:shake .2s; } .char.backspaced { color:var(--color-typing-corrected); }
+  .char.past { opacity:.5; } .char.current { opacity:1; font-weight:600; } .char.current.pending { color:var(--color-typing-current); } .char.future { opacity:.35; }
+  .char.caret::before { content:''; position:absolute; left:-.16em; top:.14em; bottom:.14em; width:.1em; border-radius:999px; background:var(--color-caret); box-shadow:0 0 .5em color-mix(in srgb,var(--color-caret) 70%,transparent); animation:blink .9s ease-in-out infinite; }
   @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} } @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
   .info { display: flex; align-items: center; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
   .abort-btn {

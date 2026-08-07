@@ -1,0 +1,20 @@
+{
+  "name": "racoon_graphite",
+  "display_name": "Racoon Graphite",
+  "description": "Calm graphite surfaces with soft silver contrast.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Racoon",
+  "is_dark": true,
+  "preview": {
+    "background": "#0d0f12",
+    "surface": "#15181d",
+    "text": "#e7e9ed",
+    "accent": "#c5cbd4",
+    "correct": "#a9b8ae",
+    "incorrect": "#e39a9a",
+    "caret": "#f1f3f6"
+  }
+}

@@ -41,31 +41,157 @@ fn set_setting_with_state(
 pub(crate) fn get_themes() -> Result<Vec<ThemeInfo>, AppError> {
     Ok(vec![
         theme_info(
-            "racoon_dark",
-            "Racoon Dark",
+            "racoon_graphite",
+            "Racoon Graphite",
             true,
-            "#151a24",
-            "#5eead4",
-            "#e8f0f7",
-            "#fb7185",
+            "#0d0f12",
+            "#c5cbd4",
+            "#e7e9ed",
+            "#e39a9a",
         ),
         theme_info(
-            "racoon_light",
-            "Racoon Light",
+            "racoon_silver",
+            "Racoon Silver",
             false,
-            "#f7fafc",
-            "#0f766e",
-            "#1f2937",
-            "#dc2626",
+            "#eeeff1",
+            "#4e5865",
+            "#202329",
+            "#a33f46",
+        ),
+        theme_info(
+            "racoon_warm",
+            "Racoon Warm",
+            true,
+            "#171416",
+            "#d48a63",
+            "#eee7e2",
+            "#e58c89",
+        ),
+        theme_info(
+            "midnight_ink",
+            "Midnight Ink",
+            true,
+            "#090d15",
+            "#7495c9",
+            "#e5eaf2",
+            "#d47d83",
+        ),
+        theme_info(
+            "arctic_slate",
+            "Arctic Slate",
+            true,
+            "#11161a",
+            "#8ab4c8",
+            "#e4eaed",
+            "#d38989",
+        ),
+        theme_info(
+            "racoon_forest",
+            "Racoon Forest",
+            true,
+            "#0d1411",
+            "#75a486",
+            "#e1e9e3",
+            "#c98078",
+        ),
+        theme_info(
+            "moss", "Moss", true, "#151711", "#9ca56a", "#e7e6d7", "#c48276",
+        ),
+        theme_info(
+            "coffee", "Coffee", true, "#171310", "#b98b68", "#efe5d9", "#ce8177",
+        ),
+        theme_info(
+            "paper", "Paper", false, "#edeae2", "#606c78", "#292b2d", "#a95454",
+        ),
+        theme_info(
+            "sandstone",
+            "Sandstone",
+            false,
+            "#e8dfd2",
+            "#946e55",
+            "#342e2a",
+            "#a6534f",
+        ),
+        theme_info(
+            "mist", "Mist", false, "#e5e9eb", "#647d8d", "#252b30", "#a85559",
+        ),
+        theme_info(
+            "lavender_dusk",
+            "Lavender Dusk",
+            true,
+            "#121017",
+            "#9c86b5",
+            "#eae4ef",
+            "#cf7d88",
+        ),
+        theme_info(
+            "plum", "Plum", true, "#171116", "#b17d9b", "#efe5ec", "#d27878",
+        ),
+        theme_info(
+            "ocean", "Ocean", true, "#0a1417", "#68a2aa", "#ddebed", "#ce7c7a",
+        ),
+        theme_info(
+            "deep_sea", "Deep Sea", true, "#071011", "#568c91", "#dce6e6", "#c87575",
+        ),
+        theme_info(
+            "ember", "Ember", true, "#151110", "#b8654d", "#eee7e3", "#e06a67",
+        ),
+        theme_info(
+            "burgundy", "Burgundy", true, "#160e11", "#a65e70", "#f0e5e7", "#d26c6c",
+        ),
+        theme_info(
+            "amber_terminal",
+            "Amber Terminal",
+            true,
+            "#10100c",
+            "#c8a74d",
+            "#eee5c5",
+            "#d97a62",
+        ),
+        theme_info(
+            "green_terminal",
+            "Green Terminal",
+            true,
+            "#09100b",
+            "#6daa78",
+            "#dce8dd",
+            "#d07c73",
+        ),
+        theme_info(
+            "steel_blue",
+            "Steel Blue",
+            true,
+            "#101419",
+            "#718caa",
+            "#e5e9ef",
+            "#c87d82",
+        ),
+        theme_info(
+            "carbon", "Carbon", true, "#0c0c0d", "#b4b4ba", "#e8e8e9", "#c98282",
+        ),
+        theme_info(
+            "moonlight",
+            "Moonlight",
+            true,
+            "#10131b",
+            "#8296c0",
+            "#e5e8f1",
+            "#cc8189",
+        ),
+        theme_info(
+            "dawn", "Dawn", false, "#eee8e2", "#ac7469", "#332e2d", "#a95353",
+        ),
+        theme_info(
+            "sage", "Sage", false, "#e5e8e0", "#6e8875", "#29302b", "#a85b58",
         ),
         theme_info(
             "racoon_high_contrast",
             "Racoon High Contrast",
             true,
             "#000000",
-            "#00ff9d",
+            "#ffd84d",
             "#ffffff",
-            "#ff4d6d",
+            "#ff7373",
         ),
     ])
 }
@@ -74,11 +200,37 @@ pub(crate) fn get_themes() -> Result<Vec<ThemeInfo>, AppError> {
 pub(crate) fn get_theme_css(name: String) -> Result<String, AppError> {
     validate_theme_name(&name)?;
     let css = match name.as_str() {
-        "racoon_dark" => include_str!("../../../../resources/themes/racoon_dark/theme.css"),
-        "racoon_light" => include_str!("../../../../resources/themes/racoon_light/theme.css"),
+        "racoon_graphite" => {
+            include_str!("../../../../resources/themes/racoon_graphite/theme.css")
+        }
+        "racoon_silver" => {
+            include_str!("../../../../resources/themes/racoon_silver/theme.css")
+        }
+        "racoon_warm" => include_str!("../../../../resources/themes/racoon_warm/theme.css"),
         "racoon_high_contrast" => {
             include_str!("../../../../resources/themes/racoon_high_contrast/theme.css")
         }
+        "midnight_ink" => include_str!("../../../../resources/themes/midnight_ink/theme.css"),
+        "arctic_slate" => include_str!("../../../../resources/themes/arctic_slate/theme.css"),
+        "racoon_forest" => include_str!("../../../../resources/themes/racoon_forest/theme.css"),
+        "moss" => include_str!("../../../../resources/themes/moss/theme.css"),
+        "coffee" => include_str!("../../../../resources/themes/coffee/theme.css"),
+        "paper" => include_str!("../../../../resources/themes/paper/theme.css"),
+        "sandstone" => include_str!("../../../../resources/themes/sandstone/theme.css"),
+        "mist" => include_str!("../../../../resources/themes/mist/theme.css"),
+        "lavender_dusk" => include_str!("../../../../resources/themes/lavender_dusk/theme.css"),
+        "plum" => include_str!("../../../../resources/themes/plum/theme.css"),
+        "ocean" => include_str!("../../../../resources/themes/ocean/theme.css"),
+        "deep_sea" => include_str!("../../../../resources/themes/deep_sea/theme.css"),
+        "ember" => include_str!("../../../../resources/themes/ember/theme.css"),
+        "burgundy" => include_str!("../../../../resources/themes/burgundy/theme.css"),
+        "amber_terminal" => include_str!("../../../../resources/themes/amber_terminal/theme.css"),
+        "green_terminal" => include_str!("../../../../resources/themes/green_terminal/theme.css"),
+        "steel_blue" => include_str!("../../../../resources/themes/steel_blue/theme.css"),
+        "carbon" => include_str!("../../../../resources/themes/carbon/theme.css"),
+        "moonlight" => include_str!("../../../../resources/themes/moonlight/theme.css"),
+        "dawn" => include_str!("../../../../resources/themes/dawn/theme.css"),
+        "sage" => include_str!("../../../../resources/themes/sage/theme.css"),
         _ => return Err(AppError::ThemeNotFound(name)),
     };
     Ok(css.to_string())
@@ -244,21 +396,28 @@ mod tests {
     }
 
     #[test]
-    fn original_theme_catalog_is_complete_and_unique() {
+    fn built_in_theme_catalog_is_complete_and_unique() {
         let themes = get_themes().unwrap();
-        assert_eq!(themes.len(), 3);
+        assert_eq!(themes.len(), 25);
         let unique_names: std::collections::HashSet<_> =
             themes.iter().map(|theme| theme.name.as_str()).collect();
         assert_eq!(unique_names.len(), themes.len());
-        assert!(unique_names.contains("racoon_dark"));
-        assert!(unique_names.contains("racoon_light"));
+        assert!(unique_names.contains("racoon_graphite"));
+        assert!(unique_names.contains("racoon_silver"));
+        assert!(unique_names.contains("racoon_warm"));
         assert!(unique_names.contains("racoon_high_contrast"));
     }
 
     #[test]
-    fn original_theme_css_contains_required_variables() {
-        let css = get_theme_css("racoon_dark".to_string()).unwrap();
+    fn built_in_theme_css_contains_required_semantic_variables() {
+        let css = get_theme_css("racoon_graphite".to_string()).unwrap();
         for variable in [
+            "--color-app-background:",
+            "--color-surface-raised:",
+            "--color-text-primary:",
+            "--color-focus-ring:",
+            "--color-typing-current:",
+            "--color-chart-primary:",
             "--bg:",
             "--bg-sub:",
             "--main:",
@@ -272,8 +431,16 @@ mod tests {
     }
 
     #[test]
-    fn theme_css_is_available_for_original_themes() {
+    fn high_contrast_theme_exposes_accessible_focus_and_caret_tokens() {
         let css = get_theme_css("racoon_high_contrast".to_string()).unwrap();
-        assert!(css.contains("--main: #00ff9d;"));
+        assert!(css.contains("--color-focus-ring: #ffd84d"));
+        assert!(css.contains("--color-caret: #ffd84d"));
+        assert!(css.contains("--color-typing-current: #ffffff"));
+    }
+
+    #[test]
+    fn unknown_theme_identifier_is_rejected_without_a_fallback_payload() {
+        let error = get_theme_css("../../untrusted".to_string()).unwrap_err();
+        assert!(matches!(error, AppError::ThemeNotFound(_)));
     }
 }

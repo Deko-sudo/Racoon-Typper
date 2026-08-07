@@ -33,5 +33,5 @@
   .stat-label { font-size: 0.75rem; color: var(--sub); text-transform: uppercase; }
   .stats-details { display: flex; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
   button { background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main); padding: 0.5rem 2rem; font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 4px; }
-  button:hover { background-color: var(--main); color: var(--bg); }
+  button:hover { background-color: var(--main); color: var(--color-accent-text); }
 </style>

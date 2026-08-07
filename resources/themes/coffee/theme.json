@@ -1,0 +1,20 @@
+{
+  "name": "coffee",
+  "display_name": "Coffee",
+  "description": "Dark coffee, walnut, and cream with a soft copper accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Warm",
+  "is_dark": true,
+  "preview": {
+    "background": "#171310",
+    "surface": "#211a16",
+    "text": "#efe5d9",
+    "accent": "#b98b68",
+    "correct": "#97ac86",
+    "incorrect": "#ce8177",
+    "caret": "#dcb28e"
+  }
+}

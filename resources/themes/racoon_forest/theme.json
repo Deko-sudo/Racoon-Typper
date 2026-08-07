@@ -1,0 +1,20 @@
+{
+  "name": "racoon_forest",
+  "display_name": "Racoon Forest",
+  "description": "Deep forest surfaces with muted natural highlights.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Nature",
+  "is_dark": true,
+  "preview": {
+    "background": "#0d1411",
+    "surface": "#141d18",
+    "text": "#e1e9e3",
+    "accent": "#75a486",
+    "correct": "#8ebb93",
+    "incorrect": "#c98078",
+    "caret": "#a7c8b1"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "steel_blue",
+  "display_name": "Steel Blue",
+  "description": "Industrial steel and muted blue for metallic focus.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#101419",
+    "surface": "#171d24",
+    "text": "#e5e9ef",
+    "accent": "#718caa",
+    "correct": "#88a89a",
+    "incorrect": "#c87d82",
+    "caret": "#a6bcd4"
+  }
+}
