@@ -1699,7 +1699,14 @@ impl<'a, P: HistoryReportingPort + ?Sized> GetTestReplayPage<'a, P> {
                 .map_err(|_| ReportingError::InvariantViolation)?
                 .checked_add(returned)
                 .ok_or(ReportingError::InvariantViolation)?;
-            if consumed > total || (has_more && consumed >= total) {
+            // `has_more` must agree with `consumed` versus `total`. The port
+            // supplies `has_more` from outside this use case, so both
+            // contradictions are rejected: claiming more remain when nothing
+            // does, and claiming none remain when frames are still owed.
+            if consumed > total
+                || (has_more && consumed >= total)
+                || (!has_more && consumed < total)
+            {
                 return Err(ReportingError::InvariantViolation);
             }
         }

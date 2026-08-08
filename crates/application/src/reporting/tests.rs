@@ -462,6 +462,38 @@ fn replay_pages_are_bounded_but_total_replay_length_is_not() {
 }
 
 #[test]
+fn replay_rejects_has_more_false_when_frames_still_owed() {
+    // The port claims no more frames (`has_more = false`) while `consumed` is
+    // still short of `total`. Frames would be silently dropped without this
+    // invariant, so the use case must reject the contradiction.
+    let frames = (0..5_u64).map(frame).collect::<Vec<_>>();
+    let mut port = FakeHistoryPort::empty();
+    port.replay = Ok(Some(ReplayPageSource::new(frames, false, Some(10))));
+
+    let err = GetTestReplayPage::new(&port)
+        .execute(session_id(SESSION_A), OffsetPagination::new(10, 0).unwrap())
+        .expect_err("has_more=false with frames still owed must be rejected");
+    assert_eq!(err, ReportingError::InvariantViolation);
+}
+
+#[test]
+fn replay_accepts_has_more_false_when_fully_consumed() {
+    // The symmetric valid case: the page reaches exactly `total` and the port
+    // reports no more frames. This pins the boundary the new invariant keeps
+    // valid (consumed == total, has_more == false must pass).
+    let frames = (0..10_u64).map(frame).collect::<Vec<_>>();
+    let mut port = FakeHistoryPort::empty();
+    port.replay = Ok(Some(ReplayPageSource::new(frames, false, Some(10))));
+
+    let page = GetTestReplayPage::new(&port)
+        .execute(session_id(SESSION_A), OffsetPagination::new(10, 0).unwrap())
+        .expect("fully-consumed page with has_more=false is valid");
+    assert_eq!(page.returned(), 10);
+    assert!(!page.has_more());
+    assert_eq!(page.total(), Some(10));
+}
+
+#[test]
 fn replay_distinguishes_optional_absence_from_empty_page_and_rejects_unordered_frames() {
     let absent = FakeHistoryPort::empty();
     assert_eq!(
