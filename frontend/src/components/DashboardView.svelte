@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { DashboardStatsResponse } from '../lib/types/index';
   import ProgressChart from './ProgressChart.svelte';
+  import Icon from './Icon.svelte';
   import { t } from '../lib/i18n';
 
   let { stats, onNavigate, uiLang = 'en' }: { stats: DashboardStatsResponse | null; onNavigate: (v: string) => void; uiLang?: string } = $props();
@@ -22,7 +23,7 @@
       <div class="card streak-card">
         <span class="card-value">{stats.current_streak}</span>
         <span class="card-label">{t(uiLang, 'dash.current_streak')}</span>
-        {#if stats.current_streak > 0}<span class="card-badge active">🔥</span>{/if}
+        {#if stats.current_streak > 0}<span class="card-badge active"><Icon name="flame" size="0.65rem" /></span>{/if}
       </div>
       <div class="card">
         <span class="card-value">{stats.longest_streak}</span>
@@ -49,7 +50,13 @@
         <span class="card-label">{t(uiLang, 'dash.total_tests')}</span>
       </div>
       <div class="card goal-card" class:goal-met={stats.daily_goal_met}>
-        <span class="card-value">{stats.daily_goal_met ? '✓' : '○'}</span>
+        <span class="card-value goal-icon">
+          {#if stats.daily_goal_met}
+            <Icon name="check" size="1.8rem" />
+          {:else}
+            <Icon name="circle" size="1.8rem" />
+          {/if}
+        </span>
         <span class="card-label">{t(uiLang, 'dash.daily_goal')}</span>
       </div>
       <div class="card action-card" role="button" tabindex="0" onkeydown={handleActionKeydown} onclick={() => onNavigate('test')}>
@@ -77,11 +84,11 @@
   .card-value { font-size: 2rem; color: var(--main); font-weight: bold; }
   .card-label { font-size: 0.7rem; color: var(--sub); text-transform: uppercase; }
   .card-badge { font-size: 0.65rem; color: var(--main); }
-  .card-badge.active { color: #ff6b35; }
+  .card-badge.active { color: var(--color-warning); }
   .total-card { border-color: var(--sub); }
   .goal-card { border-color: var(--sub); }
-  .goal-card.goal-met { border-color: #6c8; }
-  .goal-card.goal-met .card-value { color: #6c8; }
+  .goal-card.goal-met { border-color: var(--color-success); }
+  .goal-card.goal-met .goal-icon { color: var(--color-success); }
   .action-card { cursor: pointer; justify-content: center; }
   .action-card:hover { border-color: var(--main); background: var(--bg); }
   .card-action { color: var(--main); font-size: 0.875rem; }
