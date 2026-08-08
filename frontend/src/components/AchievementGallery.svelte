@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
-  import Icon from './Icon.svelte';
   import { t } from '../lib/i18n';
 
   let { uiLang = 'en' }: { uiLang?: string } = $props();
@@ -50,13 +49,7 @@
   <div class="grid">
     {#each filtered as ach (ach.id)}
       <div class="card" class:locked={!ach.unlocked}>
-        <div class="card-icon">
-          {#if ach.unlocked}
-            <Icon name="trophy" size="2rem" />
-          {:else}
-            <Icon name="lock" size="2rem" />
-          {/if}
-        </div>
+        <div class="card-icon">{ach.unlocked ? '🏆' : '🔒'}</div>
         <div class="card-name">{ach.name}</div>
         <div class="card-desc">{ach.description}</div>
         {#if ach.unlocked}
@@ -95,12 +88,12 @@
     border: 1px solid transparent; transition: border-color 0.2s, transform 0.2s;
   }
   .card:hover { border-color: var(--main); transform: translateY(-2px); }
-  .card.locked { color: var(--color-text-disabled); opacity: 0.72; border-style: dashed; }
+  .card.locked { opacity: 0.35; }
   .card-icon { font-size: 2rem; }
   .card-name { font-size: 0.85rem; color: var(--main); font-weight: bold; text-align: center; }
   .card-desc { font-size: 0.7rem; color: var(--sub); text-align: center; line-height: 1.3; }
   .card-status { font-size: 0.65rem; margin-top: 0.25rem; }
-  .card-status.unlocked { color: var(--color-success); }
+  .card-status.unlocked { color: #6c8; }
   .card-status.locked { color: var(--sub); }
   .empty { color: var(--sub); font-size: 0.875rem; text-align: center; margin-top: 2rem; }
   .error { color: var(--error); font-size: 0.875rem; }

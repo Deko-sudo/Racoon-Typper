@@ -2,7 +2,6 @@
   import { onMount } from 'svelte';
   import * as ipc from './lib/api/ipc';
   import { t } from './lib/i18n';
-  import { lessonResultNavigation } from './lib/lessonNavigation';
   import { createNavigationStore } from './lib/stores/navigation.svelte';
   import { createNotificationStore } from './lib/stores/notifications.svelte';
   import type {
@@ -79,16 +78,13 @@
 
   // Themes
   let themes = $state<ThemeInfo[]>([]);
-  let activeTheme = $state('racoon_graphite');
-  const appliedThemeVariables = new Set<string>();
+  let activeTheme = $state('racoon_dark');
 
   // Lessons
   let courseModules = $state<ModuleResponse[]>([]);
   let lessonProgress = $state<Record<string, { status: string; best_wpm: number; best_accuracy: number }>>({});
-  let lessonLang = $state<LanguageCode>('en');
-  let lessonCourseModules = $state<ModuleResponse[]>([]);
+  let lessonLang = $state<'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko'>('en');
   let currentLessonId = $state<string | null>(null);
-  let lessonResult = $derived(lessonResultNavigation(lessonCourseModules, currentLessonId));
 
   // Weak Keys
   let weakKeysData = $state<Array<{ ch: string; error_count: number; accuracy: number; rank: number }>>([]);
@@ -148,7 +144,7 @@
       const after = (await ipc.getAchievements()).flat();
       for (const a of after) {
         if (a.unlocked && !preTestAchievements.find(p => p.id === a.id && p.unlocked)) {
-          notificationStore.add('SUCCESS', `${a.name} — ${a.description}`);
+          notificationStore.add('SUCCESS', `🏆 ${a.name} — ${a.description}`);
         }
       }
     } catch {
@@ -156,11 +152,7 @@
     }
   }
 
-  function startTestFromResponse(
-    resp: TestSessionResponse,
-    lessonId: string | null = null,
-    lessonModules: ModuleResponse[] = [],
-  ) {
+  function startTestFromResponse(resp: TestSessionResponse, lessonId: string | null = null) {
     sessionGeneration += 1;
     queuedKeys = [];
     timeCompletionQueued = false;
@@ -174,7 +166,6 @@
     sessionDurationMs = resp.mode_type === 'time'
       ? Math.max(0, Number(resp.mode_config.duration ?? 0) * 1000)
       : 0;
-    lessonCourseModules = lessonId ? lessonModules : [];
     currentLessonId = lessonId;
     testStartedAt = null;
     liveWpm = 0;
@@ -193,7 +184,6 @@
     timeCompletionQueued = false;
     applySessionState('idle');
     sessionId = null;
-    lessonCourseModules = [];
     currentLessonId = null;
     testStartedAt = null;
     elapsedMs = 0;
@@ -296,6 +286,7 @@
       };
       void playSound('lesson_complete');
     }
+    currentLessonId = null;
     await checkNewAchievements();
   }
 
@@ -481,19 +472,11 @@
     styleEl.textContent = css;
 
     // Apply variables inline as well as through the stylesheet. This keeps
-    // theme switching reliable when component-scoped CSS is present and lets
-    // semantic aliases such as --bg resolve to the active theme tokens.
+    // theme switching reliable when component-scoped CSS is present.
     const root = document.documentElement;
-    for (const variable of appliedThemeVariables) {
-      root.style.removeProperty(variable);
-    }
-    appliedThemeVariables.clear();
-
-    const variables = /(--[a-z0-9-]+)\s*:\s*([^;{}]+)\s*;/g;
+    const variables = /--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;/g;
     for (const match of css.matchAll(variables)) {
-      const variable = match[1];
-      root.style.setProperty(variable, match[2].trim(), 'important');
-      appliedThemeVariables.add(variable);
+      root.style.setProperty(`--${match[1]}`, match[2], 'important');
     }
     root.dataset.theme = name;
     const themeInfo = themes.find((theme) => theme.name === name);
@@ -639,35 +622,16 @@
     }
   }
 
-  async function onSelectLesson(
-    lessonId: string,
-    language: string,
-    lessonModules: ModuleResponse[] = courseModules,
-  ) {
+  async function onSelectLesson(lessonId: string, language: string) {
     try {
       if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
       const resp = await ipc.startLesson(lessonId, language);
-      startTestFromResponse(resp, lessonId, lessonModules);
+      startTestFromResponse(resp, lessonId);
       switchView('test');
     } catch (e) {
       errorMsg = `Start lesson error: ${e}`;
     }
-  }
-
-  function repeatCompletedLesson() {
-    if (!lessonResult) return;
-    void onSelectLesson(lessonResult.lessonId, sessionLanguage, lessonCourseModules);
-  }
-
-  function startNextLesson() {
-    if (!lessonResult?.nextLessonId) return;
-    void onSelectLesson(lessonResult.nextLessonId, sessionLanguage, lessonCourseModules);
-  }
-
-  function returnToLessons() {
-    lessonLang = sessionLanguage as LanguageCode;
-    switchView('lessons');
   }
 
   async function updateTestConfigurationAndRestart(update: () => void) {
@@ -754,10 +718,6 @@
       onLanguageChange={onLanguageChange}
       onAbort={abortTest}
       onRestart={startTest}
-      lessonNavigation={lessonResult}
-      onRepeatLesson={repeatCompletedLesson}
-      onNextLesson={startNextLesson}
-      onReturnToLessons={returnToLessons}
       uiLang={uiLang}
     />
   {:else if view === 'history'}
@@ -828,20 +788,8 @@
 
 <style>
   :root {
-    --color-app-background: #0d0f12;
-    --color-surface-primary: #15181d;
-    --color-accent: #c5cbd4;
-    --color-text-secondary: #adb3bd;
-    --color-text-primary: #e7e9ed;
-    --color-error: #dc8d8d;
-    --color-caret: #f1f3f6;
-    --bg: var(--color-app-background);
-    --bg-sub: var(--color-surface-primary);
-    --main: var(--color-accent);
-    --sub: var(--color-text-secondary);
-    --text: var(--color-text-primary);
-    --error: var(--color-error);
-    --caret: var(--color-caret);
+    --bg: #151a24; --bg-sub: #202a38; --main: #5eead4;
+    --sub: #7890a8; --text: #e8f0f7; --error: #fb7185; --caret: #fbbf24;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   main {

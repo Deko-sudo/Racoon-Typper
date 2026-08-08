@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
-  import Icon from './Icon.svelte';
   import { t } from '../lib/i18n';
   import type { Achievement, ConsistencyReport, Insight } from '../lib/types/index';
 
@@ -88,13 +87,7 @@
       <div class="achievements-grid">
         {#each achievements as ach}
           <div class="achievement-card" class:locked={!ach.unlocked}>
-            <span class="ach-icon">
-              {#if ach.unlocked}
-                <Icon name="trophy" size="1.5rem" />
-              {:else}
-                <Icon name="lock" size="1.5rem" />
-              {/if}
-            </span>
+            <span class="ach-icon">{ach.unlocked ? '🏆' : '🔒'}</span>
             <span class="ach-name">{ach.name}</span>
             <span class="ach-desc">{ach.description}</span>
           </div>
@@ -130,14 +123,14 @@
   .consistency-details { display: flex; gap: 1.5rem; font-size: 0.75rem; color: var(--sub); }
   .insights-section { margin-bottom: 1.5rem; }
   .insight-card { padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 0.5rem; }
-  .insight-card.success { background: color-mix(in srgb, var(--color-success) 12%, var(--color-surface-primary)); border-left: 3px solid var(--color-success); }
-  .insight-card.warning { background: color-mix(in srgb, var(--color-warning) 12%, var(--color-surface-primary)); border-left: 3px solid var(--color-warning); }
-  .insight-card.info { background: var(--color-surface-raised); border-left: 3px solid var(--color-border-strong); }
+  .insight-card.success { background: rgba(100,200,100,0.1); border-left: 3px solid #6c8; }
+  .insight-card.warning { background: rgba(226,183,20,0.1); border-left: 3px solid var(--main); }
+  .insight-card.info { background: rgba(85,85,85,0.1); border-left: 3px solid var(--sub); }
   .insight-card strong { color: var(--text); display: block; font-size: 0.875rem; }
   .insight-card p { color: var(--sub); font-size: 0.75rem; margin: 0.25rem 0 0; }
   .achievements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; }
   .achievement-card { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 1rem; background: var(--bg-sub); border-radius: 6px; border: 1px solid transparent; }
-  .achievement-card.locked { color: var(--color-text-disabled); opacity: 0.72; border-style: dashed; }
+  .achievement-card.locked { opacity: 0.4; }
   .ach-icon { font-size: 1.5rem; }
   .ach-name { font-size: 0.75rem; color: var(--main); font-weight: bold; text-align: center; }
   .ach-desc { font-size: 0.65rem; color: var(--sub); text-align: center; }
