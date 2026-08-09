@@ -5,7 +5,7 @@ use racoon_core::{
 };
 use racoon_data::repository::{
     CustomTextRepository, LessonProgressRecord, LessonRepository, SqliteCustomTextRepository,
-    SqliteLessonRepository,
+    SqliteLessonRepository, SqliteTestRepository, TestRepository,
 };
 use racoon_resources::{course_loader, word_pack_loader};
 use std::sync::Mutex;
@@ -126,15 +126,24 @@ pub(crate) fn get_lesson_progress(
 #[tauri::command]
 pub(crate) fn analyze_weak_keys(
     engine_state: State<'_, Mutex<CoreEngine>>,
+    state: State<'_, AppState>,
 ) -> Result<WeakKeysReport, AppError> {
     let engine = engine_state.lock()?;
     let char_stats = engine.current_char_stats().unwrap_or_default();
+    // Fallback: если текущая сессия пуста (например, после перезапуска),
+    // используем агрегированный heatmap из истории тестов.
+    let char_stats = if char_stats.is_empty() {
+        aggregated_char_stats(&state, 50)?
+    } else {
+        char_stats
+    };
     Ok(WeakKeysAnalyzer::new().analyze(&char_stats))
 }
 
 #[tauri::command]
 pub(crate) fn generate_weak_keys_training(
     engine_state: State<'_, Mutex<CoreEngine>>,
+    state: State<'_, AppState>,
     language: String,
     word_count: Option<usize>,
 ) -> Result<String, AppError> {
@@ -143,6 +152,11 @@ pub(crate) fn generate_weak_keys_training(
     validate_word_count(word_count)?;
     let engine = engine_state.lock()?;
     let char_stats = engine.current_char_stats().unwrap_or_default();
+    let char_stats = if char_stats.is_empty() {
+        aggregated_char_stats(&state, 50)?
+    } else {
+        char_stats
+    };
     let words = word_pack_loader()
         .get_pack(&language)
         .map(|pack| pack.words.clone())
@@ -151,6 +165,21 @@ pub(crate) fn generate_weak_keys_training(
     let weak_chars = generator.analyze(&char_stats);
 
     Ok(generator.generate(&weak_chars, word_count))
+}
+
+/// Загружает агрегированный heatmap из последних N тестов и конвертирует его
+/// в CharStatsMap для weak-keys анализа. Используется как fallback, когда
+/// текущая in-memory сессия пуста.
+fn aggregated_char_stats(
+    state: &State<'_, AppState>,
+    recent_count: usize,
+) -> Result<racoon_domain::keyboard::CharStatsMap, AppError> {
+    with_db(state, |conn| {
+        let repo = SqliteTestRepository::new(conn);
+        let rows = repo.get_recent_heatmaps(recent_count, None)?;
+        let heatmap = racoon_core::merge_heatmaps(&rows);
+        Ok(racoon_core::heatmap_to_char_stats(&heatmap))
+    })
 }
 
 /// Максимальный размер ответа при импорте текста по URL (1 MiB).

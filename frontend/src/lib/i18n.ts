@@ -101,6 +101,8 @@ const en: Dict = {
   'dash.start_test': 'Start Test →',
   'dash.daily_goal': 'Daily Goal',
   'dash.loading': 'Loading dashboard...',
+  'dash.training_day': 'Training of the Day',
+  'dash.start_training': 'Start Training',
   // History
   'history.title': 'Test History',
   'history.empty': 'No tests yet.',
@@ -254,6 +256,8 @@ const ru: Dict = {
   'dash.start_test': 'Начать тест →',
   'dash.daily_goal': 'Дневная цель',
   'dash.loading': 'Загрузка панели...',
+  'dash.training_day': 'Тренировка дня',
+  'dash.start_training': 'Начать тренировку',
   // History
   'history.title': 'История тестов',
   'history.empty': 'Тестов пока нет.',

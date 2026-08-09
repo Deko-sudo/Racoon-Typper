@@ -147,6 +147,8 @@ fn main() {
             commands::profile_transfer::import_profile,
             // Replay
             commands::reporting::get_replay,
+            // Aggregated heatmap (training-of-the-day)
+            commands::reporting::get_aggregated_heatmap,
             // Sound
             commands::preferences::get_sound_event,
         ]);

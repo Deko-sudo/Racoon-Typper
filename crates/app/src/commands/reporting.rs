@@ -279,6 +279,24 @@ pub(crate) fn get_replay(
     })
 }
 
+/// Возвращает агрегированный heatmap за последние N тестов (без фильтра по языку).
+///
+/// Объединяет per-test heatmap_data через `merge_heatmaps`. Используется для
+/// дашборд-виджета «Тренировка дня» и для weak-keys анализа при пустой
+/// текущей сессии (например, сразу после перезапуска приложения).
+#[tauri::command]
+pub(crate) fn get_aggregated_heatmap(
+    state: State<'_, AppState>,
+    recent_count: Option<usize>,
+) -> Result<std::collections::HashMap<String, racoon_domain::keyboard::KeyHeatData>, AppError> {
+    let count = recent_count.unwrap_or(50).min(200).max(1);
+    with_db(&state, |conn| {
+        let repo = SqliteTestRepository::new(conn);
+        let rows = repo.get_recent_heatmaps(count, None)?;
+        Ok(racoon_core::merge_heatmaps(&rows))
+    })
+}
+
 fn utc_date_range(days: i64) -> (String, String) {
     let now = Utc::now();
     (

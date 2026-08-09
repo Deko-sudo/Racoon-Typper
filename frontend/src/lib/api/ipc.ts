@@ -88,6 +88,17 @@ export async function importTextFromUrl(url: string): Promise<string> {
   return invoke<string>('import_text_from_url', { url });
 }
 
+export type KeyHeatData = {
+  total_attempts: number;
+  correct: number;
+  incorrect: number;
+  avg_wpm_at_key: number;
+};
+
+export async function getAggregatedHeatmap(recentCount = 50): Promise<Record<string, KeyHeatData>> {
+  return invoke<Record<string, KeyHeatData>>('get_aggregated_heatmap', { recentCount });
+}
+
 export async function startCustomTextTest(customTextId: number): Promise<TestSessionResponse> {
   return invoke<TestSessionResponse>('start_custom_text_test', { customTextId });
 }

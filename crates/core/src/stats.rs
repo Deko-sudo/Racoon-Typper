@@ -356,6 +356,75 @@ impl Default for StatisticsEngine {
     }
 }
 
+/// Объединяет несколько per-test heatmap JSON-блобов в одну агрегированную мапу.
+///
+/// Каждый элемент `rows` — это serialized `HeatmapMap` (JSON из колонки
+/// `heatmap_data`). Функция суммирует `total_attempts`, `correct`, `incorrect`
+/// и пересчитывает `avg_wpm_at_key` как weighted average по `total_attempts`.
+///
+/// Некорректные/пустые записи silently skip — агрегация устойчива к
+/// частично повреждённым данным.
+pub fn merge_heatmaps(rows: &[serde_json::Value]) -> HashMap<String, KeyHeatData> {
+    let mut aggregated: HashMap<String, KeyHeatData> = HashMap::new();
+
+    for row in rows {
+        // Ожидаем объект вида {"a": {"total_attempts": N, "correct": N, ...}}.
+        let obj = match row.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+        for (key, val) in obj {
+            let heat: KeyHeatData = match serde_json::from_value(val.clone()) {
+                Ok(h) => h,
+                Err(_) => continue,
+            };
+            let entry = aggregated.entry(key.clone()).or_insert(KeyHeatData {
+                total_attempts: 0,
+                correct: 0,
+                incorrect: 0,
+                avg_wpm_at_key: 0.0,
+            });
+            // Weighted average of avg_wpm_at_key.
+            let prev_weight = entry.total_attempts as f64;
+            let new_weight = heat.total_attempts as f64;
+            let combined = prev_weight + new_weight;
+            if combined > 0.0 {
+                entry.avg_wpm_at_key = (entry.avg_wpm_at_key * prev_weight
+                    + heat.avg_wpm_at_key * new_weight)
+                    / combined;
+            }
+            entry.total_attempts += heat.total_attempts;
+            entry.correct += heat.correct;
+            entry.incorrect += heat.incorrect;
+        }
+    }
+
+    aggregated
+}
+
+/// Конвертирует агрегированный heatmap в CharStatsMap для weak-keys анализа.
+///
+/// `CharStat.total` ← `total_attempts`, `correct`/`incorrect` переносятся как
+/// есть. Это позволяет скармливать агрегированную историю в `WeakKeysAnalyzer`,
+/// который работает с CharStat.
+pub fn heatmap_to_char_stats(
+    heatmap: &HashMap<String, KeyHeatData>,
+) -> racoon_domain::keyboard::CharStatsMap {
+    heatmap
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                CharStat {
+                    correct: v.correct,
+                    incorrect: v.incorrect,
+                    total: v.total_attempts,
+                },
+            )
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

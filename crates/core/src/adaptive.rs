@@ -79,7 +79,7 @@ impl AdaptiveTextGenerator for FrequencyAdaptiveGenerator {
 
     fn generate(&self, weak_chars: &[WeakChar], word_count: usize) -> String {
         if weak_chars.is_empty() {
-            // Fallback: случайные слова
+            // Fallback: первые N слов словаря.
             return self
                 .word_list
                 .iter()
@@ -104,7 +104,8 @@ impl AdaptiveTextGenerator for FrequencyAdaptiveGenerator {
                 .join(" ");
         }
 
-        // Генерируем слова, приоритизируя слова с наибольшим количеством проблемных символов
+        // Скорим слова по количеству проблемных символов, затем выбираем с
+        // детерминированным псевдо-рандомом из топ-N, чтобы текст варьировался.
         let target_chars: Vec<char> = weak_chars.iter().map(|w| w.ch).collect();
         let mut scored: Vec<(usize, &String)> = source
             .iter()
@@ -115,24 +116,31 @@ impl AdaptiveTextGenerator for FrequencyAdaptiveGenerator {
             .collect();
         scored.sort_by_key(|b| std::cmp::Reverse(b.0));
 
+        // Окно топ-слов для выбора (разнообразие без потери фокуса на слабых).
+        // Не больше, чем есть слов, и не меньше 1.
+        let top_window = scored.len().min(8).max(1);
+
         let mut result = Vec::with_capacity(word_count);
-        let mut last_idx = None;
+        let mut last_word: Option<&str> = None;
+        // Простой линейный congruential генератор для детерминированного "случая".
+        let mut seed: u64 = weak_chars
+            .iter()
+            .map(|w| w.ch as u64)
+            .fold(0x9E3779B97F4A7C15, |a, b| a.wrapping_add(b));
+
         for _ in 0..word_count {
-            let idx = if let Some(li) = last_idx {
-                if source.len() > 1 {
-                    let mut i = scored.len() % source.len();
-                    if i == li {
-                        i = (i + 1) % source.len();
-                    }
-                    i
-                } else {
-                    0
-                }
-            } else {
-                0
-            };
+            // LCG step — простой быстрый псевдо-рандом без внешних зависимостей.
+            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            let rand_val = (seed >> 33) as usize;
+            let mut idx = rand_val % top_window;
+
+            // Anti-repeat: если выбрано то же слово, что и предыдущее, берём следующее.
+            if top_window > 1 && last_word == Some(scored[idx].1.as_str()) {
+                idx = (idx + 1) % top_window;
+            }
+
             result.push(scored[idx].1.clone());
-            last_idx = Some(idx);
+            last_word = Some(scored[idx].1.as_str());
         }
 
         result.join(" ")

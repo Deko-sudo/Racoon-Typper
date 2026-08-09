@@ -35,7 +35,10 @@ pub use lesson::{
 pub use modes::{CustomMode, ModeResult, ModeType, QuoteMode, TestMode, TimeMode, WordsMode};
 pub use racoon_domain::KeyResult;
 pub use replay::{ReplayEngine, ReplaySpeed, ReplayState};
-pub use stats::{AccuracyCalculator, HeatmapBuilder, LiveTracker, StatisticsEngine, WpmCalculator};
+pub use stats::{
+    heatmap_to_char_stats, merge_heatmaps, AccuracyCalculator, HeatmapBuilder, LiveTracker,
+    StatisticsEngine, WpmCalculator,
+};
 pub use streaks::{StreakEngine, StreakInfo};
 pub use typing::{TextBuffer, TypingResult};
 pub use weak_keys::{WeakKey, WeakKeysAnalyzer, WeakKeysReport};

@@ -584,6 +584,20 @@
     try {
       const data = await ipc.analyzeWeakKeys();
       weakKeysData = data.weak_keys || [];
+      // Populate per-key stats from aggregated heatmap so KeyboardTrainer
+      // coloring (weak-critical / weak-warning) activates in WeakKeysPanel.
+      try {
+        const heatmap = await ipc.getAggregatedHeatmap(50);
+        // Convert KeyHeatData → CharStat shape expected by KeyboardTrainer.
+        weakKeysCharStats = Object.fromEntries(
+          Object.entries(heatmap).map(([k, v]) => [
+            k,
+            { correct: v.correct, incorrect: v.incorrect, total: v.total_attempts },
+          ]),
+        );
+      } catch {
+        // Aggregated heatmap is best-effort; ignore if unavailable.
+      }
     } catch (e) {
       errorMsg = `Weak keys error: ${e}`;
     }
@@ -683,7 +697,13 @@
   {/if}
 
   {#if view === 'dashboard'}
-    <DashboardView stats={dashboardStats} onNavigate={(v) => switchView(v as ViewName)} uiLang={uiLang} />
+    <DashboardView
+      stats={dashboardStats}
+      onNavigate={(v) => switchView(v as ViewName)}
+      weakKeys={weakKeysData}
+      onStartTraining={onGenerateTraining}
+      uiLang={uiLang}
+    />
   {:else if view === 'test'}
     {#if isRunning}
       <TypingWarnings

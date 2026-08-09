@@ -30,6 +30,7 @@ const APP_COMMANDS: &[&str] = &[
     "preview_profile_import",
     "import_profile",
     "get_replay",
+    "get_aggregated_heatmap",
     "get_sound_event",
 ];
 
