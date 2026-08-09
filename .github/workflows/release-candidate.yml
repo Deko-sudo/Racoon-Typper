@@ -202,8 +202,11 @@ jobs:
           TARBALL="racoon-typper-${RELEASE_TAG}-x86_64.tar.gz"
           TARBALL_PATH="$(find artifacts -name "$TARBALL" -type f | head -1)"
           test -n "$TARBALL_PATH" || { echo "tarball $TARBALL not found in artifacts/"; exit 1; }
+          # transmission-create 4.0.x fails to open a file given as a relative
+          # path that traverses a subdirectory, so hand it an absolute path.
+          TARBALL_ABS="$(realpath "$TARBALL_PATH")"
           WEBSEED="https://github.com/${{ github.repository }}/releases/download/${RELEASE_TAG}/${TARBALL}"
-          transmission-create "$TARBALL_PATH" \
+          transmission-create "$TARBALL_ABS" \
             --outfile "artifacts/${TARBALL}.torrent" \
             --comment "Racoon Typper ${RELEASE_TAG} — Linux x86_64 tarball" \
             --webseed "$WEBSEED" \
