@@ -1,6 +1,7 @@
 <script lang="ts">
   // TypingWarnings — определение неверной раскладки и Caps Lock.
   import { t } from '../lib/i18n';
+  import Icon from './Icon.svelte';
   import StatusIcon from './StatusIcon.svelte';
 
   let {
@@ -51,7 +52,7 @@
 
 {#if showCapsWarning}
   <div class="warning-card caps-warning">
-    <span class="warning-icon">⚠</span>
+    <span class="warning-icon"><Icon name="warn" size="1.2rem" /></span>
     <div class="warning-text">
       <strong>{t(uiLang, 'warning.caps_title')}</strong>
       <p>{t(uiLang, 'warning.caps_message')}</p>

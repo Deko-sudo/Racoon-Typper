@@ -144,7 +144,7 @@
       const after = (await ipc.getAchievements()).flat();
       for (const a of after) {
         if (a.unlocked && !preTestAchievements.find(p => p.id === a.id && p.unlocked)) {
-          notificationStore.add('SUCCESS', `🏆 ${a.name} — ${a.description}`);
+          notificationStore.add('SUCCESS', `${a.name} — ${a.description}`);
         }
       }
     } catch {

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
+  import Icon from './Icon.svelte';
   import { t } from '../lib/i18n';
   import type { Achievement, ConsistencyReport, Insight } from '../lib/types/index';
 
@@ -87,7 +88,9 @@
       <div class="achievements-grid">
         {#each achievements as ach}
           <div class="achievement-card" class:locked={!ach.unlocked}>
-            <span class="ach-icon">{ach.unlocked ? '🏆' : '🔒'}</span>
+            <span class="ach-icon">
+              {#if ach.unlocked}<Icon name="trophy" size="1.5rem" />{:else}<Icon name="lock" size="1.5rem" />{/if}
+            </span>
             <span class="ach-name">{ach.name}</span>
             <span class="ach-desc">{ach.description}</span>
           </div>
@@ -131,7 +134,8 @@
   .achievements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; }
   .achievement-card { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 1rem; background: var(--bg-sub); border-radius: 6px; border: 1px solid transparent; }
   .achievement-card.locked { opacity: 0.4; }
-  .ach-icon { font-size: 1.5rem; }
+  .ach-icon { display: flex; align-items: center; justify-content: center; height: 1.75rem; color: var(--main); }
+  .achievement-card.locked .ach-icon { color: var(--sub); }
   .ach-name { font-size: 0.75rem; color: var(--main); font-weight: bold; text-align: center; }
   .ach-desc { font-size: 0.65rem; color: var(--sub); text-align: center; }
   .export-section { margin-top: 1.5rem; }
