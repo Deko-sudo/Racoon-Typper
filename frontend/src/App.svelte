@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import * as ipc from './lib/api/ipc';
   import { t } from './lib/i18n';
+  import { lessonResultNavigation } from './lib/lessonNavigation';
   import { createNavigationStore } from './lib/stores/navigation.svelte';
   import { createNotificationStore } from './lib/stores/notifications.svelte';
   import type {
@@ -85,6 +86,7 @@
   let lessonProgress = $state<Record<string, { status: string; best_wpm: number; best_accuracy: number }>>({});
   let lessonLang = $state<'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko'>('en');
   let currentLessonId = $state<string | null>(null);
+  const lessonNavigation = $derived(lessonResultNavigation(courseModules, currentLessonId));
 
   // Weak Keys
   let weakKeysData = $state<Array<{ ch: string; error_count: number; accuracy: number; rank: number }>>([]);
@@ -286,7 +288,6 @@
       };
       void playSound('lesson_complete');
     }
-    currentLessonId = null;
     await checkNewAchievements();
   }
 
@@ -648,6 +649,22 @@
     }
   }
 
+  async function onRepeatLesson() {
+    if (!currentLessonId) return;
+    await onSelectLesson(currentLessonId, lessonLang);
+  }
+
+  async function onNextLesson() {
+    const next = lessonNavigation?.nextLessonId;
+    if (!next) return;
+    await onSelectLesson(next, lessonLang);
+  }
+
+  function onReturnToLessons() {
+    currentLessonId = null;
+    switchView('lessons');
+  }
+
   async function updateTestConfigurationAndRestart(update: () => void) {
     if (!(await abandonActiveSessionForReplacement())) return;
     update();
@@ -738,6 +755,10 @@
       onLanguageChange={onLanguageChange}
       onAbort={abortTest}
       onRestart={startTest}
+      {lessonNavigation}
+      {onRepeatLesson}
+      {onNextLesson}
+      {onReturnToLessons}
       uiLang={uiLang}
     />
   {:else if view === 'history'}

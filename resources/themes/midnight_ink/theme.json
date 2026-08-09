@@ -1,0 +1,20 @@
+{
+  "name": "midnight_ink",
+  "display_name": "Midnight Ink",
+  "description": "Deep navy-black surfaces for long nighttime sessions.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#090d15",
+    "surface": "#101622",
+    "text": "#e5eaf2",
+    "accent": "#7495c9",
+    "correct": "#83aa98",
+    "incorrect": "#d47d83",
+    "caret": "#afc6eb"
+  }
+}

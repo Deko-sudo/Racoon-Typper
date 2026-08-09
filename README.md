@@ -47,16 +47,16 @@
 
 <!-- Hero: the running typing test — caret, colored chars, live stats, and the
      next-key glow on the virtual keyboard. The single image that sells the app. -->
-> _Screenshot pending — `hero-test.png` (Test view, mid-test, `racoon_dark`)_
+> _Screenshot pending — `hero-test.png` (Test view, mid-test, `racoon_graphite`)_
 <!-- <p align="center"><img src="docs/screenshots/hero-test.png" alt="Racoon Typper typing test in progress" width="720" /></p> -->
 
-### 🎨 Three built-in themes
+### 🎨 25 built-in themes
 
-<!-- Side-by-side theme comparison. Capture the same frame in each theme. -->
-| Dark | Light | High Contrast |
-| :---: | :---: | :---: |
-| _pending_ | _pending_ | _pending_ |
-<!-- | ![](docs/screenshots/theme-dark.png) | ![](docs/screenshots/theme-light.png) | ![](docs/screenshots/theme-hc.png) | -->
+Racoon Typper includes 25 local themes spanning graphite, light, warm, nature,
+terminal, dark blue-gray and high-contrast variants.
+| Graphite | Silver | Warm | High Contrast |
+| :---: | :---: | :---: | :---: |
+| _pending_ | _pending_ | _pending_ | _pending_ |
 
 ### ✨ Key screens
 
@@ -96,8 +96,9 @@ typing data never leaves your machine.
   **15 languages** (en, ru, de, es, fr, it, pt, pl, cs, ro, uk, ja, ko,
   zh-hk, zh-tw)
 - **Keyboard training** — weak-key analysis and adaptive practice
-- **Themes** — original Racoon themes (dark, light, high-contrast),
-  configurable locally
+- **Themes** — 25 local built-in themes spanning graphite, light, warm, nature,
+  terminal, dark blue-gray, and high-contrast variants with a documented
+  semantic token contract
 - **Replay & review** — replay past tests, frame by frame
 - **Crash-safe** — durable session identity, crash recovery, and rotating
   pre-migration database backups
@@ -128,7 +129,7 @@ racoon-app           (Tauri + SQLite adapters)   ──► racoon-application
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the full boundary model and runtime
-flow.
+flow, and [docs/THEMES.md](docs/THEMES.md) for the built-in theme contract.
 
 ## 🚀 Quick start (from source)
 

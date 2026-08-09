@@ -87,6 +87,6 @@
     background: var(--bg-sub); color: var(--text); cursor: pointer; font: inherit; font-size: 0.65rem;
   }
   td button:hover:not(:disabled) { border-color: var(--main); color: var(--main); }
-  td button:disabled { cursor: not-allowed; opacity: 0.45; }
+  td button:disabled { cursor: not-allowed; color: var(--color-text-disabled); opacity: 0.72; border-style: dashed; }
   .replay-error { margin-top: 0.75rem; color: var(--error); font-size: 0.75rem; }
 </style>

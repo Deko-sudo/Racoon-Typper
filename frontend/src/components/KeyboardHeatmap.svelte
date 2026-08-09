@@ -13,8 +13,8 @@
     if (!data || data.total_attempts === 0) return 'var(--sub)';
     const accuracy = (data.correct / data.total_attempts) * 100;
     if (accuracy >= 95) return 'var(--text)';
-    if (accuracy >= 80) return '#5eead4';
-    if (accuracy >= 60) return '#ff8c42';
+    if (accuracy >= 80) return 'var(--color-chart-positive)';
+    if (accuracy >= 60) return 'var(--color-warning)';
     return 'var(--error)';
   }
 
@@ -61,9 +61,9 @@
   .keyboard { display: flex; flex-direction: column; gap: 0.25rem; align-items: center; }
   .keyboard-row { display: flex; gap: 0.25rem; }
   .key {
-    width: 40px; height: 40px; border: 1px solid var(--bg-sub); border-radius: 4px;
+    width: 40px; height: 40px; border: 1px solid var(--color-key-border); border-radius: 4px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: var(--bg-sub); font-size: 0.75rem; transition: all 0.2s;
+    background: var(--color-key-background); font-size: 0.75rem; transition: all 0.2s;
   }
   .key-char { font-weight: bold; }
   .key-acc { font-size: 0.6rem; opacity: 0.8; }

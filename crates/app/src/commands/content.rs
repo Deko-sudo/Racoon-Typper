@@ -318,10 +318,7 @@ fn strip_html(html: &str) -> String {
             }
         } else {
             // Схлопываем множественные пробелы внутри строки.
-            let collapsed: String = trimmed
-                .split_whitespace()
-                .collect::<Vec<_>>()
-                .join(" ");
+            let collapsed: String = trimmed.split_whitespace().collect::<Vec<_>>().join(" ");
             normalized.push_str(&collapsed);
             normalized.push('\n');
             prev_was_space = false;
@@ -343,9 +340,14 @@ fn regex_newline_replacements(html: &str) -> String {
         // Ищем '<' и проверяем, начинается ли тег с блочного элемента.
         if lower_bytes[i] == b'<' {
             let rest = &lower[i..];
-            if rest.starts_with("<br") || rest.starts_with("</p") || rest.starts_with("</div") ||
-               rest.starts_with("</h") || rest.starts_with("</li") || rest.starts_with("</tr") ||
-               rest.starts_with("<hr") {
+            if rest.starts_with("<br")
+                || rest.starts_with("</p")
+                || rest.starts_with("</div")
+                || rest.starts_with("</h")
+                || rest.starts_with("</li")
+                || rest.starts_with("</tr")
+                || rest.starts_with("<hr")
+            {
                 result.push('\n');
             }
         }

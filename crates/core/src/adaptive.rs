@@ -118,7 +118,7 @@ impl AdaptiveTextGenerator for FrequencyAdaptiveGenerator {
 
         // Окно топ-слов для выбора (разнообразие без потери фокуса на слабых).
         // Не больше, чем есть слов, и не меньше 1.
-        let top_window = scored.len().min(8).max(1);
+        let top_window = scored.len().clamp(1, 8);
 
         let mut result = Vec::with_capacity(word_count);
         let mut last_word: Option<&str> = None;
@@ -130,7 +130,9 @@ impl AdaptiveTextGenerator for FrequencyAdaptiveGenerator {
 
         for _ in 0..word_count {
             // LCG step — простой быстрый псевдо-рандом без внешних зависимостей.
-            seed = seed.wrapping_mul(6364136223846793005).wrapping_add(1442695040888963407);
+            seed = seed
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
             let rand_val = (seed >> 33) as usize;
             let mut idx = rand_val % top_window;
 

@@ -1,0 +1,20 @@
+{
+  "name": "arctic_slate",
+  "display_name": "Arctic Slate",
+  "description": "Cold neutral gray with quiet icy-blue accents.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#11161a",
+    "surface": "#182025",
+    "text": "#e4eaed",
+    "accent": "#8ab4c8",
+    "correct": "#8cb3a3",
+    "incorrect": "#d38989",
+    "caret": "#c4dfea"
+  }
+}

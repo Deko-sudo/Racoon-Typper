@@ -98,21 +98,71 @@ pub fn check_achievements(
     };
 
     let achievements = vec![
-        mk("first_test", "First Steps", "Complete your first test", total_tests >= 1),
-        mk("10_tests", "Getting Started", "Complete 10 tests", total_tests >= 10),
-        mk("50_tests", "Dedicated", "Complete 50 tests", total_tests >= 50),
-        mk("100_tests", "Centurion", "Complete 100 tests", total_tests >= 100),
+        mk(
+            "first_test",
+            "First Steps",
+            "Complete your first test",
+            total_tests >= 1,
+        ),
+        mk(
+            "10_tests",
+            "Getting Started",
+            "Complete 10 tests",
+            total_tests >= 10,
+        ),
+        mk(
+            "50_tests",
+            "Dedicated",
+            "Complete 50 tests",
+            total_tests >= 50,
+        ),
+        mk(
+            "100_tests",
+            "Centurion",
+            "Complete 100 tests",
+            total_tests >= 100,
+        ),
         mk("wpm_30", "Speed Runner", "Reach 30 WPM", best_wpm >= 30.0),
         mk("wpm_50", "Fast Fingers", "Reach 50 WPM", best_wpm >= 50.0),
         mk("wpm_80", "Lightning", "Reach 80 WPM", best_wpm >= 80.0),
         mk("wpm_100", "Speed Demon", "Reach 100 WPM", best_wpm >= 100.0),
-        mk("acc_95", "Sharpshooter", "Reach 95% accuracy", best_accuracy >= 95.0),
-        mk("acc_99", "Perfect Precision", "Reach 99% accuracy", best_accuracy >= 99.0),
+        mk(
+            "acc_95",
+            "Sharpshooter",
+            "Reach 95% accuracy",
+            best_accuracy >= 95.0,
+        ),
+        mk(
+            "acc_99",
+            "Perfect Precision",
+            "Reach 99% accuracy",
+            best_accuracy >= 99.0,
+        ),
         mk("streak_3", "On a Roll", "3-day streak", longest_streak >= 3),
-        mk("streak_7", "Week Warrior", "7-day streak", longest_streak >= 7),
-        mk("streak_30", "Unstoppable", "30-day streak", longest_streak >= 30),
-        mk("lessons_5", "Student", "Complete 5 lessons", lessons_completed >= 5),
-        mk("lessons_20", "Scholar", "Complete 20 lessons", lessons_completed >= 20),
+        mk(
+            "streak_7",
+            "Week Warrior",
+            "7-day streak",
+            longest_streak >= 7,
+        ),
+        mk(
+            "streak_30",
+            "Unstoppable",
+            "30-day streak",
+            longest_streak >= 30,
+        ),
+        mk(
+            "lessons_5",
+            "Student",
+            "Complete 5 lessons",
+            lessons_completed >= 5,
+        ),
+        mk(
+            "lessons_20",
+            "Scholar",
+            "Complete 20 lessons",
+            lessons_completed >= 20,
+        ),
     ];
 
     // Сортируем: разблокированные — сверху, по убыванию id-порога визуально ок.
@@ -428,7 +478,15 @@ mod tests {
 
     #[test]
     fn achievements_all_unlocked() {
-        let a = check_achievements(100, 100.0, 99.0, 30, 30, 20, "2026-01-01T00:00:00Z".to_string());
+        let a = check_achievements(
+            100,
+            100.0,
+            99.0,
+            30,
+            30,
+            20,
+            "2026-01-01T00:00:00Z".to_string(),
+        );
         assert!(a.iter().all(|x| x.unlocked));
     }
 

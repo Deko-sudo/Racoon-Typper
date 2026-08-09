@@ -1,0 +1,20 @@
+{
+  "name": "ember",
+  "display_name": "Ember",
+  "description": "Charcoal with restrained ember-red and copper accents.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Warm",
+  "is_dark": true,
+  "preview": {
+    "background": "#151110",
+    "surface": "#201917",
+    "text": "#eee7e3",
+    "accent": "#b8654d",
+    "correct": "#92aa88",
+    "incorrect": "#e06a67",
+    "caret": "#e08a69"
+  }
+}

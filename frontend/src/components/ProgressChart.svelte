@@ -84,28 +84,28 @@
   {:else}
     <svg viewBox="0 0 {W} {H}" class="chart-svg">
       <!-- Grid lines -->
-      <line x1="{PADDING}" y1="{H - PADDING}" x2="{W - PADDING}" y2="{H - PADDING}" stroke="var(--sub)" stroke-width="0.5" />
-      <line x1="{PADDING}" y1="{PADDING}" x2="{PADDING}" y2="{H - PADDING}" stroke="var(--sub)" stroke-width="0.5" />
+      <line x1="{PADDING}" y1="{H - PADDING}" x2="{W - PADDING}" y2="{H - PADDING}" stroke="var(--color-chart-grid)" stroke-width="0.5" />
+      <line x1="{PADDING}" y1="{PADDING}" x2="{PADDING}" y2="{H - PADDING}" stroke="var(--color-chart-axis)" stroke-width="0.5" />
 
       <!-- WPM line -->
-      <path d={wpmPath} fill="none" stroke="var(--main)" stroke-width="2" />
+      <path d={wpmPath} fill="none" stroke="var(--color-chart-primary)" stroke-width="2" />
       <!-- Accuracy line -->
-      <path d={accPath} fill="none" stroke="var(--text)" stroke-width="1.5" stroke-dasharray="4 2" />
+      <path d={accPath} fill="none" stroke="var(--color-chart-secondary)" stroke-width="1.5" stroke-dasharray="4 2" />
 
       <!-- Labels -->
-      <text x="{PADDING - 8}" y="{PADDING + 8}" fill="var(--main)" font-size="14" text-anchor="end">WPM</text>
-      <text x="{PADDING - 8}" y="{PADDING + 28}" fill="var(--text)" font-size="14" text-anchor="end">Acc</text>
+      <text x="{PADDING - 8}" y="{PADDING + 8}" fill="var(--color-chart-primary)" font-size="14" text-anchor="end">WPM</text>
+      <text x="{PADDING - 8}" y="{PADDING + 28}" fill="var(--color-chart-secondary)" font-size="14" text-anchor="end">Acc</text>
 
       <!-- X-axis labels -->
       {#each points as p, i}
         {#if i % Math.max(1, Math.floor(points.length / 8)) === 0}
-          <text x={xCoord(i)} y="{H - PADDING + 20}" fill="var(--sub)" font-size="12" text-anchor="middle">{formatDate(p.date)}</text>
+          <text x={xCoord(i)} y="{H - PADDING + 20}" fill="var(--color-chart-label)" font-size="12" text-anchor="middle">{formatDate(p.date)}</text>
         {/if}
       {/each}
 
       <!-- Data points -->
       {#each points as p, i}
-        <circle cx={xCoord(i)} cy={yWpm(p.wpm)} r="4" fill="var(--main)" />
+        <circle cx={xCoord(i)} cy={yWpm(p.wpm)} r="4" fill="var(--color-chart-selected)" stroke="var(--color-chart-primary)" stroke-width="2" />
       {/each}
     </svg>
     <div class="chart-legend">
@@ -131,7 +131,7 @@
   .chart-legend { display: flex; gap: 1.5rem; align-items: center; margin-top: 0.5rem; font-size: 0.75rem; }
   .legend-item { display: flex; gap: 0.25rem; align-items: center; color: var(--text); }
   .legend-dot { width: 12px; height: 2px; border-radius: 1px; }
-  .legend-dot.wpm { background: var(--main); }
-  .legend-dot.acc { background: var(--text); border-top: 1px dashed var(--text); }
+  .legend-dot.wpm { background: var(--color-chart-primary); }
+  .legend-dot.acc { background: var(--color-chart-secondary); border-top: 1px dashed var(--color-chart-secondary); }
   .legend-info { color: var(--sub); margin-left: auto; }
 </style>

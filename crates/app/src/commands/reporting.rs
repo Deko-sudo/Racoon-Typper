@@ -145,8 +145,8 @@ pub(crate) fn get_achievements(
             .get("daily_test")?
             .map_or(0, |row| row.longest_streak);
         let lessons_completed = [
-            "cs", "de", "en", "es", "fr", "it", "ja", "ko", "pl", "pt", "ro", "ru", "uk",
-            "zh-hk", "zh-tw",
+            "cs", "de", "en", "es", "fr", "it", "ja", "ko", "pl", "pt", "ro", "ru", "uk", "zh-hk",
+            "zh-tw",
         ]
         .into_iter()
         .map(|language| {
@@ -289,7 +289,7 @@ pub(crate) fn get_aggregated_heatmap(
     state: State<'_, AppState>,
     recent_count: Option<usize>,
 ) -> Result<std::collections::HashMap<String, racoon_domain::keyboard::KeyHeatData>, AppError> {
-    let count = recent_count.unwrap_or(50).min(200).max(1);
+    let count = recent_count.unwrap_or(50).clamp(1, 200);
     with_db(&state, |conn| {
         let repo = SqliteTestRepository::new(conn);
         let rows = repo.get_recent_heatmaps(count, None)?;

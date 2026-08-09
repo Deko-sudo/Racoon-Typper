@@ -118,13 +118,14 @@
       <div><p class="typing-eyebrow">{t(uiLang, 'test.typing_label')}</p><h3>{t(uiLang, 'test.typing_title')}</h3></div>
       <div class="typing-progress"><span>{caretPos}/{text.length}</span><div class="progress-track"><div class="progress-fill" style:width={`${progress}%`}></div></div></div>
     </header>
-    <div class="text-viewport"><div class="text-display">
+    <div class="text-viewport"><div class="text-display" class:blind={settings?.blind_mode_enabled && isRunning}>
       {#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}
       {#each viewportChars as char, i}
         <span class="char {charClass(char, i)}" class:caret={i === viewportOffset}>{char.expected === ' ' ? '\u00A0' : char.expected}</span>
       {/each}
       {#if viewportEnd < charStatuses.length}<span class="text-ellipsis">…</span>{/if}
     </div></div>
+    {#if settings?.blind_mode_enabled && isRunning}<div class="blind-badge" aria-label="Blind mode">{t(uiLang, 'test.blind_active')}</div>{/if}
   </section>
 
   <div class="info">
@@ -170,4 +171,13 @@
     padding: 0.25rem 1rem; font-family: inherit; font-size: 0.75rem; cursor: pointer; border-radius: 4px;
   }
   .abort-btn:hover { background: var(--sub); color: var(--bg); }
+  /* Blind mode: blur future characters so the typist must rely on memory, not sight.
+     The current character and past characters remain visible. */
+  .text-display.blind .char.future { filter: blur(7px); opacity: 0.25; transition: filter 0.15s, opacity 0.15s; }
+  .text-display.blind .char.pending { filter: blur(7px); opacity: 0.25; }
+  .blind-badge {
+    display: inline-block; margin-top: 0.5rem; padding: 0.15rem 0.6rem;
+    font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: var(--main); border: 1px solid var(--main); border-radius: 4px; opacity: 0.7;
+  }
 </style>

@@ -38,6 +38,8 @@ pub struct AppSettings {
     pub sound_volume: f64,
     #[serde(default)]
     pub zen_mode_enabled: bool,
+    #[serde(default)]
+    pub blind_mode_enabled: bool,
     #[serde(default = "default_ui_language")]
     pub ui_language: String,
     #[serde(default)]
@@ -51,12 +53,38 @@ pub struct AppSettings {
 }
 
 fn default_theme() -> String {
-    "racoon_dark".to_string()
+    "racoon_graphite".to_string()
 }
 
 fn normalize_theme(theme: &str) -> String {
     match theme {
-        "racoon_dark" | "racoon_light" | "racoon_high_contrast" => theme.to_string(),
+        "racoon_graphite"
+        | "racoon_silver"
+        | "racoon_warm"
+        | "racoon_high_contrast"
+        | "midnight_ink"
+        | "arctic_slate"
+        | "racoon_forest"
+        | "moss"
+        | "coffee"
+        | "paper"
+        | "sandstone"
+        | "mist"
+        | "lavender_dusk"
+        | "plum"
+        | "ocean"
+        | "deep_sea"
+        | "ember"
+        | "burgundy"
+        | "amber_terminal"
+        | "green_terminal"
+        | "steel_blue"
+        | "carbon"
+        | "moonlight"
+        | "dawn"
+        | "sage" => theme.to_string(),
+        "racoon_dark" => "racoon_graphite".to_string(),
+        "racoon_light" => "racoon_silver".to_string(),
         _ => default_theme(),
     }
 }
@@ -153,6 +181,7 @@ impl Default for AppSettings {
             verbose_logging: false,
             sound_volume: 0.5,
             zen_mode_enabled: false,
+            blind_mode_enabled: false,
             ui_language: "en".to_string(),
             vim_mode: false,
             daily_goal_type: "time".to_string(),
@@ -312,6 +341,9 @@ impl SettingsStore {
             "zen_mode_enabled" => {
                 settings.zen_mode_enabled = boolean_value(&value, key)?;
             }
+            "blind_mode_enabled" => {
+                settings.blind_mode_enabled = boolean_value(&value, key)?;
+            }
             "ui_language" => {
                 let value = string_value(&value, key)?;
                 if !valid_language_code(value) {
@@ -391,7 +423,7 @@ mod tests {
         let store = SettingsStore::new(path.clone());
 
         let settings = store.load().unwrap();
-        assert_eq!(settings.theme, "racoon_dark");
+        assert_eq!(settings.theme, "racoon_graphite");
         assert_eq!(settings.font_size, 24);
         assert!(settings.show_live_wpm);
 
@@ -407,14 +439,14 @@ mod tests {
         let store = SettingsStore::new(path.clone());
 
         let settings = AppSettings {
-            theme: "racoon_dark".to_string(),
+            theme: "racoon_graphite".to_string(),
             font_size: 28,
             ..AppSettings::default()
         };
         store.save(&settings).unwrap();
 
         let loaded = store.load().unwrap();
-        assert_eq!(loaded.theme, "racoon_dark");
+        assert_eq!(loaded.theme, "racoon_graphite");
         assert_eq!(loaded.font_size, 28);
 
         std::fs::remove_file(&path).ok();
@@ -426,12 +458,84 @@ mod tests {
         let store = SettingsStore::new(path.clone());
 
         let settings = store
-            .set("theme", toml::Value::String("racoon_light".to_string()))
+            .set("theme", toml::Value::String("racoon_warm".to_string()))
             .unwrap();
-        assert_eq!(settings.theme, "racoon_light");
+        assert_eq!(settings.theme, "racoon_warm");
 
         let loaded = store.load().unwrap();
-        assert_eq!(loaded.theme, "racoon_light");
+        assert_eq!(loaded.theme, "racoon_warm");
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn legacy_theme_aliases_load_to_their_current_ids() {
+        for (legacy_theme, expected_theme) in [
+            ("racoon_dark", "racoon_graphite"),
+            ("racoon_light", "racoon_silver"),
+        ] {
+            let path = temp_settings_path();
+            std::fs::write(&path, format!("theme = \"{legacy_theme}\"\n")).unwrap();
+
+            let settings = SettingsStore::new(path.clone()).load().unwrap();
+            assert_eq!(settings.theme, expected_theme);
+
+            std::fs::remove_file(&path).ok();
+        }
+    }
+
+    #[test]
+    fn unknown_persisted_theme_loads_as_graphite() {
+        let path = temp_settings_path();
+        std::fs::write(&path, "theme = \"removed_theme\"\n").unwrap();
+
+        let settings = SettingsStore::new(path.clone()).load().unwrap();
+        assert_eq!(settings.theme, "racoon_graphite");
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn every_current_theme_id_survives_save_and_reload() {
+        const BUILT_IN_THEME_IDS: &[&str] = &[
+            "racoon_graphite",
+            "racoon_silver",
+            "racoon_warm",
+            "racoon_high_contrast",
+            "midnight_ink",
+            "arctic_slate",
+            "lavender_dusk",
+            "plum",
+            "ocean",
+            "deep_sea",
+            "steel_blue",
+            "carbon",
+            "moonlight",
+            "racoon_forest",
+            "moss",
+            "sage",
+            "coffee",
+            "ember",
+            "burgundy",
+            "paper",
+            "sandstone",
+            "mist",
+            "dawn",
+            "amber_terminal",
+            "green_terminal",
+        ];
+
+        assert_eq!(BUILT_IN_THEME_IDS.len(), 25);
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        for theme_id in BUILT_IN_THEME_IDS {
+            let saved = store
+                .set("theme", toml::Value::String((*theme_id).to_string()))
+                .unwrap();
+            assert_eq!(saved.theme, *theme_id);
+            assert_eq!(store.load().unwrap().theme, *theme_id);
+        }
 
         std::fs::remove_file(&path).ok();
     }
@@ -530,7 +634,7 @@ mod tests {
     #[test]
     fn default_values() {
         let settings = AppSettings::default();
-        assert_eq!(settings.theme, "racoon_dark");
+        assert_eq!(settings.theme, "racoon_graphite");
         assert_eq!(settings.font_size, 24);
         assert_eq!(settings.caret_style, "underline");
         assert!(settings.show_live_wpm);
@@ -540,7 +644,7 @@ mod tests {
     #[test]
     fn serialization_roundtrip() {
         let settings = AppSettings {
-            theme: "racoon_dark".to_string(),
+            theme: "racoon_graphite".to_string(),
             font_size: 30,
             caret_style: "solid".to_string(),
             show_live_wpm: false,
@@ -553,6 +657,7 @@ mod tests {
             verbose_logging: false,
             sound_volume: 0.5,
             zen_mode_enabled: false,
+            blind_mode_enabled: false,
             ui_language: "ru".to_string(),
             vim_mode: true,
             daily_goal_type: "time".to_string(),
@@ -563,7 +668,7 @@ mod tests {
         let toml_str = toml::to_string(&settings).unwrap();
         let deserialized: AppSettings = toml::from_str(&toml_str).unwrap();
 
-        assert_eq!(deserialized.theme, "racoon_dark");
+        assert_eq!(deserialized.theme, "racoon_graphite");
         assert_eq!(deserialized.font_size, 30);
         assert_eq!(deserialized.caret_style, "solid");
         assert!(!deserialized.show_live_wpm);
@@ -582,7 +687,7 @@ show_accuracy = true
 
         let settings: AppSettings = toml::from_str(legacy).unwrap();
 
-        assert_eq!(normalize_theme(&settings.theme), "racoon_dark");
+        assert_eq!(normalize_theme(&settings.theme), "racoon_graphite");
         assert!(!settings.sound_enabled);
         assert!(!settings.verbose_logging);
         assert_eq!(settings.sound_volume, 0.5);

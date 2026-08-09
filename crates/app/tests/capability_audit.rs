@@ -125,8 +125,10 @@ fn main_window_capability_matches_the_registered_frontend_command_surface() {
         "main capability must grant exactly the generated application-command permissions"
     );
 
-    let allowed_plugin_set: BTreeSet<String> =
-        ALLOWED_PLUGIN_PERMISSIONS.iter().map(|s| s.to_string()).collect();
+    let allowed_plugin_set: BTreeSet<String> = ALLOWED_PLUGIN_PERMISSIONS
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     let actual_plugin_permissions: BTreeSet<String> = permissions
         .iter()
         .filter(|p| p.contains(':'))

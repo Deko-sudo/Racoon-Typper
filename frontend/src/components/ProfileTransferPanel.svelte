@@ -276,7 +276,7 @@
     border-radius: 5px;
     cursor: pointer;
   }
-  button:disabled { cursor: not-allowed; opacity: 0.5; }
+  button:disabled { cursor: not-allowed; color: var(--color-text-disabled); opacity: 0.72; border-style: dashed; }
   button:focus-visible, input:focus-visible, select:focus-visible {
     outline: 2px solid var(--main);
     outline-offset: 2px;

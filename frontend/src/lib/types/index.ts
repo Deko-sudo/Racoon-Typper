@@ -107,6 +107,7 @@ export interface AppSettings {
   sound_enabled: boolean;
   sound_volume: number;
   zen_mode_enabled: boolean;
+  blind_mode_enabled: boolean;
   ui_language: string;
   vim_mode: boolean;
   daily_goal_type: string;

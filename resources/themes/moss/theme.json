@@ -1,0 +1,20 @@
+{
+  "name": "moss",
+  "display_name": "Moss",
+  "description": "Relaxed olive and moss tones for focused practice.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Nature",
+  "is_dark": true,
+  "preview": {
+    "background": "#151711",
+    "surface": "#1d2118",
+    "text": "#e7e6d7",
+    "accent": "#9ca56a",
+    "correct": "#9db17b",
+    "incorrect": "#c48276",
+    "caret": "#c3c992"
+  }
+}

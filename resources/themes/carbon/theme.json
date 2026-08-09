@@ -1,0 +1,20 @@
+{
+  "name": "carbon",
+  "display_name": "Carbon",
+  "description": "Near-monochrome dark theme, flatter than Graphite.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#0c0c0d",
+    "surface": "#141415",
+    "text": "#e8e8e9",
+    "accent": "#b4b4ba",
+    "correct": "#99aa9c",
+    "incorrect": "#c98282",
+    "caret": "#f0f0f2"
+  }
+}

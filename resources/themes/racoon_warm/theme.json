@@ -1,0 +1,20 @@
+{
+  "name": "racoon_warm",
+  "display_name": "Racoon Warm",
+  "description": "Warm charcoal surfaces with a restrained copper accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Racoon",
+  "is_dark": true,
+  "preview": {
+    "background": "#171416",
+    "surface": "#211c1f",
+    "text": "#eee7e2",
+    "accent": "#d48a63",
+    "correct": "#a6c2a3",
+    "incorrect": "#e58c89",
+    "caret": "#f0b18e"
+  }
+}

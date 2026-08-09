@@ -42,9 +42,9 @@
     padding: 0.75rem 1rem; border-radius: 8px;
     font-size: 0.875rem; animation: slide-in 0.3s ease;
   }
-  .notification.info { background: rgba(85,85,85,0.9); color: var(--text); }
-  .notification.warning { background: rgba(226,183,20,0.2); border: 1px solid var(--main); color: var(--text); }
-  .notification.success { background: rgba(100,200,100,0.15); border: 1px solid #6c8; color: var(--text); }
+  .notification.info { background: var(--color-surface-raised); border: 1px solid var(--color-border); color: var(--text); box-shadow: var(--shadow-elevated); }
+  .notification.warning { background: color-mix(in srgb, var(--color-warning) 14%, var(--color-surface-raised)); border: 1px solid var(--color-warning); color: var(--text); box-shadow: var(--shadow-elevated); }
+  .notification.success { background: color-mix(in srgb, var(--color-success) 14%, var(--color-surface-raised)); border: 1px solid var(--color-success); color: var(--text); box-shadow: var(--shadow-elevated); }
   .notification-msg { font-size: 0.75rem; }
   @keyframes slide-in { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
 </style>

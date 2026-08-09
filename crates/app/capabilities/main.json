@@ -12,6 +12,7 @@
     "allow-export-profile",
     "allow-generate-weak-keys-training",
     "allow-get-achievements",
+    "allow-get-aggregated-heatmap",
     "allow-get-consistency",
     "allow-get-course",
     "allow-get-custom-texts",
