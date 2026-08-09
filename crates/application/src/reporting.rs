@@ -1870,6 +1870,7 @@ impl<'a, P: AnalyticsReportingPort + ?Sized, C: SessionWallClock + ?Sized>
                     .map_err(|_| ReportingError::InvariantViolation)?,
                 i64::try_from(achievement_inputs.lessons_completed())
                     .map_err(|_| ReportingError::InvariantViolation)?,
+                Utc::now().to_rfc3339(),
             ),
             generate_insights(
                 weighted_daily_average(

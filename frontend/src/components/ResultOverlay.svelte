@@ -1,9 +1,27 @@
 <script lang="ts">
   import type { FinalStats } from '../lib/types/index';
   import KeyboardHeatmap from './KeyboardHeatmap.svelte';
+  import KeyboardVizComponent from './KeyboardVizComponent.svelte';
   import { t } from '../lib/i18n';
+  import type { LessonResultNavigation } from '../lib/lessonNavigation';
 
-  let { stats, onRestart, uiLang = 'en' }: { stats: FinalStats; onRestart: () => void; uiLang?: string } = $props();
+  let {
+    stats,
+    onRestart,
+    lessonNavigation,
+    onRepeatLesson,
+    onNextLesson,
+    onReturnToLessons,
+    uiLang = 'en',
+  }: {
+    stats: FinalStats;
+    onRestart: () => void;
+    lessonNavigation: LessonResultNavigation | null;
+    onRepeatLesson: () => void;
+    onNextLesson: () => void;
+    onReturnToLessons: () => void;
+    uiLang?: string;
+  } = $props();
 </script>
 
 <div class="result-overlay">
@@ -21,7 +39,18 @@
     <span>{t(uiLang, 'result.duration')}: {(stats.duration_ms / 1000).toFixed(1)}s</span>
   </div>
   <KeyboardHeatmap heatmap={stats.heatmap} />
-  <button onclick={onRestart}>{t(uiLang, 'result.restart')}</button>
+  <KeyboardVizComponent heatmap={stats.heatmap} charStats={stats.char_stats} />
+  <div class="result-actions">
+    {#if lessonNavigation}
+      {#if lessonNavigation.nextLessonId}
+        <button class="primary" onclick={onNextLesson}>{t(uiLang, 'result.next_lesson')}</button>
+      {/if}
+      <button onclick={onRepeatLesson}>{t(uiLang, 'result.repeat_lesson')}</button>
+      <button onclick={onReturnToLessons}>{t(uiLang, 'result.back_to_lessons')}</button>
+    {:else}
+      <button onclick={onRestart}>{t(uiLang, 'result.restart')}</button>
+    {/if}
+  </div>
 </div>
 
 <style>
@@ -32,6 +61,15 @@
   .stat-value { font-size: 2rem; color: var(--main); }
   .stat-label { font-size: 0.75rem; color: var(--sub); text-transform: uppercase; }
   .stats-details { display: flex; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
+  .result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
   button { background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main); padding: 0.5rem 2rem; font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 4px; }
+  button.primary { background-color: var(--main); color: var(--bg); }
   button:hover { background-color: var(--main); color: var(--bg); }
+
+  @media (max-width: 640px) {
+    .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: .75rem; }
+    .stat-box { padding: 1rem; }
+    .stats-details { flex-wrap: wrap; justify-content: center; gap: .75rem 1rem; }
+    .result-actions, .result-actions button { width: 100%; }
+  }
 </style>

@@ -40,7 +40,8 @@ const SELECT_ALL_COLS: &str =
     "id, session_id, created_at, mode_type, mode_config, language, text_length,
     duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency,
     correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data,
-    graph_data, is_pb, tags";
+    graph_data, is_pb, tags,
+    EXISTS(SELECT 1 FROM test_replays WHERE test_replays.test_id = tests.id) AS has_replay";
 const SELECT_HISTORY_COLS: &str =
     "id, session_id, created_at, mode_type, mode_config, language, text_length,
     duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency,
@@ -248,13 +249,12 @@ fn map_test_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TestRow> {
         graph_data: row.get(18)?,
         is_pb: row.get(19)?,
         tags: row.get(20)?,
+        has_replay: row.get(21)?,
     })
 }
 
 fn map_test_summary_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TestSummary> {
-    let mut summary = TestSummary::from(map_test_row(row)?);
-    summary.has_replay = row.get(21)?;
-    Ok(summary)
+    Ok(map_test_row(row)?.into())
 }
 
 #[cfg(test)]

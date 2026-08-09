@@ -252,14 +252,14 @@ fn settings_preserved_across_reopen() {
     {
         let store = SettingsStore::new(path.clone());
         store
-            .set("theme", toml::Value::String("racoon_dark".to_string()))
+            .set("theme", toml::Value::String("racoon_silver".to_string()))
             .unwrap();
         store.set("font_size", toml::Value::Integer(28)).unwrap();
     }
     {
         let store = SettingsStore::new(path.clone());
         let s = store.load().unwrap();
-        assert_eq!(s.theme, "racoon_dark");
+        assert_eq!(s.theme, "racoon_silver");
         assert_eq!(s.font_size, 28);
     }
     let _ = std::fs::remove_file(&path);
@@ -475,7 +475,7 @@ fn stress_streak_calculation_365_days() {
 #[test]
 fn stress_achievements_check() {
     let start = std::time::Instant::now();
-    let achievements = racoon_core::analytics::check_achievements(100, 80.0, 98.0, 30, 30, 20);
+    let achievements = racoon_core::analytics::check_achievements(100, 80.0, 98.0, 30, 30, 20, "2026-01-01T00:00:00Z".to_string());
     let check_time = start.elapsed();
     assert_eq!(achievements.len(), 15);
     assert!(

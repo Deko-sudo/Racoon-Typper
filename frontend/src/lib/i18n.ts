@@ -73,6 +73,9 @@ const en: Dict = {
   'warning.layout_message': 'The {current} layout is active. Switch to {expected}.',
   'warning.caps_title': 'Caps Lock is on',
   'warning.caps_message': 'Caps Lock can reduce typing accuracy.',
+  // Notification toasts (user-facing messages)
+  'notification.great_result': 'Great result!',
+  'notification.high_accuracy': 'Accuracy above 95%',
   'vim.enabled': 'Vim mode enabled',
   'vim.disabled': 'Vim mode disabled',
   // Mode selector
@@ -83,6 +86,9 @@ const en: Dict = {
   'result.correct': 'Correct', 'result.incorrect': 'Incorrect',
   'result.backspaces': 'Backspaces', 'result.duration': 'Duration',
   'result.restart': 'Restart',
+  'result.next_lesson': 'Next lesson',
+  'result.repeat_lesson': 'Repeat lesson',
+  'result.back_to_lessons': 'Back to lessons',
   // Dashboard
   'dash.title': 'Dashboard',
   'dash.current_streak': 'Current Streak',
@@ -215,6 +221,8 @@ const ru: Dict = {
   'warning.layout_message': 'Сейчас активна {current} раскладка. Переключитесь на {expected}.',
   'warning.caps_title': 'Caps Lock включён',
   'warning.caps_message': 'Caps Lock может снизить точность ввода.',
+  'notification.great_result': 'Отличный результат!',
+  'notification.high_accuracy': 'Точность выше 95%',
   'vim.enabled': 'Vim-режим включён',
   'vim.disabled': 'Vim-режим выключен',
   // Mode selector
@@ -225,6 +233,9 @@ const ru: Dict = {
   'result.correct': 'Верно', 'result.incorrect': 'Ошибок',
   'result.backspaces': 'Стираний', 'result.duration': 'Длительность',
   'result.restart': 'Заново',
+  'result.next_lesson': 'Следующий урок',
+  'result.repeat_lesson': 'Повторить урок',
+  'result.back_to_lessons': 'К списку уроков',
   // Dashboard
   'dash.title': 'Панель',
   'dash.current_streak': 'Текущая серия',

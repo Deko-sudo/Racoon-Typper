@@ -74,6 +74,11 @@ pub struct Achievement {
 }
 
 /// Проверяет достижения на основе статистики.
+///
+/// `now` — ISO-8601/RFC-3339 метка, проставляемая в `unlocked_at` для всех
+/// разблокированных достижений. Вызывающая сторона формирует её (обычно
+/// `chrono::Utc::now().to_rfc3339()`), чтобы чистая core-логика не зависела
+/// от системного времени и оставалась детерминированной в тестах.
 pub fn check_achievements(
     total_tests: i64,
     best_wpm: f64,
@@ -81,115 +86,36 @@ pub fn check_achievements(
     _current_streak: i64,
     longest_streak: i64,
     lessons_completed: i64,
+    now: String,
 ) -> Vec<Achievement> {
+    // Локальный хелпер: строит Achievement с корректным unlocked_at.
+    let mk = |id: &str, name: &str, description: &str, unlocked: bool| Achievement {
+        id: id.to_string(),
+        name: name.to_string(),
+        description: description.to_string(),
+        unlocked,
+        unlocked_at: if unlocked { Some(now.clone()) } else { None },
+    };
+
     let achievements = vec![
-        Achievement {
-            id: "first_test".to_string(),
-            name: "First Steps".to_string(),
-            description: "Complete your first test".to_string(),
-            unlocked: total_tests >= 1,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "10_tests".to_string(),
-            name: "Getting Started".to_string(),
-            description: "Complete 10 tests".to_string(),
-            unlocked: total_tests >= 10,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "50_tests".to_string(),
-            name: "Dedicated".to_string(),
-            description: "Complete 50 tests".to_string(),
-            unlocked: total_tests >= 50,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "100_tests".to_string(),
-            name: "Centurion".to_string(),
-            description: "Complete 100 tests".to_string(),
-            unlocked: total_tests >= 100,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "wpm_30".to_string(),
-            name: "Speed Runner".to_string(),
-            description: "Reach 30 WPM".to_string(),
-            unlocked: best_wpm >= 30.0,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "wpm_50".to_string(),
-            name: "Fast Fingers".to_string(),
-            description: "Reach 50 WPM".to_string(),
-            unlocked: best_wpm >= 50.0,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "wpm_80".to_string(),
-            name: "Lightning".to_string(),
-            description: "Reach 80 WPM".to_string(),
-            unlocked: best_wpm >= 80.0,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "wpm_100".to_string(),
-            name: "Speed Demon".to_string(),
-            description: "Reach 100 WPM".to_string(),
-            unlocked: best_wpm >= 100.0,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "acc_95".to_string(),
-            name: "Sharpshooter".to_string(),
-            description: "Reach 95% accuracy".to_string(),
-            unlocked: best_accuracy >= 95.0,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "acc_99".to_string(),
-            name: "Perfect Precision".to_string(),
-            description: "Reach 99% accuracy".to_string(),
-            unlocked: best_accuracy >= 99.0,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "streak_3".to_string(),
-            name: "On a Roll".to_string(),
-            description: "3-day streak".to_string(),
-            unlocked: longest_streak >= 3,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "streak_7".to_string(),
-            name: "Week Warrior".to_string(),
-            description: "7-day streak".to_string(),
-            unlocked: longest_streak >= 7,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "streak_30".to_string(),
-            name: "Unstoppable".to_string(),
-            description: "30-day streak".to_string(),
-            unlocked: longest_streak >= 30,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "lessons_5".to_string(),
-            name: "Student".to_string(),
-            description: "Complete 5 lessons".to_string(),
-            unlocked: lessons_completed >= 5,
-            unlocked_at: None,
-        },
-        Achievement {
-            id: "lessons_20".to_string(),
-            name: "Scholar".to_string(),
-            description: "Complete 20 lessons".to_string(),
-            unlocked: lessons_completed >= 20,
-            unlocked_at: None,
-        },
+        mk("first_test", "First Steps", "Complete your first test", total_tests >= 1),
+        mk("10_tests", "Getting Started", "Complete 10 tests", total_tests >= 10),
+        mk("50_tests", "Dedicated", "Complete 50 tests", total_tests >= 50),
+        mk("100_tests", "Centurion", "Complete 100 tests", total_tests >= 100),
+        mk("wpm_30", "Speed Runner", "Reach 30 WPM", best_wpm >= 30.0),
+        mk("wpm_50", "Fast Fingers", "Reach 50 WPM", best_wpm >= 50.0),
+        mk("wpm_80", "Lightning", "Reach 80 WPM", best_wpm >= 80.0),
+        mk("wpm_100", "Speed Demon", "Reach 100 WPM", best_wpm >= 100.0),
+        mk("acc_95", "Sharpshooter", "Reach 95% accuracy", best_accuracy >= 95.0),
+        mk("acc_99", "Perfect Precision", "Reach 99% accuracy", best_accuracy >= 99.0),
+        mk("streak_3", "On a Roll", "3-day streak", longest_streak >= 3),
+        mk("streak_7", "Week Warrior", "7-day streak", longest_streak >= 7),
+        mk("streak_30", "Unstoppable", "30-day streak", longest_streak >= 30),
+        mk("lessons_5", "Student", "Complete 5 lessons", lessons_completed >= 5),
+        mk("lessons_20", "Scholar", "Complete 20 lessons", lessons_completed >= 20),
     ];
 
+    // Сортируем: разблокированные — сверху, по убыванию id-порога визуально ок.
     achievements
 }
 
@@ -463,50 +389,52 @@ mod tests {
 
     #[test]
     fn achievements_empty() {
-        let a = check_achievements(0, 0.0, 0.0, 0, 0, 0);
+        let a = check_achievements(0, 0.0, 0.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
         assert!(!a[0].unlocked);
+        // Unlocked achievements must carry a timestamp; locked ones must not.
+        assert!(a.iter().all(|x| x.unlocked == x.unlocked_at.is_some()));
     }
 
     #[test]
     fn achievements_first_test() {
-        let a = check_achievements(1, 0.0, 0.0, 0, 0, 0);
+        let a = check_achievements(1, 0.0, 0.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
         assert!(a.iter().any(|x| x.id == "first_test" && x.unlocked));
     }
 
     #[test]
     fn achievements_wpm_50() {
-        let a = check_achievements(10, 55.0, 90.0, 0, 0, 0);
+        let a = check_achievements(10, 55.0, 90.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
         assert!(a.iter().any(|x| x.id == "wpm_50" && x.unlocked));
         assert!(!a.iter().any(|x| x.id == "wpm_80" && x.unlocked));
     }
 
     #[test]
     fn achievements_acc_95() {
-        let a = check_achievements(10, 40.0, 96.0, 0, 0, 0);
+        let a = check_achievements(10, 40.0, 96.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
         assert!(a.iter().any(|x| x.id == "acc_95" && x.unlocked));
     }
 
     #[test]
     fn achievements_streak_7() {
-        let a = check_achievements(10, 40.0, 90.0, 5, 7, 0);
+        let a = check_achievements(10, 40.0, 90.0, 5, 7, 0, "2026-01-01T00:00:00Z".to_string());
         assert!(a.iter().any(|x| x.id == "streak_7" && x.unlocked));
     }
 
     #[test]
     fn achievements_lessons_5() {
-        let a = check_achievements(10, 40.0, 90.0, 0, 0, 5);
+        let a = check_achievements(10, 40.0, 90.0, 0, 0, 5, "2026-01-01T00:00:00Z".to_string());
         assert!(a.iter().any(|x| x.id == "lessons_5" && x.unlocked));
     }
 
     #[test]
     fn achievements_all_unlocked() {
-        let a = check_achievements(100, 100.0, 99.0, 30, 30, 20);
+        let a = check_achievements(100, 100.0, 99.0, 30, 30, 20, "2026-01-01T00:00:00Z".to_string());
         assert!(a.iter().all(|x| x.unlocked));
     }
 
     #[test]
     fn achievements_count() {
-        let a = check_achievements(0, 0.0, 0.0, 0, 0, 0);
+        let a = check_achievements(0, 0.0, 0.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
         assert_eq!(a.len(), 15);
     }
 

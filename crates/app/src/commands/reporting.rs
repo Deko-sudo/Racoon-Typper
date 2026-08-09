@@ -144,19 +144,22 @@ pub(crate) fn get_achievements(
         let longest_streak = streak_repository
             .get("daily_test")?
             .map_or(0, |row| row.longest_streak);
-        let lessons_completed = ["en", "ru"]
-            .into_iter()
-            .map(|language| {
-                lesson_repository.get_progress(language).map(|progress| {
-                    progress
-                        .iter()
-                        .filter(|lesson| lesson.status == "completed")
-                        .count() as i64
-                })
+        let lessons_completed = [
+            "cs", "de", "en", "es", "fr", "it", "ja", "ko", "pl", "pt", "ro", "ru", "uk",
+            "zh-hk", "zh-tw",
+        ]
+        .into_iter()
+        .map(|language| {
+            lesson_repository.get_progress(language).map(|progress| {
+                progress
+                    .iter()
+                    .filter(|lesson| lesson.status == "completed")
+                    .count() as i64
             })
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .sum();
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .sum();
 
         Ok(vec![racoon_core::analytics::check_achievements(
             total_tests,
@@ -165,6 +168,7 @@ pub(crate) fn get_achievements(
             0,
             longest_streak,
             lessons_completed,
+            chrono::Utc::now().to_rfc3339(),
         )])
     })
 }

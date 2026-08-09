@@ -269,7 +269,7 @@
     elapsedMs = stats.duration_ms;
 
     if (stats.accuracy >= 95) {
-      notificationStore.add('SUCCESS', 'Отличный результат!');
+      notificationStore.add('SUCCESS', t(uiLang, 'notification.great_result'));
     }
 
     const lessonId = currentLessonId;
@@ -300,7 +300,7 @@
       testStartedAt = Date.now() - output.live_stats.elapsed_ms;
 
       if (liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05) {
-        notificationStore.add('SUCCESS', 'Точность выше 95%');
+        notificationStore.add('SUCCESS', t(uiLang, 'notification.high_accuracy'));
       }
     }
 
@@ -386,7 +386,7 @@
     if (e.getModifierState && e.getModifierState('CapsLock') !== capsLockOn) {
       capsLockOn = e.getModifierState('CapsLock');
       if (capsLockOn && settings?.show_capslock_warnings) {
-        notificationStore.add('WARNING', 'Caps Lock включён');
+        notificationStore.add('WARNING', t(uiLang, 'warning.caps_title'));
       }
     }
 
