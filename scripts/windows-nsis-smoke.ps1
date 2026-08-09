@@ -19,7 +19,7 @@ try {
   $install = Start-Process -FilePath $Installer -ArgumentList @('/S', "/D=$installDirectory") -Wait -PassThru
   if ($install.ExitCode -ne 0) { throw "NSIS installer exited with $($install.ExitCode)" }
 
-  $executable = Join-Path $installDirectory 'racoon-typper.exe'
+  $executable = Join-Path $installDirectory 'racoon-app.exe'
   if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Installed executable was not found: $executable"
   }
