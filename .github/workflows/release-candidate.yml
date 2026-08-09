@@ -212,6 +212,7 @@ jobs:
             --outfile "artifacts/${TARBALL}.torrent" \
             --comment "Racoon Typper ${RELEASE_TAG} — Linux x86_64 tarball" \
             --webseed "$WEBSEED"
+      - name: Generate checksums
         shell: bash
         run: |
           set -euo pipefail
