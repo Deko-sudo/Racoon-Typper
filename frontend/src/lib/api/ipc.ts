@@ -84,6 +84,10 @@ export async function searchCustomTexts(query: string, limit = 20): Promise<Cust
   return invoke<CustomText[]>('search_custom_texts', { query, limit });
 }
 
+export async function importTextFromUrl(url: string): Promise<string> {
+  return invoke<string>('import_text_from_url', { url });
+}
+
 export async function startCustomTextTest(customTextId: number): Promise<TestSessionResponse> {
   return invoke<TestSessionResponse>('start_custom_text_test', { customTextId });
 }

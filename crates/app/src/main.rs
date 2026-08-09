@@ -44,6 +44,9 @@ impl StartupRecoverySleeper for ThreadStartupRecoverySleeper {
 
 fn main() {
     let application = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .setup(|app| {
             let paths = paths::resolve(app)?;
             let data_dir = paths.data_dir.clone();
@@ -128,6 +131,8 @@ fn main() {
             // Weak Keys
             commands::content::analyze_weak_keys,
             commands::content::generate_weak_keys_training,
+            // Custom text import
+            commands::content::import_text_from_url,
             // Dashboard
             commands::reporting::get_dashboard_stats,
             commands::reporting::get_progress_history,

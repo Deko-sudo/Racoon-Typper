@@ -35,6 +35,10 @@
     "allow-start-custom-text-test",
     "allow-start-lesson",
     "allow-start-test",
-    "allow-update-custom-text"
+    "allow-update-custom-text",
+    "dialog:allow-open",
+    "fs:allow-read-text-file",
+    "clipboard-manager:allow-read-text",
+    "allow-import-text-from-url"
   ]
 }

@@ -19,6 +19,7 @@ const APP_COMMANDS: &[&str] = &[
     "start_lesson",
     "analyze_weak_keys",
     "generate_weak_keys_training",
+    "import_text_from_url",
     "get_dashboard_stats",
     "get_progress_history",
     "get_achievements",

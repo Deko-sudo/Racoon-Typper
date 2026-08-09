@@ -1,6 +1,10 @@
 <script lang="ts">
   import type { CustomText, LanguageCode } from '../lib/types/index';
   import { t, UI_LANGUAGES } from '../lib/i18n';
+  import { open } from '@tauri-apps/plugin-dialog';
+  import { readTextFile } from '@tauri-apps/plugin-fs';
+  import { readText } from '@tauri-apps/plugin-clipboard-manager';
+  import * as ipc from '../lib/api/ipc';
 
   let {
     customTexts,
@@ -37,6 +41,53 @@
     onLanguageChange: (language: LanguageCode) => void;
     uiLang?: string;
   } = $props();
+
+  let importError = $state('');
+
+  async function importFromFile() {
+    importError = '';
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: 'Text', extensions: ['txt', 'md', 'text'] }],
+      });
+      if (typeof selected !== 'string' || !selected) return;
+      const content = await readTextFile(selected);
+      if (!content.trim()) {
+        importError = t(uiLang, 'custom.import_error_empty');
+        return;
+      }
+      onTextChange(content);
+    } catch (e) {
+      importError = `${t(uiLang, 'custom.import_error_failed')} ${e}`;
+    }
+  }
+
+  async function importFromClipboard() {
+    importError = '';
+    try {
+      const content = await readText();
+      if (!content || !content.trim()) {
+        importError = t(uiLang, 'custom.import_error_empty');
+        return;
+      }
+      onTextChange(content);
+    } catch (e) {
+      importError = `${t(uiLang, 'custom.import_error_failed')} ${e}`;
+    }
+  }
+
+  async function importFromUrl() {
+    importError = '';
+    const url = window.prompt(t(uiLang, 'custom.import_url_prompt'), 'https://');
+    if (!url) return;
+    try {
+      const text = await ipc.importTextFromUrl(url);
+      onTextChange(text);
+    } catch (e) {
+      importError = `${t(uiLang, 'custom.import_error_failed')} ${e}`;
+    }
+  }
 </script>
 
 <div class="list-view">
@@ -54,6 +105,12 @@
         {/each}
       </select>
       <textarea placeholder={t(uiLang, 'custom.text')} value={newTextContent} oninput={(e) => onTextChange(e.currentTarget.value)} rows="5"></textarea>
+      {#if importError}<p class="import-error">{importError}</p>{/if}
+      <div class="import-row">
+        <button class="import-btn" onclick={importFromFile}>{t(uiLang, 'custom.import_file')}</button>
+        <button class="import-btn" onclick={importFromClipboard}>{t(uiLang, 'custom.import_clipboard')}</button>
+        <button class="import-btn" onclick={importFromUrl}>{t(uiLang, 'custom.import_url')}</button>
+      </div>
       <div class="editor-btns">
         <button onclick={onSave}>{t(uiLang, 'custom.save')}</button>
         <button class="abort-btn" onclick={onCloseEditor}>{t(uiLang, 'custom.cancel')}</button>
@@ -89,6 +146,10 @@
   .editor { background: var(--bg-sub); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; display: flex; flex-direction: column; gap: 0.5rem; }
   .editor input, .editor textarea, .editor select { background: var(--bg); border: 1px solid var(--sub); color: var(--text); padding: 0.5rem; font-family: inherit; border-radius: 4px; font-size: 0.875rem; }
   .editor-btns { display: flex; gap: 0.5rem; }
+  .import-row { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .import-btn { font-size: 0.75rem; padding: 0.3rem 0.75rem; border-style: dashed; border-color: var(--sub); color: var(--sub); background: transparent; }
+  .import-btn:hover { color: var(--main); border-color: var(--main); background: transparent; }
+  .import-error { color: var(--error, #c64850); font-size: 0.75rem; margin: 0; }
   .text-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
   .text-card { background: var(--bg-sub); padding: 1rem; border-radius: 8px; }
   .text-card h3 { color: var(--main); font-size: 1rem; margin: 0 0 0.5rem; }
