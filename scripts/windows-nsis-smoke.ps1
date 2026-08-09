@@ -12,8 +12,15 @@ if (-not (Test-Path -LiteralPath $Installer -PathType Leaf)) {
 
 $workspace = Join-Path ([System.IO.Path]::GetTempPath()) ("racoon-typper-smoke-" + [guid]::NewGuid())
 $installDirectory = Join-Path $workspace 'install'
-$appData = Join-Path $workspace 'appdata'
-New-Item -ItemType Directory -Force -Path $installDirectory, $appData | Out-Null
+New-Item -ItemType Directory -Force -Path $installDirectory | Out-Null
+
+# The application resolves its data directory through the Windows known-folder
+# API (FOLDERID_RoamingAppData), not the %APPDATA% environment variable, so
+# overriding $env:APPDATA does not redirect where the app writes. We therefore
+# exercise the real per-user data directory and clean it up afterwards.
+$appData = $env:APPDATA
+$appDataDir = Join-Path $appData 'com.racoon.typper'
+$database = Join-Path $appDataDir 'data.db'
 
 try {
   $install = Start-Process -FilePath $Installer -ArgumentList @('/S', "/D=$installDirectory") -Wait -PassThru
@@ -25,21 +32,14 @@ try {
   }
 
   function Start-And-Stop-App {
-    $previousAppData = $env:APPDATA
-    $env:APPDATA = $appData
-    try {
-      $process = Start-Process -FilePath $executable -PassThru
-      Start-Sleep -Seconds 8
-      if ($process.HasExited) { throw "Application exited during startup with $($process.ExitCode)" }
-      Stop-Process -Id $process.Id -ErrorAction Stop
-      $process.WaitForExit()
-    } finally {
-      $env:APPDATA = $previousAppData
-    }
+    $process = Start-Process -FilePath $executable -PassThru
+    Start-Sleep -Seconds 8
+    if ($process.HasExited) { throw "Application exited during startup with $($process.ExitCode)" }
+    Stop-Process -Id $process.Id -ErrorAction Stop
+    $process.WaitForExit()
   }
 
   Start-And-Stop-App
-  $database = Join-Path $appData 'com.racoon.typper\data.db'
   if (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
     throw "First launch did not create the expected application database: $database"
   }
@@ -47,4 +47,5 @@ try {
   Write-Output 'Windows NSIS smoke passed: installed, launched twice, and retained application data.'
 } finally {
   Remove-Item -LiteralPath $workspace -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $appDataDir -Recurse -Force -ErrorAction SilentlyContinue
 }
