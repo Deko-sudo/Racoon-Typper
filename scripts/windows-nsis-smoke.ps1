@@ -34,7 +34,9 @@ try {
   function Start-And-Stop-App {
     $logPath = Join-Path $workspace 'app.log'
     $process = Start-Process -FilePath $executable -PassThru -RedirectStandardOutput $logPath -RedirectStandardError "$logPath.err"
-    Start-Sleep -Seconds 8
+    # First launch on a clean runner initializes WebView2, which can take well
+    # over the previous 8s window before the app's setup() creates data.db.
+    Start-Sleep -Seconds 30
     if ($process.HasExited) {
       $out = if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
       $err = if (Test-Path -LiteralPath "$logPath.err") { Get-Content -LiteralPath "$logPath.err" -Raw } else { '' }
