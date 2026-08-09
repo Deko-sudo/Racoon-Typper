@@ -226,7 +226,14 @@ jobs:
           draft: true
           prerelease: true
           files: |
-            artifacts/**/*
+            artifacts/**/*.deb
+            artifacts/**/*.rpm
+            artifacts/**/*.AppImage
+            artifacts/**/*.tar.gz
+            artifacts/**/*.torrent
+            artifacts/**/*.exe
+            artifacts/SHA256SUMS
+            artifacts/release-evidence/*
           body: |
             Release candidate built from the immutable tag above.
 
