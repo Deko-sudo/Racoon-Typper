@@ -32,16 +32,23 @@ try {
   }
 
   function Start-And-Stop-App {
-    $process = Start-Process -FilePath $executable -PassThru
+    $logPath = Join-Path $workspace 'app.log'
+    $process = Start-Process -FilePath $executable -PassThru -RedirectStandardOutput $logPath -RedirectStandardError "$logPath.err"
     Start-Sleep -Seconds 8
-    if ($process.HasExited) { throw "Application exited during startup with $($process.ExitCode)" }
+    if ($process.HasExited) {
+      $out = if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
+      $err = if (Test-Path -LiteralPath "$logPath.err") { Get-Content -LiteralPath "$logPath.err" -Raw } else { '' }
+      throw "Application exited during startup with $($process.ExitCode). stdout=[$out] stderr=[$err]"
+    }
     Stop-Process -Id $process.Id -ErrorAction Stop
     $process.WaitForExit()
   }
 
   Start-And-Stop-App
   if (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
-    throw "First launch did not create the expected application database: $database"
+    $out = if (Test-Path -LiteralPath (Join-Path $workspace 'app.log')) { Get-Content -LiteralPath (Join-Path $workspace 'app.log') -Raw } else { '' }
+    $err = if (Test-Path -LiteralPath (Join-Path $workspace 'app.log.err')) { Get-Content -LiteralPath (Join-Path $workspace 'app.log.err') -Raw } else { '' }
+    throw "First launch did not create the expected application database: $database stdout=[$out] stderr=[$err]"
   }
   Start-And-Stop-App
   Write-Output 'Windows NSIS smoke passed: installed, launched twice, and retained application data.'
