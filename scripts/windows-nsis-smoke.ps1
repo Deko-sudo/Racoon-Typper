@@ -48,7 +48,18 @@ try {
   if (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
     $out = if (Test-Path -LiteralPath (Join-Path $workspace 'app.log')) { Get-Content -LiteralPath (Join-Path $workspace 'app.log') -Raw } else { '' }
     $err = if (Test-Path -LiteralPath (Join-Path $workspace 'app.log.err')) { Get-Content -LiteralPath (Join-Path $workspace 'app.log.err') -Raw } else { '' }
-    throw "First launch did not create the expected application database: $database stdout=[$out] stderr=[$err]"
+    # Enumerate every data dir that was actually created so the failure shows
+    # where the app really wrote its state (Roaming vs Local, and subpaths).
+    $roaming = Join-Path $appData 'com.racoon.typper'
+    $localAppData = Join-Path $env:LOCALAPPDATA 'com.racoon.typper'
+    $existing = @()
+    foreach ($candidate in @($roaming, $localAppData)) {
+      if (Test-Path -LiteralPath $candidate) {
+        $files = Get-ChildItem -LiteralPath $candidate -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
+        $existing += "DIR=$candidate FILES=[$($files -join ';')]"
+      }
+    }
+    throw "First launch did not create the expected application database: $database stdout=[$out] stderr=[$err] found=[$($existing -join ' | ')]"
   }
   Start-And-Stop-App
   Write-Output 'Windows NSIS smoke passed: installed, launched twice, and retained application data.'
