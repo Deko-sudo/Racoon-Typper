@@ -1001,7 +1001,7 @@
     },
     {
       "path": "resources/themes/amber_terminal/theme.css",
-      "checksum_sha256": "5c062c274d5a484a9fdecf4df780f61681a9b4136a7e0808f58535866d1797e8",
+      "checksum_sha256": "bff5e885a4d6ac03e1a6d3e144cc315ca48e37287da52a10b495d94af2c3212b",
       "asset_name": "amber_terminal",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1025,7 +1025,7 @@
     },
     {
       "path": "resources/themes/arctic_slate/theme.css",
-      "checksum_sha256": "e15cc0f078e5f38063f65b61e8ddf85f5aa873487cab4483f907d579c35d9b4a",
+      "checksum_sha256": "c7baf5f8c54426028ca8890ad969bc0a556ffae1902b7789af4c6927fa543eab",
       "asset_name": "arctic_slate",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1049,7 +1049,7 @@
     },
     {
       "path": "resources/themes/burgundy/theme.css",
-      "checksum_sha256": "236c019ac08e3d499142a5c20cbef456e658f17376781f64a5a52f26133916aa",
+      "checksum_sha256": "84ed0dba632f51333fedcc50c657dd16fa5570c7cbfaae9e336471b70218b9a7",
       "asset_name": "burgundy",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1073,7 +1073,7 @@
     },
     {
       "path": "resources/themes/carbon/theme.css",
-      "checksum_sha256": "8e1417d2a42a1eef3c8dd9c9e7286c209127bab3cdbd1e834a5dd6ffb2c9f5cd",
+      "checksum_sha256": "b7d9290b466fad9083a27b8d1202721e683e012ea5b4a8740273fe40ab312685",
       "asset_name": "carbon",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1097,7 +1097,7 @@
     },
     {
       "path": "resources/themes/coffee/theme.css",
-      "checksum_sha256": "c0136bed14b8b4c21801143060029a4a6ea5603c09bcc05812226bfe63c36381",
+      "checksum_sha256": "aa139a0230d0054cf0c5d79dcf50a81091f779baf1a15325c3aab8fe815a165f",
       "asset_name": "coffee",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1121,7 +1121,7 @@
     },
     {
       "path": "resources/themes/dawn/theme.css",
-      "checksum_sha256": "071cb8cd53b21b079b57519e29cfb9ef80f2abfd253c464dc2f41809b9e442e9",
+      "checksum_sha256": "5d09813417c86c38bbf7112c484738107b3488852d706706d81ab26e197d509e",
       "asset_name": "dawn",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1145,7 +1145,7 @@
     },
     {
       "path": "resources/themes/deep_sea/theme.css",
-      "checksum_sha256": "4258be7faa4e9b63ea3a64027ff58240f4cfacb95a5ea4ecf46a920e12af7212",
+      "checksum_sha256": "d0ae6e6dc2ace0ddf1c5021d738fd553e3630ddce825e03852f3da9b360d15c2",
       "asset_name": "deep_sea",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1169,7 +1169,7 @@
     },
     {
       "path": "resources/themes/ember/theme.css",
-      "checksum_sha256": "5c4a47b86161ec98981ca2c095989f97e4239fec065a9713db0b2e3d663eda3a",
+      "checksum_sha256": "569558ff2ece56e2fbce4340c6680e59adef4383663090e67496ebd95d81d29b",
       "asset_name": "ember",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1193,7 +1193,7 @@
     },
     {
       "path": "resources/themes/green_terminal/theme.css",
-      "checksum_sha256": "4e776e48085c3b47cccad42447e74d8beb4f830dcd0e13b58a41c337ccfe4eea",
+      "checksum_sha256": "f1c03e0d3b8e37809acf9438db076020065da7be12fa46e4f91bed61d34e3cc4",
       "asset_name": "green_terminal",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1217,7 +1217,7 @@
     },
     {
       "path": "resources/themes/lavender_dusk/theme.css",
-      "checksum_sha256": "b4e813977e15bd5311fb418df81022cba5df4688062af0d5bf8b940441dc84a4",
+      "checksum_sha256": "d496b2f4e553d061f10c82a46fdd68aebdb47293f26d9cae969fc32b21797173",
       "asset_name": "lavender_dusk",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1241,7 +1241,7 @@
     },
     {
       "path": "resources/themes/midnight_ink/theme.css",
-      "checksum_sha256": "e8524f761fd08f5b55eb9d34af7f67512269b7f72efafea596c1afa7b8557191",
+      "checksum_sha256": "a911aff944ee88e5f0a533f728b5da507d43c097639949bb58ded6f3fabf1445",
       "asset_name": "midnight_ink",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1265,7 +1265,7 @@
     },
     {
       "path": "resources/themes/mist/theme.css",
-      "checksum_sha256": "169d27fab42950dd817ecc623bdbc465f5fdf7f326b2cd76aa1e96fbdd662b5d",
+      "checksum_sha256": "c5bbf8439f9cd1062830dbe15af8d6cdeb12779208505255775e5b9970ac8670",
       "asset_name": "mist",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1289,7 +1289,7 @@
     },
     {
       "path": "resources/themes/moonlight/theme.css",
-      "checksum_sha256": "28afb2338ec980a5c8a08d14dd688e40eba8ec384289bd4ec98d166c2efb72d1",
+      "checksum_sha256": "d0ed314d94ec41307772d9a9dbd155e2d174a14b15894ce232cdff5dc53adcca",
       "asset_name": "moonlight",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1313,7 +1313,7 @@
     },
     {
       "path": "resources/themes/moss/theme.css",
-      "checksum_sha256": "98d56c89334c28efdd4d15d36806c3fe14af7b4ac5bbd600e0a189de7ac235e9",
+      "checksum_sha256": "9646f067c77150aec735ca22094b3a215b671db50fe12ba6fc1f3cebaa2ed5ab",
       "asset_name": "moss",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1337,7 +1337,7 @@
     },
     {
       "path": "resources/themes/ocean/theme.css",
-      "checksum_sha256": "fac662a64d1d0d205af325ade64ae6edddeb375600855a8f324157ad5ae59232",
+      "checksum_sha256": "5a17f8070936e4e83b87ab28c79824bd91d7277e687e3655a84def70de3e68b8",
       "asset_name": "ocean",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1361,7 +1361,7 @@
     },
     {
       "path": "resources/themes/paper/theme.css",
-      "checksum_sha256": "57a2945d12a10fca51300ab89514c3207dab1066c59c4c2372f462008a0615bb",
+      "checksum_sha256": "719072ea5c4bd6ef4f92a8a66a0590a3ac64c82ee665e8fb431e4b3e51126d01",
       "asset_name": "paper",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1385,7 +1385,7 @@
     },
     {
       "path": "resources/themes/plum/theme.css",
-      "checksum_sha256": "0ac10f944454189ac0b91c7b21df94a9e622e932ff7373be217bf4c8388c1b9f",
+      "checksum_sha256": "acfa6bc54fff69be72f922c799071480bbf5a35019325d240f1732ae5cf51cff",
       "asset_name": "plum",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1409,7 +1409,7 @@
     },
     {
       "path": "resources/themes/racoon_forest/theme.css",
-      "checksum_sha256": "afabcc7e53781c0f69a3ed1d58838bbf4376294da98d32ef8f5fce8784b07465",
+      "checksum_sha256": "9da7f2fd3d04e4a53ca38df089d66ccc4a12a1f1cf96aa07830917cd1e4039ea",
       "asset_name": "racoon_forest",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1529,7 +1529,7 @@
     },
     {
       "path": "resources/themes/sage/theme.css",
-      "checksum_sha256": "d08c5f2bdac5bd6918acaf23341f3f0b440fe4476d5b7c22daa69ee4e04a28fa",
+      "checksum_sha256": "db95c61b7e357217b372e5dcac1d1a3b31baa83e732e44edc86fb75758ef5266",
       "asset_name": "sage",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1553,7 +1553,7 @@
     },
     {
       "path": "resources/themes/sandstone/theme.css",
-      "checksum_sha256": "913a1a1b9d01564e6d81a8fa2d8eb69a68da767b72cea5b167e39a23461db205",
+      "checksum_sha256": "b1975adda62a41048a381b985f51791c7d5c1c24a61770b417875ac1412a8cf2",
       "asset_name": "sandstone",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",
@@ -1577,7 +1577,7 @@
     },
     {
       "path": "resources/themes/steel_blue/theme.css",
-      "checksum_sha256": "ad703cd9e16abbc54e79f878a9a921ef8fb3b475ceff9420786bd6640d58205a",
+      "checksum_sha256": "4ae1b1c4912dacac382cd98cc45ef099206d00762b5b64dacb4bbf92411d6c8f",
       "asset_name": "steel_blue",
       "owner": "Racoon Typper Contributors",
       "source": "Original theme authored for Racoon Typper in this repository",

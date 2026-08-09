@@ -15,6 +15,7 @@ use tauri::State;
 use crate::commands::contracts::{DashboardStatsResponse, ProgressPoint, StatsHistoryResponse};
 use crate::commands::with_db;
 use crate::error::AppError;
+use crate::export::{build_markdown_report, render_heatmap_png, MarkdownTestRow};
 use crate::state::AppState;
 use crate::validation::{
     validate_export_format, validate_mode_filter, validate_page_limit, validate_page_offset,
@@ -295,6 +296,73 @@ pub(crate) fn get_aggregated_heatmap(
         let rows = repo.get_recent_heatmaps(count, None)?;
         Ok(racoon_core::merge_heatmaps(&rows))
     })
+}
+
+#[tauri::command]
+pub(crate) fn export_report(state: State<'_, AppState>) -> Result<String, AppError> {
+    let (week_ago, today) = utc_date_range(7);
+    let (history, dashboard, bests) = with_db(&state, |conn| {
+        let test_repository = SqliteTestRepository::new(conn);
+        let daily_repository = SqliteDailyStatsRepository::new(conn);
+        let bests_repository = SqlitePersonalBestsRepository::new(conn);
+        let history = test_repository.get_history(MAX_PAGE_LIMIT, 0, None)?;
+        let week_stats = daily_repository.get_range(&week_ago, &today)?;
+        let total_tests = test_repository.get_count(None)?;
+        let bests = bests_repository.get_bests(None)?;
+        Ok((history, (week_stats, total_tests), bests))
+    })?;
+
+    let (week_stats, total_tests) = dashboard;
+    let best_wpm = bests.iter().map(|pb| pb.best_wpm).fold(0.0_f64, f64::max);
+    let best_accuracy = bests
+        .iter()
+        .map(|pb| pb.best_accuracy)
+        .fold(0.0_f64, f64::max);
+    let avg_wpm = weighted_daily_average(&week_stats, |stats| stats.avg_wpm);
+    let avg_accuracy = weighted_daily_average(&week_stats, |stats| stats.avg_accuracy);
+
+    let summary: Vec<(&str, String)> = vec![
+        ("Total tests", total_tests.to_string()),
+        ("Best WPM", format!("{best_wpm:.1}")),
+        ("Best accuracy", format!("{best_accuracy:.1}%")),
+        ("Avg WPM (7d)", format!("{avg_wpm:.1}")),
+        ("Avg accuracy (7d)", format!("{avg_accuracy:.1}%")),
+    ];
+
+    let rows: Vec<MarkdownTestRow> = history
+        .iter()
+        .map(|test| MarkdownTestRow {
+            date: test.created_at.clone(),
+            mode: test.mode_type.clone(),
+            language: test.language.clone(),
+            wpm: test.wpm,
+            accuracy: test.accuracy,
+            duration_ms: test.duration_ms,
+        })
+        .collect();
+
+    Ok(build_markdown_report(
+        "Racoon Typper report",
+        &chrono::Utc::now().to_rfc3339(),
+        &summary,
+        &rows,
+    ))
+}
+
+#[tauri::command]
+pub(crate) fn export_heatmap_png(
+    state: State<'_, AppState>,
+    recent_count: Option<usize>,
+) -> Result<Vec<u8>, AppError> {
+    let count = recent_count.unwrap_or(50).clamp(1, 200);
+    let heatmap = with_db(&state, |conn| {
+        let repo = SqliteTestRepository::new(conn);
+        let rows = repo.get_recent_heatmaps(count, None)?;
+        Ok(racoon_core::merge_heatmaps(&rows))
+    })?;
+    let ordered: std::collections::BTreeMap<String, racoon_domain::keyboard::KeyHeatData> =
+        heatmap.into_iter().collect();
+    Ok(render_heatmap_png(&ordered))
 }
 
 fn utc_date_range(days: i64) -> (String, String) {

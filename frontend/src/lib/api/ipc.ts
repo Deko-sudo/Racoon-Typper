@@ -167,6 +167,14 @@ export async function exportData(format: 'json' | 'csv'): Promise<string> {
   return invoke<string>('export_data', { format });
 }
 
+export async function exportReport(): Promise<string> {
+  return invoke<string>('export_report');
+}
+
+export async function exportHeatmapPng(recentCount = 50): Promise<number[]> {
+  return invoke<number[]>('export_heatmap_png', { recentCount });
+}
+
 // Versioned portable profile transfer. `replace` is destructive for portable
 // profile tables, so callers should always display the preview before applying it.
 export async function exportProfile(): Promise<string> {

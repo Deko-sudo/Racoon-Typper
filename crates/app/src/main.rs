@@ -16,6 +16,7 @@ use tauri::Manager;
 
 mod commands;
 mod error;
+mod export;
 mod logging;
 mod paths;
 mod session_service;
@@ -141,6 +142,8 @@ fn main() {
             commands::reporting::get_insights,
             commands::reporting::get_consistency,
             commands::reporting::export_data,
+            commands::reporting::export_report,
+            commands::reporting::export_heatmap_png,
             // Versioned portable profile transfer
             commands::profile_transfer::export_profile,
             commands::profile_transfer::preview_profile_import,

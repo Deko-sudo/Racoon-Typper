@@ -12,6 +12,7 @@
   let consistency = $state<ConsistencyReport | null>(null);
   let exportFormat = $state<'json' | 'csv'>('json');
   let exportResult = $state('');
+  let reportResult = $state('');
   let errorMsg = $state('');
 
   async function loadData() {
@@ -41,6 +42,40 @@
     a.download = `racoon-typper-export.${exportFormat}`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function doReport() {
+    try {
+      reportResult = await ipc.exportReport();
+    } catch (e) {
+      errorMsg = `Report error: ${e}`;
+    }
+  }
+
+  function downloadReport() {
+    if (!reportResult) return;
+    const blob = new Blob([reportResult], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `racoon-typper-report-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadHeatmapPng() {
+    try {
+      const bytes = await ipc.exportHeatmapPng(50);
+      const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `racoon-typper-heatmap-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      errorMsg = `Heatmap export error: ${e}`;
+    }
   }
 
   onMount(loadData);
@@ -113,6 +148,14 @@
     </div>
     {#if exportResult}
       <pre class="export-preview">{exportResult.substring(0, 500)}{exportResult.length > 500 ? '...' : ''}</pre>
+    {/if}
+    <div class="export-controls">
+      <button onclick={doReport}>Markdown report</button>
+      {#if reportResult}<button onclick={downloadReport}>Download .md</button>{/if}
+      <button onclick={downloadHeatmapPng}>Heatmap PNG</button>
+    </div>
+    {#if reportResult}
+      <pre class="export-preview">{reportResult.substring(0, 500)}{reportResult.length > 500 ? '...' : ''}</pre>
     {/if}
   </div>
 </div>

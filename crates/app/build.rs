@@ -26,6 +26,8 @@ const APP_COMMANDS: &[&str] = &[
     "get_insights",
     "get_consistency",
     "export_data",
+    "export_report",
+    "export_heatmap_png",
     "export_profile",
     "preview_profile_import",
     "import_profile",

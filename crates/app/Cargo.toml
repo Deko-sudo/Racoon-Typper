@@ -24,6 +24,7 @@ serde_json = { workspace = true }
 toml = { workspace = true }
 chrono = "0.4"
 rusqlite = { version = "0.31", features = ["bundled"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
