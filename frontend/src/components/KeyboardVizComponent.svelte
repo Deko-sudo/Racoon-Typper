@@ -199,10 +199,15 @@
   .keyboard-main { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; min-width: 748px; }
   .keyboard-row { display: flex; gap: 0.25rem; }
   .row-fn { align-self: flex-start; }
-  .row-number { padding-left: 8px; }
-  .row-top { padding-left: 18px; }
-  .row-home { padding-left: 30px; }
-  .row-bottom { padding-left: 46px; }
+  /* The letter columns of each row are aligned to a single vertical line.
+     The padding compensates for the differing widths of the leading special
+     keys (number `` = 48px, tab = 64px, caps = 72px, left shift = 96px), each
+     followed by a 4px gap. Without this, the home row (a/f/j/l) drifts right
+     relative to the rows above and below. */
+  .row-number { padding-left: 60px; }
+  .row-top { padding-left: 44px; }
+  .row-home { padding-left: 36px; }
+  .row-bottom { padding-left: 12px; }
   .row-space { padding-left: 72px; }
   .keyboard-numpad { display: grid; grid-template-columns: repeat(4, 48px); grid-template-rows: repeat(5, 52px); gap: 0.25rem; margin-top: 36px; }
   .key {
