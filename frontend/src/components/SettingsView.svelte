@@ -119,23 +119,23 @@
       </div>
       <div class="setting-row">
         <label for="setting-live-wpm">{t(uiLang, 'settings.show_live_wpm')}</label>
-        <input id="setting-live-wpm" type="checkbox" checked={settings.show_live_wpm} onchange={(e) => onUpdateSetting('show_live_wpm', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-live-wpm" type="checkbox" checked={settings.show_live_wpm} onchange={(e) => onUpdateSetting('show_live_wpm', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-accuracy">{t(uiLang, 'settings.show_accuracy')}</label>
-        <input id="setting-accuracy" type="checkbox" checked={settings.show_accuracy} onchange={(e) => onUpdateSetting('show_accuracy', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-accuracy" type="checkbox" checked={settings.show_accuracy} onchange={(e) => onUpdateSetting('show_accuracy', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-hand-guide">{t(uiLang, 'settings.hand_guide')}</label>
-        <input id="setting-hand-guide" type="checkbox" checked={settings.show_hand_guide} onchange={(e) => onUpdateSetting('show_hand_guide', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-hand-guide" type="checkbox" checked={settings.show_hand_guide} onchange={(e) => onUpdateSetting('show_hand_guide', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-capslock">{t(uiLang, 'settings.capslock_warnings')}</label>
-        <input id="setting-capslock" type="checkbox" checked={settings.show_capslock_warnings} onchange={(e) => onUpdateSetting('show_capslock_warnings', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-capslock" type="checkbox" checked={settings.show_capslock_warnings} onchange={(e) => onUpdateSetting('show_capslock_warnings', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-sound">{t(uiLang, 'settings.sound_enabled')}</label>
-        <input id="setting-sound" type="checkbox" checked={settings.sound_enabled} onchange={(e) => onUpdateSetting('sound_enabled', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-sound" type="checkbox" checked={settings.sound_enabled} onchange={(e) => onUpdateSetting('sound_enabled', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-volume">{t(uiLang, 'settings.sound_volume')}</label>
@@ -143,15 +143,15 @@
       </div>
       <div class="setting-row">
         <label for="setting-zen">{t(uiLang, 'settings.zen_mode')}</label>
-        <input id="setting-zen" type="checkbox" checked={settings.zen_mode_enabled} onchange={(e) => onUpdateSetting('zen_mode_enabled', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-zen" type="checkbox" checked={settings.zen_mode_enabled} onchange={(e) => onUpdateSetting('zen_mode_enabled', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-blind">{t(uiLang, 'settings.blind_mode')}</label>
-        <input id="setting-blind" type="checkbox" checked={settings.blind_mode_enabled} onchange={(e) => onUpdateSetting('blind_mode_enabled', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-blind" type="checkbox" checked={settings.blind_mode_enabled} onchange={(e) => onUpdateSetting('blind_mode_enabled', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-vim">{t(uiLang, 'settings.vim_mode')}</label>
-        <input id="setting-vim" type="checkbox" checked={settings.vim_mode} onchange={(e) => onUpdateSetting('vim_mode', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-vim" type="checkbox" checked={settings.vim_mode} onchange={(e) => onUpdateSetting('vim_mode', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       {#if settings.vim_mode}
         <div class="vim-hint">
@@ -245,7 +245,23 @@
   }
   .setting-row select { min-width: 155px; padding-right: 0.5rem; }
   .setting-row select option { background-color: var(--bg-sub); color: var(--text); }
-  .setting-row input[type='checkbox'] { accent-color: var(--main); }
+  /* Custom toggle switch (iOS/macOS style). The real checkbox is visually
+     hidden but remains focusable for keyboard access. */
+  .toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: var(--sub); border-radius: 24px;
+    transition: background 0.2s ease;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px;
+    background: #fff; border-radius: 50%; transition: transform 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle input:checked + .toggle-slider { background: var(--main); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+  .toggle input:focus-visible + .toggle-slider { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+  .toggle input:disabled + .toggle-slider { opacity: 0.5; cursor: default; }
   .vim-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-left: 180px; padding: 0.5rem 0.75rem; background: var(--bg-sub); border: 1px solid var(--sub); border-radius: 6px; font-size: 0.8rem; }
   .vim-key { display: inline-block; min-width: 1.4em; text-align: center; padding: 0.1rem 0.35rem; background: var(--main); color: var(--bg); border-radius: 4px; font-family: monospace; font-weight: 700; }
   .vim-desc { color: var(--sub); }
