@@ -34,6 +34,7 @@ const APP_COMMANDS: &[&str] = &[
     "import_profile",
     "get_replay",
     "get_aggregated_heatmap",
+    "clear_statistics",
     "get_sound_event",
 ];
 

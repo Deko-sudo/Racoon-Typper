@@ -3,6 +3,7 @@
   import { t, UI_LANGUAGES } from '../lib/i18n';
   import ProfileTransferPanel from './ProfileTransferPanel.svelte';
   import { checkForUpdate, installUpdate } from '../lib/updater';
+  import * as ipc from '../lib/api/ipc';
 
   let {
     settings,
@@ -43,6 +44,24 @@
   async function handleInstallUpdate() {
     const ok = await installUpdate();
     if (!ok) updateStatus = 'Update install failed.';
+  }
+
+  let clearConfirm = $state(false);
+  let clearStatus = $state('');
+
+  async function handleClearStatistics() {
+    if (!clearConfirm) {
+      clearConfirm = true;
+      clearStatus = 'This permanently deletes all typing statistics and resets achievements. Click again to confirm.';
+      return;
+    }
+    try {
+      await ipc.clearStatistics();
+      clearConfirm = false;
+      clearStatus = 'All statistics cleared.';
+    } catch (error) {
+      clearStatus = `Clear failed: ${ipc.ipcErrorMessage(error)}`;
+    }
   }
 
   const themeDescriptions: Record<string, string> = {
@@ -186,6 +205,15 @@
       {/if}
     </div>
     <ProfileTransferPanel {uiLang} />
+    <h3>Data</h3>
+    <div class="update-panel">
+      <button class="update-btn danger" onclick={handleClearStatistics}>
+        {clearConfirm ? 'Confirm clear' : 'Clear all statistics'}
+      </button>
+      {#if clearStatus}
+        <span class="update-status">{clearStatus}</span>
+      {/if}
+    </div>
     <h3>Updates</h3>
     <div class="update-panel">
       <button class="update-btn" onclick={handleCheckUpdate} disabled={checkingUpdate}>
@@ -291,6 +319,8 @@
     padding: 0.5rem 1.25rem; font-family: inherit; font-size: 0.875rem; cursor: pointer; border-radius: 4px;
   }
   .update-btn.primary { background-color: var(--main); color: var(--bg); }
+  .update-btn.danger { border-color: var(--error); color: var(--error); }
+  .update-btn.danger:hover:not(:disabled) { background-color: var(--error); color: var(--bg); }
   .update-btn:hover:not(:disabled) { opacity: 0.85; }
   .update-btn:disabled { opacity: 0.5; cursor: default; }
   .update-status { color: var(--sub); font-size: 0.8rem; }

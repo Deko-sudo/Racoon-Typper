@@ -375,6 +375,32 @@ fn utc_date_range(days: i64) -> (String, String) {
     )
 }
 
+/// Permanently deletes all typing statistics: test history, personal bests,
+/// daily aggregates, streaks, lesson progress, replays, and the session ledger.
+/// Custom texts and settings are preserved. Achievements are derived from these
+/// aggregates, so they reset to locked as well.
+#[tauri::command]
+pub(crate) fn clear_statistics(state: State<'_, AppState>) -> Result<(), AppError> {
+    state.require_startup_recovery_ready()?;
+    state.db.with_transaction(|conn| {
+        for table in [
+            "test_replays",
+            "session_ledger",
+            "session_completion_intents",
+            "session_finalizations",
+            "tests",
+            "personal_bests",
+            "daily_stats",
+            "streaks",
+            "lesson_progress",
+        ] {
+            conn.execute(&format!("DELETE FROM {table}"), [])?;
+        }
+        Ok(())
+    })?;
+    Ok(())
+}
+
 fn weighted_daily_average(stats: &[DailyStats], metric: impl Fn(&DailyStats) -> f64) -> f64 {
     let total_tests: i64 = stats.iter().map(|stat| stat.total_tests).sum();
     if total_tests <= 0 {

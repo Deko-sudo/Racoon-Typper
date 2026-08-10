@@ -154,6 +154,7 @@ fn main() {
             commands::reporting::get_replay,
             // Aggregated heatmap (training-of-the-day)
             commands::reporting::get_aggregated_heatmap,
+            commands::reporting::clear_statistics,
             // Sound
             commands::preferences::get_sound_event,
         ]);

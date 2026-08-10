@@ -16,6 +16,7 @@
     "allow-generate-weak-keys-training",
     "allow-get-achievements",
     "allow-get-aggregated-heatmap",
+    "allow-clear-statistics",
     "allow-get-consistency",
     "allow-get-course",
     "allow-get-custom-texts",

@@ -103,6 +103,10 @@ export async function getAggregatedHeatmap(recentCount = 50): Promise<Record<str
   return invoke<Record<string, KeyHeatData>>('get_aggregated_heatmap', { recentCount });
 }
 
+export async function clearStatistics(): Promise<void> {
+  return invoke('clear_statistics');
+}
+
 export async function startCustomTextTest(customTextId: number): Promise<TestSessionResponse> {
   return invoke<TestSessionResponse>('start_custom_text_test', { customTextId });
 }
