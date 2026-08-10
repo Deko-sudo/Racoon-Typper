@@ -105,10 +105,22 @@ pub fn check_achievements(
             total_tests >= 1,
         ),
         mk(
+            "5_tests",
+            "Warm Up",
+            "Complete 5 tests",
+            total_tests >= 5,
+        ),
+        mk(
             "10_tests",
             "Getting Started",
             "Complete 10 tests",
             total_tests >= 10,
+        ),
+        mk(
+            "25_tests",
+            "Regular",
+            "Complete 25 tests",
+            total_tests >= 25,
         ),
         mk(
             "50_tests",
@@ -122,10 +134,45 @@ pub fn check_achievements(
             "Complete 100 tests",
             total_tests >= 100,
         ),
+        mk(
+            "250_tests",
+            "Quarter Milestone",
+            "Complete 250 tests",
+            total_tests >= 250,
+        ),
+        mk(
+            "500_tests",
+            "Half a Thousand",
+            "Complete 500 tests",
+            total_tests >= 500,
+        ),
+        mk(
+            "1000_tests",
+            "Typing Veteran",
+            "Complete 1,000 tests",
+            total_tests >= 1000,
+        ),
+        mk("wpm_20", "Beginner", "Reach 20 WPM", best_wpm >= 20.0),
         mk("wpm_30", "Speed Runner", "Reach 30 WPM", best_wpm >= 30.0),
         mk("wpm_50", "Fast Fingers", "Reach 50 WPM", best_wpm >= 50.0),
+        mk("wpm_60", "Quick", "Reach 60 WPM", best_wpm >= 60.0),
         mk("wpm_80", "Lightning", "Reach 80 WPM", best_wpm >= 80.0),
         mk("wpm_100", "Speed Demon", "Reach 100 WPM", best_wpm >= 100.0),
+        mk("wpm_120", "Blur", "Reach 120 WPM", best_wpm >= 120.0),
+        mk("wpm_150", "Mach Speed", "Reach 150 WPM", best_wpm >= 150.0),
+        mk("wpm_200", "Impossible", "Reach 200 WPM", best_wpm >= 200.0),
+        mk(
+            "acc_85",
+            "Steady",
+            "Reach 85% accuracy",
+            best_accuracy >= 85.0,
+        ),
+        mk(
+            "acc_90",
+            "Reliable",
+            "Reach 90% accuracy",
+            best_accuracy >= 90.0,
+        ),
         mk(
             "acc_95",
             "Sharpshooter",
@@ -133,11 +180,24 @@ pub fn check_achievements(
             best_accuracy >= 95.0,
         ),
         mk(
+            "acc_97",
+            "Surgical",
+            "Reach 97% accuracy",
+            best_accuracy >= 97.0,
+        ),
+        mk(
             "acc_99",
             "Perfect Precision",
             "Reach 99% accuracy",
             best_accuracy >= 99.0,
         ),
+        mk(
+            "acc_100",
+            "Flawless",
+            "Reach 100% accuracy",
+            best_accuracy >= 100.0,
+        ),
+        mk("streak_1", "First Day", "1-day streak", longest_streak >= 1),
         mk("streak_3", "On a Roll", "3-day streak", longest_streak >= 3),
         mk(
             "streak_7",
@@ -146,10 +206,40 @@ pub fn check_achievements(
             longest_streak >= 7,
         ),
         mk(
+            "streak_14",
+            "Fortnight",
+            "14-day streak",
+            longest_streak >= 14,
+        ),
+        mk(
             "streak_30",
             "Unstoppable",
             "30-day streak",
             longest_streak >= 30,
+        ),
+        mk(
+            "streak_60",
+            "Two Months Strong",
+            "60-day streak",
+            longest_streak >= 60,
+        ),
+        mk(
+            "streak_100",
+            "Century Streak",
+            "100-day streak",
+            longest_streak >= 100,
+        ),
+        mk(
+            "lessons_1",
+            "First Lesson",
+            "Complete your first lesson",
+            lessons_completed >= 1,
+        ),
+        mk(
+            "lessons_2",
+            "Apprentice",
+            "Complete 2 lessons",
+            lessons_completed >= 2,
         ),
         mk(
             "lessons_5",
@@ -162,6 +252,60 @@ pub fn check_achievements(
             "Scholar",
             "Complete 20 lessons",
             lessons_completed >= 20,
+        ),
+        mk(
+            "lessons_50",
+            "Mentor",
+            "Complete 50 lessons",
+            lessons_completed >= 50,
+        ),
+        mk(
+            "lessons_100",
+            "Master",
+            "Complete 100 lessons",
+            lessons_completed >= 100,
+        ),
+        mk(
+            "lessons_200",
+            "Grandmaster",
+            "Complete 200 lessons",
+            lessons_completed >= 200,
+        ),
+        mk(
+            "balanced_50_95",
+            "Balanced",
+            "Reach 50 WPM with 95% accuracy",
+            best_wpm >= 50.0 && best_accuracy >= 95.0,
+        ),
+        mk(
+            "elite_80_95",
+            "Elite",
+            "Reach 80 WPM with 95% accuracy",
+            best_wpm >= 80.0 && best_accuracy >= 95.0,
+        ),
+        mk(
+            "marathon_100_80",
+            "Marathon",
+            "Complete 100 tests and reach 80 WPM",
+            total_tests >= 100 && best_wpm >= 80.0,
+        ),
+        mk(
+            "legend_500_100",
+            "Legend",
+            "Complete 500 tests and reach 100 WPM",
+            total_tests >= 500 && best_wpm >= 100.0,
+        ),
+        mk(
+            "consistent_7_20",
+            "Consistent",
+            "Hold a 7-day streak and complete 20 lessons",
+            longest_streak >= 7 && lessons_completed >= 20,
+        ),
+        mk(
+            "flawless_99_50",
+            "Perfectionist",
+            "Reach 99% accuracy across 50 tests",
+            best_accuracy >= 99.0 && total_tests >= 50,
         ),
     ];
 
@@ -479,12 +623,12 @@ mod tests {
     #[test]
     fn achievements_all_unlocked() {
         let a = check_achievements(
-            100,
+            1000,
+            200.0,
             100.0,
-            99.0,
-            30,
-            30,
-            20,
+            100,
+            100,
+            200,
             "2026-01-01T00:00:00Z".to_string(),
         );
         assert!(a.iter().all(|x| x.unlocked));
@@ -493,7 +637,7 @@ mod tests {
     #[test]
     fn achievements_count() {
         let a = check_achievements(0, 0.0, 0.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
-        assert_eq!(a.len(), 15);
+        assert_eq!(a.len(), 44);
     }
 
     // ── Finger stats tests ──
