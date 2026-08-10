@@ -193,6 +193,15 @@ pub(crate) fn get_themes() -> Result<Vec<ThemeInfo>, AppError> {
             "#ffffff",
             "#ff7373",
         ),
+        theme_info("abyss", "Abyss", true, "#06080f", "#6d8bd6", "#d4d8e8", "#e08b8b"),
+        theme_info("solar_flare", "Solar Flare", true, "#120e08", "#e8a83b", "#f0e6d6", "#e87878"),
+        theme_info("volcanic", "Volcanic", true, "#0a0806", "#d4642a", "#e8ddd0", "#e85a3a"),
+        theme_info("obsidian", "Obsidian", true, "#080a0c", "#3ac8d8", "#dde2e8", "#e88a8a"),
+        theme_info("toxic", "Toxic", true, "#060a06", "#48d848", "#c8e8c0", "#e86848"),
+        theme_info("chestnut", "Chestnut", true, "#100c08", "#c89858", "#ede0d0", "#dc8c6a"),
+        theme_info("glacier", "Glacier", false, "#e8f0f5", "#5a9cb8", "#1a2a35", "#b85555"),
+        theme_info("mint_frost", "Mint Frost", false, "#e6f2ee", "#4a9a7a", "#1a2e26", "#aa5050"),
+        theme_info("porcelain", "Porcelain", false, "#f4f5f7", "#6888a8", "#2a2e35", "#b04848"),
     ])
 }
 
@@ -231,6 +240,15 @@ pub(crate) fn get_theme_css(name: String) -> Result<String, AppError> {
         "moonlight" => include_str!("../../../../resources/themes/moonlight/theme.css"),
         "dawn" => include_str!("../../../../resources/themes/dawn/theme.css"),
         "sage" => include_str!("../../../../resources/themes/sage/theme.css"),
+        "abyss" => include_str!("../../../../resources/themes/abyss/theme.css"),
+        "solar_flare" => include_str!("../../../../resources/themes/solar_flare/theme.css"),
+        "volcanic" => include_str!("../../../../resources/themes/volcanic/theme.css"),
+        "obsidian" => include_str!("../../../../resources/themes/obsidian/theme.css"),
+        "toxic" => include_str!("../../../../resources/themes/toxic/theme.css"),
+        "chestnut" => include_str!("../../../../resources/themes/chestnut/theme.css"),
+        "glacier" => include_str!("../../../../resources/themes/glacier/theme.css"),
+        "mint_frost" => include_str!("../../../../resources/themes/mint_frost/theme.css"),
+        "porcelain" => include_str!("../../../../resources/themes/porcelain/theme.css"),
         _ => return Err(AppError::ThemeNotFound(name)),
     };
     Ok(css.to_string())
@@ -398,7 +416,7 @@ mod tests {
     #[test]
     fn built_in_theme_catalog_is_complete_and_unique() {
         let themes = get_themes().unwrap();
-        assert_eq!(themes.len(), 25);
+        assert_eq!(themes.len(), 34);
         let unique_names: std::collections::HashSet<_> =
             themes.iter().map(|theme| theme.name.as_str()).collect();
         assert_eq!(unique_names.len(), themes.len());
