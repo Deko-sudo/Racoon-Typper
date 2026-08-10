@@ -247,19 +247,19 @@
   .setting-row select option { background-color: var(--bg-sub); color: var(--text); }
   /* Custom toggle switch (iOS/macOS style). The real checkbox is visually
      hidden but remains focusable for keyboard access. */
-  .toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; cursor: pointer; }
+  .toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
   .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
   .toggle-slider {
-    position: absolute; inset: 0; background: var(--sub); border-radius: 24px;
+    position: absolute; inset: 0; background: var(--sub); border-radius: 20px;
     transition: background 0.2s ease;
   }
   .toggle-slider::before {
-    content: ''; position: absolute; width: 18px; height: 18px; left: 3px; bottom: 3px;
+    content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px;
     background: #fff; border-radius: 50%; transition: transform 0.2s ease;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
   }
   .toggle input:checked + .toggle-slider { background: var(--main); }
-  .toggle input:checked + .toggle-slider::before { transform: translateX(20px); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
   .toggle input:focus-visible + .toggle-slider { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
   .toggle input:disabled + .toggle-slider { opacity: 0.5; cursor: default; }
   .vim-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-left: 180px; padding: 0.5rem 0.75rem; background: var(--bg-sub); border: 1px solid var(--sub); border-radius: 6px; font-size: 0.8rem; }
