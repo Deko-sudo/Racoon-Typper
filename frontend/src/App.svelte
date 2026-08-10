@@ -37,6 +37,10 @@
   let charStatuses = $state<CharStatus[]>([]);
   let isRunning = $state(false);
   let isComplete = $state(false);
+  // Guards against a race where two startTest() calls both observe isRunning
+  // === false while the first is still awaiting the backend, causing a second
+  // IPC start that the backend rejects with TEST_ALREADY_ACTIVE.
+  let startingTest = $state(false);
   let sessionState = $state<SessionState>('idle');
   let errorMsg = $state('');
   // Tracks a pending single 'g' press for the 'gg' Vim scroll-to-top command.
@@ -220,11 +224,14 @@
   async function startTest() {
     // Guard against a double start (e.g. a racing onMount + user click). The
     // backend rejects a second start with TEST_ALREADY_ACTIVE; surface a
-    // clear message instead of a raw IPC error.
+    // clear message instead of a raw IPC error. `startingTest` closes the gap
+    // where isRunning is still false while the first start is in flight.
     if (isRunning && !isComplete) {
       errorMsg = 'Start test error: A test is already running.';
       return;
     }
+    if (startingTest) return;
+    startingTest = true;
     errorMsg = '';
     finalStats = null;
     if (settings?.zen_mode_enabled) zenActive = true;
@@ -247,6 +254,8 @@
     } catch (error) {
       zenActive = false;
       errorMsg = `Start test error: ${ipc.ipcErrorMessage(error)}`;
+    } finally {
+      startingTest = false;
     }
   }
 
