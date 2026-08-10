@@ -84,6 +84,9 @@ const en: Dict = {
   'vim.hint_next': 'next tab',
   'vim.hint_up': 'scroll up',
   'vim.hint_down': 'scroll down',
+  'vim.hint_top': 'top of page',
+  'vim.hint_bottom': 'bottom of page',
+  'vim.hint_restart': 'restart test',
   // Mode selector
   'mode.time': 'Time', 'mode.words': 'Words', 'mode.quote': 'Quote',
   // Result overlay
@@ -245,6 +248,9 @@ const ru: Dict = {
   'vim.hint_next': 'следующая вкладка',
   'vim.hint_up': 'прокрутка вверх',
   'vim.hint_down': 'прокрутка вниз',
+  'vim.hint_top': 'в начало страницы',
+  'vim.hint_bottom': 'в конец страницы',
+  'vim.hint_restart': 'перезапустить тест',
   // Mode selector
   'mode.time': 'Время', 'mode.words': 'Слова', 'mode.quote': 'Цитаты',
   // Result overlay

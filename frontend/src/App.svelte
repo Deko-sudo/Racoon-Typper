@@ -38,6 +38,8 @@
   let isComplete = $state(false);
   let sessionState = $state<SessionState>('idle');
   let errorMsg = $state('');
+  // Tracks a pending single 'g' press for the 'gg' Vim scroll-to-top command.
+  let vimPendingG = $state(false);
   let liveWpm = $state(0);
   let liveAccuracy = $state(100);
   let elapsedMs = $state(0);
@@ -386,6 +388,17 @@
       if (e.key === 'l' && currentIdx < views.length - 1) { e.preventDefault(); switchView(views[currentIdx + 1]); return; }
       if (e.key === 'k') { e.preventDefault(); window.scrollBy(0, -100); return; }
       if (e.key === 'j') { e.preventDefault(); window.scrollBy(0, 100); return; }
+      if (e.key === 'g') {
+        // 'gg' -> top of page, single 'g' -> wait for the second press.
+        if (vimPendingG) {
+          e.preventDefault(); vimPendingG = false; window.scrollTo(0, 0); return;
+        }
+        e.preventDefault(); vimPendingG = true;
+        window.setTimeout(() => { vimPendingG = false; }, 500);
+        return;
+      }
+      if (e.key === 'G') { e.preventDefault(); window.scrollTo(0, document.body.scrollHeight); return; }
+      if (e.key === 'r') { e.preventDefault(); void restartTest(); return; }
     }
 
     if (!isRunning || isComplete) return;
@@ -723,6 +736,10 @@
     <NavigationBar {view} {historyTotal} {uiLang} onNavigate={switchView} />
   {/if}
 
+  {#if settings?.vim_mode && !isRunning}
+    <div class="vim-indicator" aria-label="Vim mode active">VIM</div>
+  {/if}
+
   {#if errorMsg}
     <p class="error">{errorMsg}</p>
   {/if}
@@ -854,6 +871,11 @@
     font-family: 'JetBrains Mono', monospace;
   }
   .error { color: var(--error); font-size: 0.875rem; }
+  .vim-indicator {
+    position: fixed; bottom: 0.75rem; right: 0.75rem; z-index: 50;
+    padding: 0.2rem 0.6rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--bg); background: var(--main); border-radius: 4px; opacity: 0.85;
+  }
   .lesson-lang-selector { display: flex; gap: 0.25rem; }
   .lesson-lang-selector button { background: var(--bg-sub); color: var(--sub); border: 1px solid var(--sub); padding: 0.25rem 0.75rem; font-family: inherit; font-size: 0.75rem; cursor: pointer; border-radius: 4px; }
   .lesson-lang-selector button.active { color: var(--main); border-color: var(--main); }

@@ -133,6 +133,9 @@
           <span class="vim-key">l</span> <span class="vim-desc">{t(uiLang, 'vim.hint_next')}</span>
           <span class="vim-key">k</span> <span class="vim-desc">{t(uiLang, 'vim.hint_up')}</span>
           <span class="vim-key">j</span> <span class="vim-desc">{t(uiLang, 'vim.hint_down')}</span>
+          <span class="vim-key">gg</span> <span class="vim-desc">{t(uiLang, 'vim.hint_top')}</span>
+          <span class="vim-key">G</span> <span class="vim-desc">{t(uiLang, 'vim.hint_bottom')}</span>
+          <span class="vim-key">r</span> <span class="vim-desc">{t(uiLang, 'vim.hint_restart')}</span>
         </div>
       {/if}
       <div class="setting-row">
