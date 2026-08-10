@@ -19,6 +19,9 @@ package=$(realpath "$1")
 workspace=$(mktemp -d)
 cleanup() {
   pkill -u "$(id -u)" -f '/usr/bin/racoon-typper' 2>/dev/null || true
+  # Give GTK/WebKit children a moment to release files before removing the
+  # workspace; otherwise rm -rf can fail with "Directory not empty".
+  sleep 1
   rm -rf "$workspace"
 }
 trap cleanup EXIT
