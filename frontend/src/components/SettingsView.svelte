@@ -238,7 +238,8 @@
   h3 { color: var(--main); font-size: 1.1rem; margin: 1rem 0 0.5rem; }
   .settings-form { display: flex; flex-direction: column; gap: 1rem; }
   .setting-row { display: flex; align-items: center; gap: 1rem; }
-  .setting-row label { min-width: 180px; color: var(--sub); font-size: 0.875rem; }
+  .setting-row > label:first-of-type { min-width: 180px; color: var(--sub); font-size: 0.875rem; }
+  .setting-row label.toggle { min-width: auto; }
   .setting-row input, .setting-row select {
     background-color: var(--bg-sub) !important; border: 1px solid var(--sub); color: var(--text) !important;
     padding: 0.5rem; font-family: inherit; border-radius: 4px; font-size: 0.875rem;
