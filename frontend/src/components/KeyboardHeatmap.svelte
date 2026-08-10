@@ -1,17 +1,39 @@
 <script lang="ts">
   import { FINGERS, ROWS } from '../lib/keyboard';
 
-  let { heatmap = {} }: { heatmap?: Record<string, { total_attempts: number; correct: number; incorrect: number; avg_wpm_at_key: number }> } = $props();
-  const heatmapRows = ROWS.map((row) => row.filter((key) => /^[a-z]$/.test(key)));
+  let {
+    heatmap = {},
+    charStats = {},
+  }: {
+    heatmap?: Record<string, { total_attempts: number; correct: number; incorrect: number; avg_wpm_at_key: number }>;
+    charStats?: Record<string, { correct: number; incorrect: number; total: number }>;
+  } = $props();
+
+  const heatmapRows = ROWS.map((row) => row.filter((key) => /^[a-z;,./]$/.test(key)));
+
+  // Staggered offsets per row to mimic physical QWERTY layout.
+  const ROW_STAGGER = [0, 22, 44]; // top, home, bottom (px)
+
+  function getKeyData(key: string): { correct: number; incorrect: number; total: number } {
+    if (charStats[key]) return charStats[key];
+    if (heatmap[key]) {
+      return {
+        correct: heatmap[key].correct,
+        incorrect: heatmap[key].incorrect,
+        total: heatmap[key].total_attempts,
+      };
+    }
+    return { correct: 0, incorrect: 0, total: 0 };
+  }
 
   function getFinger(key: string): string {
     return FINGERS[key] || '';
   }
 
   function getKeyColor(key: string): string {
-    const data = heatmap[key];
-    if (!data || data.total_attempts === 0) return 'var(--sub)';
-    const accuracy = (data.correct / data.total_attempts) * 100;
+    const data = getKeyData(key);
+    if (data.total === 0) return 'var(--sub)';
+    const accuracy = (data.correct / data.total) * 100;
     if (accuracy >= 95) return 'var(--text)';
     if (accuracy >= 80) return 'var(--color-chart-positive)';
     if (accuracy >= 60) return 'var(--color-warning)';
@@ -19,15 +41,15 @@
   }
 
   function getKeyIntensity(key: string): number {
-    const data = heatmap[key];
-    if (!data || data.total_attempts === 0) return 0.3;
-    return Math.min(1, data.total_attempts / 20);
+    const data = getKeyData(key);
+    if (data.total === 0) return 0.3;
+    return Math.min(1, data.total / 20);
   }
 
   function getKeyLabel(key: string): string {
-    const data = heatmap[key];
-    if (!data || data.total_attempts === 0) return '';
-    const acc = ((data.correct / data.total_attempts) * 100).toFixed(0);
+    const data = getKeyData(key);
+    if (data.total === 0) return '';
+    const acc = ((data.correct / data.total) * 100).toFixed(0);
     return `${acc}%`;
   }
 </script>
@@ -36,7 +58,7 @@
   <h3>Heatmap</h3>
   <div class="keyboard">
     {#each heatmapRows as row, rowIdx}
-      <div class="keyboard-row" style="margin-left: {rowIdx * 20}px;">
+      <div class="keyboard-row" style="padding-left: {ROW_STAGGER[rowIdx] || 0}px;">
         {#each row as key}
           <div
             class="key"
@@ -56,14 +78,18 @@
 </div>
 
 <style>
-  .heatmap-container { max-width: 700px; width: 100%; }
+  .heatmap-container { max-width: 700px; width: 100%; display: flex; flex-direction: column; align-items: center; }
   h3 { color: var(--main); font-size: 1.1rem; margin: 0 0 0.5rem; text-align: center; }
-  .keyboard { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; width: fit-content; margin: 0 auto; }
-  .keyboard-row { display: flex; gap: 0.25rem; }
+  .keyboard {
+    display: flex; flex-direction: column; gap: 0.25rem;
+    align-items: center; width: 100%;
+  }
+  .keyboard-row { display: flex; gap: 0.25rem; justify-content: center; }
   .key {
     width: 40px; height: 40px; border: 1px solid var(--color-key-border); border-radius: 4px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: var(--color-key-background); font-size: 0.75rem; transition: all 0.2s;
+    background: var(--color-key-background); font-size: 0.75rem; transition: all 0.2s; position: relative;
+    flex-shrink: 0;
   }
   .key-char { font-weight: bold; }
   .key-acc { font-size: 0.6rem; opacity: 0.8; }

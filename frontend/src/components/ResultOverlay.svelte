@@ -1,7 +1,6 @@
 <script lang="ts">
   import type { FinalStats } from '../lib/types/index';
   import KeyboardHeatmap from './KeyboardHeatmap.svelte';
-  import KeyboardVizComponent from './KeyboardVizComponent.svelte';
   import { t } from '../lib/i18n';
   import type { LessonResultNavigation } from '../lib/lessonNavigation';
 
@@ -38,8 +37,7 @@
     <span>{t(uiLang, 'result.backspaces')}: {stats.backspaces}</span>
     <span>{t(uiLang, 'result.duration')}: {(stats.duration_ms / 1000).toFixed(1)}s</span>
   </div>
-  <KeyboardHeatmap heatmap={stats.heatmap} />
-  <KeyboardVizComponent heatmap={stats.heatmap} charStats={stats.char_stats} />
+  <KeyboardHeatmap heatmap={stats.heatmap} charStats={stats.char_stats} />
   <div class="result-actions">
     {#if lessonNavigation}
       {#if lessonNavigation.nextLessonId}
