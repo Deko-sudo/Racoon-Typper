@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
   import type { ProgressPoint } from '../lib/types/index';
+  import { buildGrid, formatTooltip } from '../lib/contributionCalendar';
 
   let points = $state<ProgressPoint[]>([]);
   let loading = $state(false);
@@ -19,24 +20,6 @@
 
   onMount(loadData);
 
-  // Build a map date -> tests for O(1) lookup.
-  let testsByDate = $derived(
-    new Map(points.map((p) => [p.date, p.tests])),
-  );
-
-  // GitHub-style intensity buckets based on the max daily test count.
-  let maxTests = $derived(Math.max(...points.map((p) => p.tests), 0));
-
-  function level(tests: number): number {
-    if (tests <= 0) return 0;
-    if (maxTests <= 0) return 1;
-    const ratio = tests / maxTests;
-    if (ratio <= 0.25) return 1;
-    if (ratio <= 0.5) return 2;
-    if (ratio <= 0.75) return 3;
-    return 4;
-  }
-
   // Build the grid: weeks (columns) x days (rows), ending today.
   // GitHub shows ~53 weeks. Each cell is a day; empty future days are blank.
   const CELL = 18;
@@ -45,32 +28,7 @@
   // Vertical space reserved for the month labels above the grid.
   const LABEL_H = 26;
 
-  let grid = $derived.by(() => {
-    const today = new Date();
-    // Normalize to local midnight.
-    const end = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const start = new Date(end);
-    start.setDate(end.getDate() - 364); // 365 days inclusive
-
-    // Align start to Sunday so columns are full weeks.
-    const startDow = start.getDay();
-    start.setDate(start.getDate() - startDow);
-
-    const cells: { date: string; tests: number; level: number; isFuture: boolean }[] = [];
-    const cursor = new Date(start);
-    while (cursor <= end) {
-      const iso = cursor.toISOString().slice(0, 10);
-      const tests = testsByDate.get(iso) ?? 0;
-      cells.push({
-        date: iso,
-        tests,
-        level: level(tests),
-        isFuture: cursor > end,
-      });
-      cursor.setDate(cursor.getDate() + 1);
-    }
-    return cells;
-  });
+  let grid = $derived(buildGrid(points, new Date()));
 
   const weeks = $derived(Math.ceil(grid.length / DAYS));
   const W = $derived(weeks * (CELL + GAP) + GAP);
@@ -97,13 +55,6 @@
     }
     return labels;
   });
-
-  function formatTooltip(c: { date: string; tests: number }): string {
-    const d = new Date(c.date + 'T00:00:00');
-    const label = d.toLocaleDateString('en', { year: 'numeric', month: 'short', day: 'numeric' });
-    if (c.tests <= 0) return `${label}: No activity`;
-    return `${label}: ${c.tests} test${c.tests === 1 ? '' : 's'}`;
-  }
 </script>
 
 <div class="contribution-calendar">
