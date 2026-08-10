@@ -2757,7 +2757,7 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
 name = "racoon-app"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "chrono",
  "image",
@@ -2781,7 +2781,7 @@ dependencies = [
 
 [[package]]
 name = "racoon-application"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "chrono",
  "racoon-core",
@@ -2793,7 +2793,7 @@ dependencies = [
 
 [[package]]
 name = "racoon-core"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "chrono",
  "racoon-data",
@@ -2804,7 +2804,7 @@ dependencies = [
 
 [[package]]
 name = "racoon-data"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "chrono",
  "racoon-application",
@@ -2819,7 +2819,7 @@ dependencies = [
 
 [[package]]
 name = "racoon-domain"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2828,7 +2828,7 @@ dependencies = [
 
 [[package]]
 name = "racoon-resources"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "racoon-application",
  "racoon-domain",

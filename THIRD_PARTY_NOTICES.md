@@ -21,8 +21,8 @@ The authoritative machine-readable report is `licenses/dependencies.json`. Licen
 | Apache-2.0 AND ISC | 1 |
 | Apache-2.0 AND MIT | 1 |
 | Apache-2.0 OR BSL-1.0 | 1 |
-| Apache-2.0 OR ISC OR MIT | 2 |
-| Apache-2.0 OR MIT | 35 |
+| Apache-2.0 OR ISC OR MIT | 3 |
+| Apache-2.0 OR MIT | 37 |
 | Apache-2.0 WITH LLVM-exception | 1 |
 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 5 |
 | Apache-2.0/MIT | 3 |
@@ -34,22 +34,22 @@ The authoritative machine-readable report is `licenses/dependencies.json`. Licen
 | BSD-3-Clause/MIT | 1 |
 | BSL-1.0 | 2 |
 | CC0-1.0 OR MIT-0 OR Apache-2.0 | 1 |
-| CDLA-Permissive-2.0 | 1 |
+| CDLA-Permissive-2.0 | 2 |
 | ISC | 3 |
-| MIT | 117 |
-| MIT OR Apache-2.0 | 238 |
+| MIT | 120 |
+| MIT OR Apache-2.0 | 252 |
 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | 2 |
 | MIT OR Apache-2.0 OR Zlib | 5 |
 | MIT OR Zlib OR Apache-2.0 | 1 |
-| MIT/Apache-2.0 | 26 |
+| MIT/Apache-2.0 | 27 |
 | MPL-2.0 | 5 |
 | Unicode-3.0 | 18 |
 | Unlicense OR MIT | 5 |
 | Unlicense/MIT | 2 |
 | Zlib | 2 |
-| Zlib OR Apache-2.0 OR MIT | 17 |
+| Zlib OR Apache-2.0 OR MIT | 18 |
 
-Total Rust packages: 511
+Total Rust packages: 534
 
 ## npm dependency license summary
 
@@ -61,9 +61,9 @@ Total Rust packages: 511
 | BSD-3-Clause | 1 |
 | ISC | 1 |
 | MIT | 87 |
-| MIT OR Apache-2.0 | 3 |
+| MIT OR Apache-2.0 | 4 |
 
-Total npm packages: 109
+Total npm packages: 110
 
 ## Human-readable package inventory
 
@@ -80,6 +80,7 @@ The following tables identify every locked package, its original license express
 | alloc-stdlib@0.2.4 | BSD-3-Clause | https://github.com/dropbox/rust-alloc-no-stdlib | Daniel Reiter Horn <danielrh@dropbox.com> |
 | android_system_properties@0.1.5 | MIT/Apache-2.0 | https://github.com/nical/android_system_properties | Nicolas Silva <nical@fastmail.com> |
 | anyhow@1.0.102 | MIT OR Apache-2.0 | https://github.com/dtolnay/anyhow | David Tolnay <dtolnay@gmail.com> |
+| arbitrary@1.4.2 | MIT OR Apache-2.0 | https://github.com/rust-fuzz/arbitrary/ | The Rust-Fuzz Project Developers, Nick Fitzgerald <fitzgen@gmail.com>, Manish Goregaokar <manishsmail@gmail.com>, Simonas Kazlauskas <arbitrary@kazlauskas.me>, Brian L. Troutwine <brian@troutwine.us>, Corey Farwell <coreyf@rwell.org> |
 | arboard@3.6.1 | MIT OR Apache-2.0 | https://github.com/1Password/arboard |  |
 | async-trait@0.1.89 | MIT OR Apache-2.0 | https://github.com/dtolnay/async-trait | David Tolnay <dtolnay@gmail.com> |
 | atk-sys@0.18.2 | MIT | https://github.com/gtk-rs/gtk3-rs | The gtk-rs Project Developers |
@@ -139,6 +140,7 @@ The following tables identify every locked package, its original license express
 | darling@0.23.0 | MIT | https://github.com/TedDriggs/darling | Ted Driggs <ted.driggs@outlook.com> |
 | dbus@0.9.11 | Apache-2.0/MIT | https://github.com/diwic/dbus-rs | David Henningsson <diwic@ubuntu.com> |
 | deranged@0.5.8 | MIT OR Apache-2.0 | https://github.com/jhpratt/deranged | Jacob Pratt <jacob@jhpratt.dev> |
+| derive_arbitrary@1.4.2 | MIT OR Apache-2.0 | https://github.com/rust-fuzz/arbitrary | The Rust-Fuzz Project Developers, Nick Fitzgerald <fitzgen@gmail.com>, Manish Goregaokar <manishsmail@gmail.com>, Andre Bogus <bogusandre@gmail.com>, Corey Farwell <coreyf@rwell.org> |
 | derive_more-impl@2.1.1 | MIT | https://github.com/JelteF/derive_more | Jelte Fennema <github-tech@jeltef.nl> |
 | derive_more@2.1.1 | MIT | https://github.com/JelteF/derive_more | Jelte Fennema <github-tech@jeltef.nl> |
 | digest@0.10.7 | MIT OR Apache-2.0 | https://github.com/RustCrypto/traits | RustCrypto Developers |
@@ -169,6 +171,7 @@ The following tables identify every locked package, its original license express
 | fax@0.2.7 | MIT | https://github.com/pdf-rs/fax | Sebastian K <s3bk@protonmail.com> |
 | fdeflate@0.3.7 | MIT OR Apache-2.0 | https://github.com/image-rs/fdeflate | The image-rs Developers |
 | field-offset@0.3.6 | MIT OR Apache-2.0 | https://github.com/Diggsey/rust-field-offset | Diggory Blake <diggsey@googlemail.com> |
+| filetime@0.2.29 | MIT/Apache-2.0 | https://github.com/alexcrichton/filetime | Alex Crichton <alex@alexcrichton.com> |
 | find-msvc-tools@0.1.9 | MIT OR Apache-2.0 | https://github.com/rust-lang/cc-rs |  |
 | fixedbitset@0.5.7 | MIT OR Apache-2.0 | https://github.com/petgraph/fixedbitset | bluss |
 | flate2@1.1.9 | MIT OR Apache-2.0 | https://github.com/rust-lang/flate2-rs | Alex Crichton <alex@alexcrichton.com>, Josh Triplett <josh@joshtriplett.org> |
@@ -247,10 +250,12 @@ The following tables identify every locked package, its original license express
 | itoa@1.0.18 | MIT OR Apache-2.0 | https://github.com/dtolnay/itoa | David Tolnay <dtolnay@gmail.com> |
 | javascriptcore-rs-sys@1.1.1 | MIT | https://github.com/tauri-apps/javascriptcore-rs | The Gtk-rs Project Developers |
 | javascriptcore-rs@1.1.2 | MIT | https://github.com/tauri-apps/javascriptcore-rs |  |
+| jni-macros@0.22.4 | MIT OR Apache-2.0 | https://github.com/jni-rs/jni-rs |  |
 | jni-sys-macros@0.4.1 | MIT OR Apache-2.0 | https://github.com/jni-rs/jni-sys | Robert Bragg <robert@sixbynine.org> |
 | jni-sys@0.3.1 | MIT OR Apache-2.0 | https://github.com/jni-rs/jni-sys | Steven Fackler <sfackler@gmail.com> |
 | jni-sys@0.4.1 | MIT OR Apache-2.0 | https://github.com/jni-rs/jni-sys | Steven Fackler <sfackler@gmail.com>, Robert Bragg <robert@sixbynine.org> |
 | jni@0.21.1 | MIT/Apache-2.0 | https://github.com/jni-rs/jni-rs | Josh Chase <josh@prevoty.com> |
+| jni@0.22.4 | MIT OR Apache-2.0 | https://github.com/jni-rs/jni-rs | jni team |
 | js-sys@0.3.102 | MIT OR Apache-2.0 | https://github.com/wasm-bindgen/wasm-bindgen/tree/master/crates/js-sys | The wasm-bindgen Developers |
 | json-patch@3.0.1 | MIT/Apache-2.0 | https://github.com/idubrov/json-patch | Ivan Dubrov <dubrov.ivan@gmail.com> |
 | jsonptr@0.6.3 | MIT OR Apache-2.0 | https://github.com/chanced/jsonptr | chance dinkins, André Sá de Mello <codasm@pm.me> |
@@ -271,6 +276,7 @@ The following tables identify every locked package, its original license express
 | memchr@2.8.2 | Unlicense OR MIT | https://github.com/BurntSushi/memchr | Andrew Gallant <jamslam@gmail.com>, bluss |
 | memoffset@0.9.1 | MIT | https://github.com/Gilnaa/memoffset | Gilad Naaman <gilad.naaman@gmail.com> |
 | mime@0.3.17 | MIT OR Apache-2.0 | https://github.com/hyperium/mime | Sean McArthur <sean@seanmonstar.com> |
+| minisign-verify@0.2.5 | MIT | https://github.com/jedisct1/rust-minisign-verify | Frank Denis <github@pureftpd.org> |
 | miniz_oxide@0.8.9 | MIT OR Zlib OR Apache-2.0 | https://github.com/Frommi/miniz_oxide/tree/master/miniz_oxide | Frommi <daniil.liferenko@gmail.com>, oyvindln <oyvindln@users.noreply.github.com>, Rich Geldreich richgel99@gmail.com |
 | mio@1.2.1 | MIT | https://github.com/tokio-rs/mio | Carl Lerche <me@carllerche.com>, Thomas de Zeeuw <thomasdezeeuw@gmail.com>, Tokio Contributors <team@tokio.rs> |
 | moxcms@0.8.1 | BSD-3-Clause OR Apache-2.0 | https://github.com/awxkee/moxcms.git | Radzivon Bartoshyk |
@@ -295,14 +301,17 @@ The following tables identify every locked package, its original license express
 | objc2-exception-helper@0.1.1 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 | Mads Marquart <mads@marquart.dk> |
 | objc2-foundation@0.3.2 | MIT | https://github.com/madsmtm/objc2 |  |
 | objc2-io-surface@0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |  |
+| objc2-osa-kit@0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |  |
 | objc2-quartz-core@0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |  |
 | objc2-ui-kit@0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |  |
 | objc2-user-notifications@0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |  |
 | objc2-web-kit@0.3.2 | Zlib OR Apache-2.0 OR MIT | https://github.com/madsmtm/objc2 |  |
 | objc2@0.6.4 | MIT | https://github.com/madsmtm/objc2 | Mads Marquart <mads@marquart.dk> |
 | once_cell@1.21.4 | MIT OR Apache-2.0 | https://github.com/matklad/once_cell | Aleksey Kladov <aleksey.kladov@gmail.com> |
+| openssl-probe@0.2.1 | MIT OR Apache-2.0 | https://github.com/rustls/openssl-probe | Alex Crichton <alex@alexcrichton.com> |
 | option-ext@0.2.0 | MPL-2.0 | https://github.com/soc/option-ext.git | Simon Ochsenreither <simon@ochsenreither.de> |
 | os_pipe@1.2.3 | MIT | https://github.com/oconnor663/os_pipe.rs | Jack O'Connor |
+| osakit@0.3.1 | MIT OR Apache-2.0 | https://github.com/mdevils/rust-osakit | Marat Dulin <mdevils@gmail.com> |
 | pango-sys@0.18.0 | MIT | https://github.com/gtk-rs/gtk-rs-core | The gtk-rs Project Developers |
 | pango@0.18.3 | MIT | https://github.com/gtk-rs/gtk-rs-core | The gtk-rs Project Developers |
 | parking_lot_core@0.9.12 | MIT OR Apache-2.0 | https://github.com/Amanieu/parking_lot | Amanieu d'Antras <amanieu@gmail.com> |
@@ -360,17 +369,23 @@ The following tables identify every locked package, its original license express
 | rustc_version@0.4.1 | MIT OR Apache-2.0 | https://github.com/djc/rustc-version-rs |  |
 | rustc-hash@2.1.2 | Apache-2.0 OR MIT | https://github.com/rust-lang/rustc-hash | The Rust Project Developers |
 | rustix@1.1.4 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/rustix | Dan Gohman <dev@sunfishcode.online>, Jakub Konka <kubkon@jakubkonka.com> |
+| rustls-native-certs@0.8.4 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls-native-certs |  |
 | rustls-pki-types@1.15.0 | MIT OR Apache-2.0 | https://github.com/rustls/pki-types |  |
+| rustls-platform-verifier-android@0.1.1 | MIT OR Apache-2.0 | https://github.com/rustls/rustls-platform-verifier |  |
+| rustls-platform-verifier@0.7.0 | MIT OR Apache-2.0 | https://github.com/rustls/rustls-platform-verifier |  |
 | rustls-webpki@0.103.13 | ISC | https://github.com/rustls/webpki |  |
 | rustls@0.23.42 | Apache-2.0 OR ISC OR MIT | https://github.com/rustls/rustls |  |
 | rustversion@1.0.22 | MIT OR Apache-2.0 | https://github.com/dtolnay/rustversion | David Tolnay <dtolnay@gmail.com> |
 | ryu@1.0.23 | Apache-2.0 OR BSL-1.0 | https://github.com/dtolnay/ryu | David Tolnay <dtolnay@gmail.com> |
 | same-file@1.0.6 | Unlicense/MIT | https://github.com/BurntSushi/same-file | Andrew Gallant <jamslam@gmail.com> |
+| schannel@0.1.29 | MIT | https://github.com/steffengy/schannel-rs | Steven Fackler <sfackler@gmail.com>, Steffen Butzer <steffen.butzer@outlook.com> |
 | schemars_derive@0.8.22 | MIT | https://github.com/GREsau/schemars | Graham Esau <gesau@hotmail.co.uk> |
 | schemars@0.8.22 | MIT | https://github.com/GREsau/schemars | Graham Esau <gesau@hotmail.co.uk> |
 | schemars@0.9.0 | MIT | https://github.com/GREsau/schemars | Graham Esau <gesau@hotmail.co.uk> |
 | schemars@1.2.1 | MIT | https://github.com/GREsau/schemars | Graham Esau <gesau@hotmail.co.uk> |
 | scopeguard@1.2.0 | MIT OR Apache-2.0 | https://github.com/bluss/scopeguard | bluss |
+| security-framework-sys@2.17.0 | MIT OR Apache-2.0 | https://github.com/kornelski/rust-security-framework | Steven Fackler <sfackler@gmail.com>, Kornel <kornel@geekhood.net> |
+| security-framework@3.7.0 | MIT OR Apache-2.0 | https://github.com/kornelski/rust-security-framework | Steven Fackler <sfackler@gmail.com>, Kornel <kornel@geekhood.net> |
 | selectors@0.36.1 | MPL-2.0 | https://github.com/servo/stylo | The Servo Project Developers |
 | semver@1.0.28 | MIT OR Apache-2.0 | https://github.com/dtolnay/semver | David Tolnay <dtolnay@gmail.com> |
 | serde_core@1.0.228 | MIT OR Apache-2.0 | https://github.com/serde-rs/serde | Erick Tryzelaar <erick.tryzelaar@gmail.com>, David Tolnay <dtolnay@gmail.com> |
@@ -390,7 +405,9 @@ The following tables identify every locked package, its original license express
 | servo_arc@0.4.3 | MIT OR Apache-2.0 | https://github.com/servo/stylo | The Servo Project Developers |
 | sha2@0.10.9 | MIT OR Apache-2.0 | https://github.com/RustCrypto/hashes | RustCrypto Developers |
 | shlex@2.0.1 | MIT OR Apache-2.0 | https://github.com/comex/rust-shlex | comex <comexk@gmail.com>, Fenhl <fenhl@fenhl.net>, Adrian Taylor <adetaylor@chromium.org>, Alex Touchet <alextouchet@outlook.com>, Daniel Parks <dp+git@oxidized.org>, Garrett Berg <googberg@gmail.com> |
+| simd_cesu8@1.2.0 | Apache-2.0 OR MIT | https://github.com/seancroach/simd_cesu8 | Sean C. Roach <me@seancroach.dev> |
 | simd-adler32@0.3.9 | MIT | https://github.com/mcountryman/simd-adler32 | Marvin Countryman <me@maar.vin> |
+| simdutf8@0.1.5 | MIT OR Apache-2.0 | https://github.com/rusticstuff/simdutf8 | Hans Kratz <hans@appfour.com> |
 | siphasher@1.0.3 | MIT/Apache-2.0 | https://github.com/jedisct1/rust-siphash | Frank Denis <github@pureftpd.org> |
 | slab@0.4.12 | MIT | https://github.com/tokio-rs/slab | Carl Lerche <me@carllerche.com> |
 | smallvec@1.15.2 | MIT OR Apache-2.0 | https://github.com/servo/rust-smallvec | The Servo Project Developers |
@@ -411,6 +428,7 @@ The following tables identify every locked package, its original license express
 | system-deps@6.2.2 | MIT OR Apache-2.0 | https://github.com/gdesmott/system-deps | Guillaume Desmottes <guillaume.desmottes@collabora.com>, Josh Triplett <josh@joshtriplett.org> |
 | tao-macros@0.1.3 | MIT OR Apache-2.0 | https://github.com/tauri-apps/tao | Tauri Programme within The Commons Conservancy |
 | tao@0.35.3 | Apache-2.0 | https://github.com/tauri-apps/tao | Tauri Programme within The Commons Conservancy, The winit contributors |
+| tar@0.4.46 | MIT OR Apache-2.0 | https://github.com/composefs/tar-rs | Alex Crichton <alex@alexcrichton.com> |
 | target-lexicon@0.12.16 | Apache-2.0 WITH LLVM-exception | https://github.com/bytecodealliance/target-lexicon | Dan Gohman <sunfish@mozilla.com> |
 | tauri-build@2.6.3 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | Tauri Programme within The Commons Conservancy |
 | tauri-codegen@2.6.3 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | Tauri Programme within The Commons Conservancy |
@@ -418,12 +436,14 @@ The following tables identify every locked package, its original license express
 | tauri-plugin-clipboard-manager@2.3.2 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | Tauri Programme within The Commons Conservancy |
 | tauri-plugin-dialog@2.7.2 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | Tauri Programme within The Commons Conservancy |
 | tauri-plugin-fs@2.5.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | Tauri Programme within The Commons Conservancy |
+| tauri-plugin-updater@2.10.1 | Apache-2.0 OR MIT | https://github.com/tauri-apps/plugins-workspace | Tauri Programme within The Commons Conservancy |
 | tauri-plugin@2.6.3 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | Tauri Programme within The Commons Conservancy |
 | tauri-runtime-wry@2.11.3 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | Tauri Programme within The Commons Conservancy |
 | tauri-runtime@2.11.3 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | Tauri Programme within The Commons Conservancy |
 | tauri-utils@2.9.3 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | Tauri Programme within The Commons Conservancy |
 | tauri-winres@0.3.6 | MIT | https://github.com/tauri-apps/winres | Tauri Programme within The Commons Conservancy, Max Resch <resch.max@gmail.com> |
 | tauri@2.11.3 | Apache-2.0 OR MIT | https://github.com/tauri-apps/tauri | Tauri Programme within The Commons Conservancy |
+| tempfile@3.27.0 | MIT OR Apache-2.0 | https://github.com/Stebalien/tempfile | Steven Allen <steven@stebalien.com>, The Rust Project Developers, Ashley Mannix <ashleymannix@live.com.au>, Jason White <me@jasonwhite.io> |
 | tendril@0.5.0 | MIT OR Apache-2.0 | https://github.com/servo/html5ever | Keegan McAllister <mcallister.keegan@gmail.com>, Simon Sapin <simon.sapin@exyr.org>, Chris Morgan <me@chrismorgan.info> |
 | thiserror-impl@1.0.69 | MIT OR Apache-2.0 | https://github.com/dtolnay/thiserror | David Tolnay <dtolnay@gmail.com> |
 | thiserror-impl@2.0.18 | MIT OR Apache-2.0 | https://github.com/dtolnay/thiserror | David Tolnay <dtolnay@gmail.com> |
@@ -502,6 +522,7 @@ The following tables identify every locked package, its original license express
 | web-time@1.1.0 | MIT OR Apache-2.0 | https://github.com/daxpedda/web-time |  |
 | webkit2gtk-sys@2.0.2 | MIT | https://github.com/tauri-apps/webkit2gtk-rs |  |
 | webkit2gtk@2.0.2 | MIT | https://github.com/tauri-apps/webkit2gtk-rs |  |
+| webpki-root-certs@1.0.9 | CDLA-Permissive-2.0 | https://github.com/rustls/webpki-roots |  |
 | webpki-roots@1.0.8 | CDLA-Permissive-2.0 | https://github.com/rustls/webpki-roots |  |
 | webview2-com-macros@0.8.1 | MIT | https://github.com/wravery/webview2-rs |  |
 | webview2-com-sys@0.38.2 | MIT | https://github.com/wravery/webview2-rs |  |
@@ -571,6 +592,7 @@ The following tables identify every locked package, its original license express
 | x11@2.21.0 | MIT | https://github.com/AltF02/x11-rs.git | daggerbot <daggerbot@gmail.com>, Erle Pereira <erle@erlepereira.com>, AltF02 <contact@altf2.dev> |
 | x11rb-protocol@0.13.2 | MIT OR Apache-2.0 | https://github.com/psychon/x11rb | Uli Schlachter <psychon@znc.in>, Eduardo Sánchez Muñoz <eduardosm-dev@e64.io>, notgull <jtnunley01@gmail.com> |
 | x11rb@0.13.2 | MIT OR Apache-2.0 | https://github.com/psychon/x11rb | Uli Schlachter <psychon@znc.in>, Eduardo Sánchez Muñoz <eduardosm-dev@e64.io>, notgull <jtnunley01@gmail.com> |
+| xattr@1.6.1 | MIT OR Apache-2.0 | https://github.com/Stebalien/xattr | Steven Allen <steven@stebalien.com> |
 | yoke-derive@0.8.2 | Unicode-3.0 | https://github.com/unicode-org/icu4x | Manish Goregaokar <manishsmail@gmail.com> |
 | yoke@0.8.3 | Unicode-3.0 | https://github.com/unicode-org/icu4x | Manish Goregaokar <manishsmail@gmail.com> |
 | zerocopy-derive@0.8.52 | BSD-2-Clause OR Apache-2.0 OR MIT | https://github.com/google/zerocopy | Joshua Liebow-Feeser <joshlf@google.com>, Jack Wrenn <jswrenn@amazon.com> |
@@ -581,6 +603,7 @@ The following tables identify every locked package, its original license express
 | zerotrie@0.2.4 | Unicode-3.0 | https://github.com/unicode-org/icu4x | The ICU4X Project Developers |
 | zerovec-derive@0.11.3 | Unicode-3.0 | https://github.com/unicode-org/icu4x | Manish Goregaokar <manishsmail@gmail.com> |
 | zerovec@0.11.6 | Unicode-3.0 | https://github.com/unicode-org/icu4x | The ICU4X Project Developers |
+| zip@4.6.1 | MIT | https://github.com/zip-rs/zip2.git | Mathijs van de Nes <git@mathijs.vd-nes.nl>, Marli Frost <marli@frost.red>, Ryan Levick <ryan.levick@gmail.com>, Chris Hennick <hennickc@amazon.com> |
 | zmij@1.0.21 | MIT | https://github.com/dtolnay/zmij | David Tolnay <dtolnay@gmail.com> |
 | zune-core@0.5.3 | MIT OR Apache-2.0 OR Zlib | https://github.com/etemesi254/zune-image |  |
 | zune-jpeg@0.5.15 | MIT OR Apache-2.0 OR Zlib | https://github.com/etemesi254/zune-image/tree/dev/crates/zune-jpeg | caleb <etemesicaleb@gmail.com> |
@@ -662,6 +685,7 @@ The following tables identify every locked package, its original license express
 | @tauri-apps/plugin-clipboard-manager@2.3.2 | MIT OR Apache-2.0 | https://registry.npmjs.org/@tauri-apps/plugin-clipboard-manager/-/plugin-clipboard-manager-2.3.2.tgz |  |
 | @tauri-apps/plugin-dialog@2.7.2 | MIT OR Apache-2.0 | https://registry.npmjs.org/@tauri-apps/plugin-dialog/-/plugin-dialog-2.7.2.tgz |  |
 | @tauri-apps/plugin-fs@2.5.1 | MIT OR Apache-2.0 | https://registry.npmjs.org/@tauri-apps/plugin-fs/-/plugin-fs-2.5.1.tgz |  |
+| @tauri-apps/plugin-updater@2.10.1 | MIT OR Apache-2.0 | https://registry.npmjs.org/@tauri-apps/plugin-updater/-/plugin-updater-2.10.1.tgz |  |
 | @tsconfig/svelte@5.0.8 | MIT | https://registry.npmjs.org/@tsconfig/svelte/-/svelte-5.0.8.tgz |  |
 | @types/estree@1.0.9 | MIT | https://registry.npmjs.org/@types/estree/-/estree-1.0.9.tgz |  |
 | @types/trusted-types@2.0.7 | MIT | https://registry.npmjs.org/@types/trusted-types/-/trusted-types-2.0.7.tgz |  |

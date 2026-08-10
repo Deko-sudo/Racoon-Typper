@@ -13,7 +13,7 @@
     "component": {
       "type": "application",
       "name": "racoon-typper",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "licenses": [
         {
           "license": {
@@ -142,6 +142,23 @@
         {
           "type": "vcs",
           "url": "https://github.com/dtolnay/anyhow"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "arbitrary",
+      "version": "1.4.2",
+      "purl": "pkg:cargo/arbitrary@1.4.2",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/rust-fuzz/arbitrary/"
         }
       ]
     },
@@ -1160,6 +1177,23 @@
     },
     {
       "type": "library",
+      "name": "derive_arbitrary",
+      "version": "1.4.2",
+      "purl": "pkg:cargo/derive_arbitrary@1.4.2",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/rust-fuzz/arbitrary"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "derive_more-impl",
       "version": "2.1.1",
       "purl": "pkg:cargo/derive_more-impl@2.1.1",
@@ -1671,6 +1705,25 @@
         {
           "type": "vcs",
           "url": "https://github.com/Diggsey/rust-field-offset"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "filetime",
+      "version": "0.2.29",
+      "purl": "pkg:cargo/filetime@0.2.29",
+      "licenses": [
+        {
+          "license": {
+            "name": "MIT/Apache-2.0"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/alexcrichton/filetime"
         }
       ]
     },
@@ -3012,6 +3065,23 @@
     },
     {
       "type": "library",
+      "name": "jni-macros",
+      "version": "0.22.4",
+      "purl": "pkg:cargo/jni-macros@0.22.4",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/jni-rs/jni-rs"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "jni-sys-macros",
       "version": "0.4.1",
       "purl": "pkg:cargo/jni-sys-macros@0.4.1",
@@ -3071,6 +3141,23 @@
           "license": {
             "name": "MIT/Apache-2.0"
           }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/jni-rs/jni-rs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "jni",
+      "version": "0.22.4",
+      "purl": "pkg:cargo/jni@0.22.4",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
         }
       ],
       "externalReferences": [
@@ -3409,6 +3496,23 @@
         {
           "type": "vcs",
           "url": "https://github.com/hyperium/mime"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "minisign-verify",
+      "version": "0.2.5",
+      "purl": "pkg:cargo/minisign-verify@0.2.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/jedisct1/rust-minisign-verify"
         }
       ]
     },
@@ -3822,6 +3926,23 @@
     },
     {
       "type": "library",
+      "name": "objc2-osa-kit",
+      "version": "0.3.2",
+      "purl": "pkg:cargo/objc2-osa-kit@0.3.2",
+      "licenses": [
+        {
+          "expression": "Zlib OR Apache-2.0 OR MIT"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/madsmtm/objc2"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "objc2-quartz-core",
       "version": "0.3.2",
       "purl": "pkg:cargo/objc2-quartz-core@0.3.2",
@@ -3924,6 +4045,23 @@
     },
     {
       "type": "library",
+      "name": "openssl-probe",
+      "version": "0.2.1",
+      "purl": "pkg:cargo/openssl-probe@0.2.1",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/rustls/openssl-probe"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "option-ext",
       "version": "0.2.0",
       "purl": "pkg:cargo/option-ext@0.2.0",
@@ -3953,6 +4091,23 @@
         {
           "type": "vcs",
           "url": "https://github.com/oconnor663/os_pipe.rs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "osakit",
+      "version": "0.3.1",
+      "purl": "pkg:cargo/osakit@0.3.1",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/mdevils/rust-osakit"
         }
       ]
     },
@@ -4929,6 +5084,23 @@
     },
     {
       "type": "library",
+      "name": "rustls-native-certs",
+      "version": "0.8.4",
+      "purl": "pkg:cargo/rustls-native-certs@0.8.4",
+      "licenses": [
+        {
+          "expression": "Apache-2.0 OR ISC OR MIT"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/rustls/rustls-native-certs"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "rustls-pki-types",
       "version": "1.15.0",
       "purl": "pkg:cargo/rustls-pki-types@1.15.0",
@@ -4941,6 +5113,40 @@
         {
           "type": "vcs",
           "url": "https://github.com/rustls/pki-types"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "rustls-platform-verifier-android",
+      "version": "0.1.1",
+      "purl": "pkg:cargo/rustls-platform-verifier-android@0.1.1",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/rustls/rustls-platform-verifier"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "rustls-platform-verifier",
+      "version": "0.7.0",
+      "purl": "pkg:cargo/rustls-platform-verifier@0.7.0",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/rustls/rustls-platform-verifier"
         }
       ]
     },
@@ -5033,6 +5239,23 @@
     },
     {
       "type": "library",
+      "name": "schannel",
+      "version": "0.1.29",
+      "purl": "pkg:cargo/schannel@0.1.29",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/steffengy/schannel-rs"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "schemars_derive",
       "version": "0.8.22",
       "purl": "pkg:cargo/schemars_derive@0.8.22",
@@ -5113,6 +5336,40 @@
         {
           "type": "vcs",
           "url": "https://github.com/bluss/scopeguard"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "security-framework-sys",
+      "version": "2.17.0",
+      "purl": "pkg:cargo/security-framework-sys@2.17.0",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/kornelski/rust-security-framework"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "security-framework",
+      "version": "3.7.0",
+      "purl": "pkg:cargo/security-framework@3.7.0",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/kornelski/rust-security-framework"
         }
       ]
     },
@@ -5443,6 +5700,23 @@
     },
     {
       "type": "library",
+      "name": "simd_cesu8",
+      "version": "1.2.0",
+      "purl": "pkg:cargo/simd_cesu8@1.2.0",
+      "licenses": [
+        {
+          "expression": "Apache-2.0 OR MIT"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/seancroach/simd_cesu8"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "simd-adler32",
       "version": "0.3.9",
       "purl": "pkg:cargo/simd-adler32@0.3.9",
@@ -5455,6 +5729,23 @@
         {
           "type": "vcs",
           "url": "https://github.com/mcountryman/simd-adler32"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "simdutf8",
+      "version": "0.1.5",
+      "purl": "pkg:cargo/simdutf8@0.1.5",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/rusticstuff/simdutf8"
         }
       ]
     },
@@ -5802,6 +6093,23 @@
     },
     {
       "type": "library",
+      "name": "tar",
+      "version": "0.4.46",
+      "purl": "pkg:cargo/tar@0.4.46",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/composefs/tar-rs"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "target-lexicon",
       "version": "0.12.16",
       "purl": "pkg:cargo/target-lexicon@0.12.16",
@@ -5921,6 +6229,23 @@
     },
     {
       "type": "library",
+      "name": "tauri-plugin-updater",
+      "version": "2.10.1",
+      "purl": "pkg:cargo/tauri-plugin-updater@2.10.1",
+      "licenses": [
+        {
+          "expression": "Apache-2.0 OR MIT"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/tauri-apps/plugins-workspace"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "tauri-plugin",
       "version": "2.6.3",
       "purl": "pkg:cargo/tauri-plugin@2.6.3",
@@ -6018,6 +6343,23 @@
         {
           "type": "vcs",
           "url": "https://github.com/tauri-apps/tauri"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "tempfile",
+      "version": "3.27.0",
+      "purl": "pkg:cargo/tempfile@3.27.0",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Stebalien/tempfile"
         }
       ]
     },
@@ -7365,6 +7707,23 @@
     },
     {
       "type": "library",
+      "name": "webpki-root-certs",
+      "version": "1.0.9",
+      "purl": "pkg:cargo/webpki-root-certs@1.0.9",
+      "licenses": [
+        {
+          "expression": "CDLA-Permissive-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/rustls/webpki-roots"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "webpki-roots",
       "version": "1.0.8",
       "purl": "pkg:cargo/webpki-roots@1.0.8",
@@ -8546,6 +8905,23 @@
     },
     {
       "type": "library",
+      "name": "xattr",
+      "version": "1.6.1",
+      "purl": "pkg:cargo/xattr@1.6.1",
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Stebalien/xattr"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "yoke-derive",
       "version": "0.8.2",
       "purl": "pkg:cargo/yoke-derive@0.8.2",
@@ -8711,6 +9087,23 @@
         {
           "type": "vcs",
           "url": "https://github.com/unicode-org/icu4x"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "zip",
+      "version": "4.6.1",
+      "purl": "pkg:cargo/zip@4.6.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/zip-rs/zip2.git"
         }
       ]
     },
@@ -10441,6 +10834,29 @@
         {
           "type": "distribution",
           "url": "https://registry.npmjs.org/@tauri-apps/plugin-fs/-/plugin-fs-2.5.1.tgz"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "@tauri-apps/plugin-updater",
+      "version": "2.10.1",
+      "purl": "pkg:npm/%40tauri-apps/plugin-updater@2.10.1",
+      "hashes": [
+        {
+          "alg": "SHA-512",
+          "content": "NFYMg+tWOZPJdzE/PpFj2qfqwAWwNS3kXrb1tm1gnBJ9mYzZ4WDRrwy8udzWoAnfGCHLuePNLY1WVCNHnh3eRA=="
+        }
+      ],
+      "licenses": [
+        {
+          "expression": "MIT OR Apache-2.0"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "distribution",
+          "url": "https://registry.npmjs.org/@tauri-apps/plugin-updater/-/plugin-updater-2.10.1.tgz"
         }
       ]
     },
