@@ -80,6 +80,10 @@ const en: Dict = {
   'notification.high_accuracy': 'Accuracy above 95%',
   'vim.enabled': 'Vim mode enabled',
   'vim.disabled': 'Vim mode disabled',
+  'vim.hint_prev': 'previous tab',
+  'vim.hint_next': 'next tab',
+  'vim.hint_up': 'scroll up',
+  'vim.hint_down': 'scroll down',
   // Mode selector
   'mode.time': 'Time', 'mode.words': 'Words', 'mode.quote': 'Quote',
   // Result overlay
@@ -237,6 +241,10 @@ const ru: Dict = {
   'notification.high_accuracy': 'Точность выше 95%',
   'vim.enabled': 'Vim-режим включён',
   'vim.disabled': 'Vim-режим выключен',
+  'vim.hint_prev': 'предыдущая вкладка',
+  'vim.hint_next': 'следующая вкладка',
+  'vim.hint_up': 'прокрутка вверх',
+  'vim.hint_down': 'прокрутка вниз',
   // Mode selector
   'mode.time': 'Время', 'mode.words': 'Слова', 'mode.quote': 'Цитаты',
   // Result overlay

@@ -130,6 +130,7 @@
 
   <div class="info">
     <button class="abort-btn" onclick={onAbort}>{t(uiLang, 'test.abort')}</button>
+    <button class="restart-btn" onclick={onRestart}>{t(uiLang, 'result.restart')}</button>
   </div>
 
   {#if settings?.show_keyboard_trainer && isRunning}
@@ -171,6 +172,11 @@
     padding: 0.25rem 1rem; font-family: inherit; font-size: 0.75rem; cursor: pointer; border-radius: 4px;
   }
   .abort-btn:hover { background: var(--sub); color: var(--bg); }
+  .restart-btn {
+    background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main);
+    padding: 0.25rem 1rem; font-family: inherit; font-size: 0.75rem; cursor: pointer; border-radius: 4px;
+  }
+  .restart-btn:hover { background: var(--main); color: var(--bg); }
   /* Blind mode: blur future characters so the typist must rely on memory, not sight.
      The current character and past characters remain visible. */
   .text-display.blind .char.future { filter: blur(7px); opacity: 0.25; transition: filter 0.15s, opacity 0.15s; }

@@ -214,6 +214,13 @@
   }
 
   async function startTest() {
+    // Guard against a double start (e.g. a racing onMount + user click). The
+    // backend rejects a second start with TEST_ALREADY_ACTIVE; surface a
+    // clear message instead of a raw IPC error.
+    if (isRunning && !isComplete) {
+      errorMsg = 'Start test error: A test is already running.';
+      return;
+    }
     errorMsg = '';
     finalStats = null;
     if (settings?.zen_mode_enabled) zenActive = true;
@@ -434,6 +441,13 @@
   async function abortTest() {
     if (!isRunning) return;
     await abandonActiveSessionForReplacement();
+  }
+
+  // Restart the current test: abort the active session (if any) then start a
+  // fresh one. Used by the in-test "Restart" button.
+  async function restartTest() {
+    if (!(await abandonActiveSessionForReplacement())) return;
+    await startTest();
   }
 
   async function loadHistory() {
@@ -754,7 +768,7 @@
       onWordCountChange={onWordCountChange}
       onLanguageChange={onLanguageChange}
       onAbort={abortTest}
-      onRestart={startTest}
+      onRestart={restartTest}
       {lessonNavigation}
       {onRepeatLesson}
       {onNextLesson}

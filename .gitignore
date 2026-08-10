@@ -30,3 +30,8 @@ Thumbs.db
 
 # Build artifacts
 *.pkg.tar.zst
+
+# Agent working files (not part of the project)
+.hermes/
+.zcode/
+rdmglm.md

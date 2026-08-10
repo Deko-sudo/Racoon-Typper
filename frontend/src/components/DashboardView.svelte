@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { DashboardStatsResponse } from '../lib/types/index';
-  import ProgressChart from './ProgressChart.svelte';
+  import ContributionCalendar from './ContributionCalendar.svelte';
   import Icon from './Icon.svelte';
   import { t } from '../lib/i18n';
 
@@ -95,7 +95,7 @@
       </div>
     {/if}
 
-    <ProgressChart />
+    <ContributionCalendar />
   {:else}
     <p class="empty">{t(uiLang, 'dash.loading')}</p>
   {/if}

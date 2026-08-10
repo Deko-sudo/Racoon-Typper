@@ -127,6 +127,14 @@
         <label for="setting-vim">{t(uiLang, 'settings.vim_mode')}</label>
         <input id="setting-vim" type="checkbox" checked={settings.vim_mode} onchange={(e) => onUpdateSetting('vim_mode', e.currentTarget.checked)} />
       </div>
+      {#if settings.vim_mode}
+        <div class="vim-hint">
+          <span class="vim-key">h</span> <span class="vim-desc">{t(uiLang, 'vim.hint_prev')}</span>
+          <span class="vim-key">l</span> <span class="vim-desc">{t(uiLang, 'vim.hint_next')}</span>
+          <span class="vim-key">k</span> <span class="vim-desc">{t(uiLang, 'vim.hint_up')}</span>
+          <span class="vim-key">j</span> <span class="vim-desc">{t(uiLang, 'vim.hint_down')}</span>
+        </div>
+      {/if}
       <div class="setting-row">
         <label for="setting-goal-type">{t(uiLang, 'settings.daily_goal_type')}</label>
         <select id="setting-goal-type" value={settings.daily_goal_type || 'time'} onchange={(e) => onUpdateSetting('daily_goal_type', e.currentTarget.value)}>
@@ -197,6 +205,9 @@
   .setting-row select { min-width: 155px; padding-right: 0.5rem; }
   .setting-row select option { background-color: var(--bg-sub); color: var(--text); }
   .setting-row input[type='checkbox'] { accent-color: var(--main); }
+  .vim-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-left: 180px; padding: 0.5rem 0.75rem; background: var(--bg-sub); border: 1px solid var(--sub); border-radius: 6px; font-size: 0.8rem; }
+  .vim-key { display: inline-block; min-width: 1.4em; text-align: center; padding: 0.1rem 0.35rem; background: var(--main); color: var(--bg); border-radius: 4px; font-family: monospace; font-weight: 700; }
+  .vim-desc { color: var(--sub); }
   .setting-row input[type='range'] { accent-color: var(--main); background: transparent !important; }
   .setting-row input:focus-visible, .setting-row select:focus-visible, .theme-search:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-color: var(--color-focus-ring); }
   .theme-toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
