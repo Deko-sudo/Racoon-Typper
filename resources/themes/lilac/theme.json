@@ -1,0 +1,20 @@
+{
+  "name": "lilac",
+  "display_name": "Lilac",
+  "description": "Soft purple-gray light with floral undertones.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#f0ecf4",
+    "surface": "#f8f5fc",
+    "text": "#2a2230",
+    "accent": "#8a6db0",
+    "correct": "#6a8a5a",
+    "incorrect": "#aa4868",
+    "caret": "#6a4e90"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "serika",
+  "display_name": "Serika",
+  "description": "Warm beige with dark text and golden accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#e1e1e3",
+    "surface": "#d4d4d8",
+    "text": "#323437",
+    "accent": "#e2b714",
+    "correct": "#506e3a",
+    "incorrect": "#ca3e3e",
+    "caret": "#323437"
+  }
+}

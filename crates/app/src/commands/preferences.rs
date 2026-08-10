@@ -202,6 +202,23 @@ pub(crate) fn get_themes() -> Result<Vec<ThemeInfo>, AppError> {
         theme_info("glacier", "Glacier", false, "#e8f0f5", "#5a9cb8", "#1a2a35", "#b85555"),
         theme_info("mint_frost", "Mint Frost", false, "#e6f2ee", "#4a9a7a", "#1a2e26", "#aa5050"),
         theme_info("porcelain", "Porcelain", false, "#f4f5f7", "#6888a8", "#2a2e35", "#b04848"),
+        // Community-inspired palettes (original Apache-2.0 implementations)
+        theme_info("catppuccin_mocha", "Catppuccin Mocha", true, "#1e1e2e", "#cba6f7", "#cdd6f4", "#f38ba8"),
+        theme_info("coral", "Coral", false, "#fff0ed", "#e8654a", "#3d2620", "#c44536"),
+        theme_info("dark", "Dark", true, "#1a1a1a", "#cccccc", "#e0e0e0", "#ff6666"),
+        theme_info("dracula", "Dracula", true, "#282a36", "#bd93f9", "#f8f8f2", "#ff5555"),
+        theme_info("foamy", "Foamy", false, "#e8f5f0", "#3aaa88", "#1a2e26", "#aa4848"),
+        theme_info("gruvbox_dark", "Gruvbox Dark", true, "#282828", "#fe8019", "#ebdbb2", "#fb4934"),
+        theme_info("light", "Light", false, "#f0f0f0", "#3a7ca5", "#1a1a1a", "#cc4444"),
+        theme_info("lilac", "Lilac", false, "#f0ecf4", "#8a6db0", "#2a2230", "#aa4868"),
+        theme_info("matrix", "Matrix", true, "#000000", "#00ff00", "#33ff33", "#ff3333"),
+        theme_info("nautilus", "Nautilus", true, "#0c1620", "#5fb4ca", "#d8e8f0", "#e08080"),
+        theme_info("nord", "Nord", true, "#2e3440", "#88c0d0", "#e5e9f0", "#bf616a"),
+        theme_info("rose_pine", "Rosé Pine", true, "#191724", "#c4a7e7", "#e0def4", "#eb6f92"),
+        theme_info("serika", "Serika", false, "#e1e1e3", "#e2b714", "#323437", "#ca3e3e"),
+        theme_info("serika_dark", "Serika Dark", true, "#323437", "#e2b714", "#e1e1e3", "#ca4754"),
+        theme_info("serika_light", "Serika Light", false, "#eceef0", "#e2b714", "#2c2e31", "#ca3e3e"),
+        theme_info("terra", "Terra", true, "#1c1814", "#c68855", "#e8dcc8", "#c85544"),
     ])
 }
 
@@ -249,6 +266,22 @@ pub(crate) fn get_theme_css(name: String) -> Result<String, AppError> {
         "glacier" => include_str!("../../../../resources/themes/glacier/theme.css"),
         "mint_frost" => include_str!("../../../../resources/themes/mint_frost/theme.css"),
         "porcelain" => include_str!("../../../../resources/themes/porcelain/theme.css"),
+        "catppuccin_mocha" => include_str!("../../../../resources/themes/catppuccin_mocha/theme.css"),
+        "coral" => include_str!("../../../../resources/themes/coral/theme.css"),
+        "dark" => include_str!("../../../../resources/themes/dark/theme.css"),
+        "dracula" => include_str!("../../../../resources/themes/dracula/theme.css"),
+        "foamy" => include_str!("../../../../resources/themes/foamy/theme.css"),
+        "gruvbox_dark" => include_str!("../../../../resources/themes/gruvbox_dark/theme.css"),
+        "light" => include_str!("../../../../resources/themes/light/theme.css"),
+        "lilac" => include_str!("../../../../resources/themes/lilac/theme.css"),
+        "matrix" => include_str!("../../../../resources/themes/matrix/theme.css"),
+        "nautilus" => include_str!("../../../../resources/themes/nautilus/theme.css"),
+        "nord" => include_str!("../../../../resources/themes/nord/theme.css"),
+        "rose_pine" => include_str!("../../../../resources/themes/rose_pine/theme.css"),
+        "serika" => include_str!("../../../../resources/themes/serika/theme.css"),
+        "serika_dark" => include_str!("../../../../resources/themes/serika_dark/theme.css"),
+        "serika_light" => include_str!("../../../../resources/themes/serika_light/theme.css"),
+        "terra" => include_str!("../../../../resources/themes/terra/theme.css"),
         _ => return Err(AppError::ThemeNotFound(name)),
     };
     Ok(css.to_string())
@@ -416,7 +449,7 @@ mod tests {
     #[test]
     fn built_in_theme_catalog_is_complete_and_unique() {
         let themes = get_themes().unwrap();
-        assert_eq!(themes.len(), 34);
+        assert_eq!(themes.len(), 50);
         let unique_names: std::collections::HashSet<_> =
             themes.iter().map(|theme| theme.name.as_str()).collect();
         assert_eq!(unique_names.len(), themes.len());

@@ -1,0 +1,20 @@
+{
+  "name": "foamy",
+  "display_name": "Foamy",
+  "description": "Tidal seafoam green light palette.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#e8f5f0",
+    "surface": "#f0f9f4",
+    "text": "#1a2e26",
+    "accent": "#3aaa88",
+    "correct": "#4a9a6a",
+    "incorrect": "#aa4848",
+    "caret": "#2a8868"
+  }
+}
