@@ -485,7 +485,7 @@ fn stress_achievements_check() {
         "2026-01-01T00:00:00Z".to_string(),
     );
     let check_time = start.elapsed();
-    assert_eq!(achievements.len(), 44);
+    assert_eq!(achievements.len(), 50);
     assert!(
         check_time.as_millis() < 10,
         "Achievements check took {:?}",

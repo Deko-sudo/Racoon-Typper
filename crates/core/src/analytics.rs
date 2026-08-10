@@ -307,6 +307,42 @@ pub fn check_achievements(
             "Reach 99% accuracy across 50 tests",
             best_accuracy >= 99.0 && total_tests >= 50,
         ),
+        mk(
+            "wpm_40",
+            "Cruising",
+            "Reach 40 WPM",
+            best_wpm >= 40.0,
+        ),
+        mk(
+            "wpm_70",
+            "Swift",
+            "Reach 70 WPM",
+            best_wpm >= 70.0,
+        ),
+        mk(
+            "acc_92",
+            "Precise",
+            "Reach 92% accuracy",
+            best_accuracy >= 92.0,
+        ),
+        mk(
+            "streak_21",
+            "Three Weeks",
+            "21-day streak",
+            longest_streak >= 21,
+        ),
+        mk(
+            "lessons_10",
+            "Diligent",
+            "Complete 10 lessons",
+            lessons_completed >= 10,
+        ),
+        mk(
+            "tests_75",
+            "Persistent",
+            "Complete 75 tests",
+            total_tests >= 75,
+        ),
     ];
 
     // Сортируем: разблокированные — сверху, по убыванию id-порога визуально ок.
@@ -637,7 +673,7 @@ mod tests {
     #[test]
     fn achievements_count() {
         let a = check_achievements(0, 0.0, 0.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
-        assert_eq!(a.len(), 44);
+        assert_eq!(a.len(), 50);
     }
 
     // ── Finger stats tests ──
