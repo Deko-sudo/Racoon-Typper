@@ -1,6 +1,11 @@
 //! Tauri application entry point.
 //! Sprint 5: Settings + Themes + Custom Texts
 
+// On Windows, hide the console window in release builds. In debug builds
+// the console remains visible so panic messages and eprintln! output are
+// accessible during development.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use chrono::{DateTime, Utc};
 use racoon_application::{
     SessionWallClock, StartupRecoveryCoordinator, StartupRecoveryGate, StartupRecoveryRetryPolicy,
