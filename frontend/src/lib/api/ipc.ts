@@ -56,6 +56,10 @@ export async function abortSession(sessionId: string): Promise<void> {
   return invoke('abort_session', { sessionId });
 }
 
+export async function abandonActiveSession(): Promise<boolean> {
+  return invoke<boolean>('abandon_active_session');
+}
+
 export async function getStatsHistory(limit: number, offset = 0): Promise<StatsHistoryResponse> {
   return invoke<StatsHistoryResponse>('get_stats_history', { limit, offset });
 }

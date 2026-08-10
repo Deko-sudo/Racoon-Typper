@@ -110,6 +110,7 @@ fn main() {
             commands::session::start_test,
             commands::session::process_key,
             commands::session::abort_session,
+            commands::session::abandon_active_session,
             // Stats
             commands::reporting::get_stats_history,
             commands::reporting::get_personal_bests,

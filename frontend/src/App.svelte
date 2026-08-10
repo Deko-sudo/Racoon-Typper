@@ -747,6 +747,14 @@
     } catch (error) {
       errorMsg = `Settings load error: ${ipc.ipcErrorMessage(error)}`;
     }
+    // A window/hot reload restarts the renderer but the in-memory backend
+    // engine keeps any prior session, so abandon it before starting fresh.
+    // Safe: engine.abort() only discards a Running session.
+    try {
+      await ipc.abandonActiveSession();
+    } catch {
+      // Non-fatal — startTest below will surface a real lifecycle error.
+    }
     await startTest();
   });
 </script>

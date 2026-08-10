@@ -2,6 +2,7 @@ const APP_COMMANDS: &[&str] = &[
     "start_test",
     "process_key",
     "abort_session",
+    "abandon_active_session",
     "get_stats_history",
     "get_personal_bests",
     "get_custom_texts",

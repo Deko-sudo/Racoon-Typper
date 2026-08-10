@@ -6,6 +6,7 @@
   "windows": ["main"],
   "permissions": [
     "allow-abort-session",
+    "allow-abandon-active-session",
     "allow-analyze-weak-keys",
     "allow-delete-custom-text",
     "allow-export-data",
