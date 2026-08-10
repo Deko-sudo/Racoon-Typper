@@ -218,6 +218,47 @@ jobs:
           set -euo pipefail
           cd artifacts
           find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
+      - name: Sign updater artifacts and generate latest.json
+        shell: bash
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          cd artifacts
+          # Sign the AppImage (Linux) and NSIS installer (Windows) for the
+          # updater. The updater verifies these signatures before installing.
+          for f in *.AppImage *.exe; do
+            [ -e "$f" ] || continue
+            npx --yes @tauri-apps/cli signer sign \
+              --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
+              --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
+              "$f"
+          done
+      - name: Generate latest.json for the updater
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ needs.validate-tag.outputs.tag }}
+        run: |
+          set -euo pipefail
+          cd artifacts
+          # The updater endpoint serves latest.json. It lists the signed
+          # installers per platform; the updater picks the matching one.
+          node -e '
+            const tag = process.env.RELEASE_TAG;
+            const base = `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/${tag}`;
+            const fs = require("fs");
+            const notes = [];
+            const add = (platform, arch, url, signature) => {
+              if (fs.existsSync(url.split("/").pop())) {
+                notes.push({ platform, arch, url, signature });
+              }
+            };
+            add("linux-x86_64", "x86_64", `${base}/racoon-typper_${tag.replace("v","")}_amd64.AppImage`, `${base}/racoon-typper_${tag.replace("v","")}_amd64.AppImage.sig`);
+            add("windows-x86_64", "x86_64", `${base}/racoon-typper_${tag.replace("v","")}_x64-setup.exe`, `${base}/racoon-typper_${tag.replace("v","")}_x64-setup.exe.sig`);
+            const manifest = { version: tag.replace("v",""), notes: "", pub_date: new Date().toISOString(), platforms: { "linux-x86_64": notes.filter(n=>n.platform==="linux-x86_64"), "windows-x86_64": notes.filter(n=>n.platform==="windows-x86_64") } };
+            fs.writeFileSync("latest.json", JSON.stringify(manifest, null, 2));
+          '
       - name: Create draft release candidate
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
@@ -232,7 +273,9 @@ jobs:
             artifacts/**/*.tar.gz
             artifacts/**/*.torrent
             artifacts/**/*.exe
+            artifacts/**/*.sig
             artifacts/SHA256SUMS
+            artifacts/latest.json
             artifacts/release-evidence/*
           body: |
             Release candidate built from the immutable tag above.
