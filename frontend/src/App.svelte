@@ -82,7 +82,8 @@
 
   // Themes
   let themes = $state<ThemeInfo[]>([]);
-  let activeTheme = $state('racoon_dark');
+  let activeTheme = $state('racoon_graphite');
+  const appliedThemeVariables = new Set<string>();
 
   // Lessons
   let courseModules = $state<ModuleResponse[]>([]);
@@ -504,11 +505,19 @@
     styleEl.textContent = css;
 
     // Apply variables inline as well as through the stylesheet. This keeps
-    // theme switching reliable when component-scoped CSS is present.
+    // theme switching reliable when component-scoped CSS is present and lets
+    // semantic aliases such as --bg resolve to the active theme tokens.
     const root = document.documentElement;
-    const variables = /--([a-z0-9-]+)\s*:\s*(#[0-9a-fA-F]{3,8})\s*;/g;
+    for (const variable of appliedThemeVariables) {
+      root.style.removeProperty(variable);
+    }
+    appliedThemeVariables.clear();
+
+    const variables = /(--[a-z0-9-]+)\s*:\s*([^;{}]+)\s*;/g;
     for (const match of css.matchAll(variables)) {
-      root.style.setProperty(`--${match[1]}`, match[2], 'important');
+      const variable = match[1];
+      root.style.setProperty(variable, match[2].trim(), 'important');
+      appliedThemeVariables.add(variable);
     }
     root.dataset.theme = name;
     const themeInfo = themes.find((theme) => theme.name === name);
@@ -864,8 +873,20 @@
 
 <style>
   :root {
-    --bg: #151a24; --bg-sub: #202a38; --main: #5eead4;
-    --sub: #7890a8; --text: #e8f0f7; --error: #fb7185; --caret: #fbbf24;
+    --color-app-background: #0d0f12;
+    --color-surface-primary: #15181d;
+    --color-accent: #c5cbd4;
+    --color-text-secondary: #adb3bd;
+    --color-text-primary: #e7e9ed;
+    --color-error: #dc8d8d;
+    --color-caret: #f1f3f6;
+    --bg: var(--color-app-background);
+    --bg-sub: var(--color-surface-primary);
+    --main: var(--color-accent);
+    --sub: var(--color-text-secondary);
+    --text: var(--color-text-primary);
+    --error: var(--color-error);
+    --caret: var(--color-caret);
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   main {

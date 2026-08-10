@@ -156,12 +156,12 @@
      This keeps its right edge aligned without introducing a detached gap on
      the left (notably before Slash, Enter, Shift, and the right Ctrl). */
   .main-row > .right-edge { flex-grow: 1 !important; }
-  .next-key { background: var(--color-key-active); border-color: var(--color-focus-ring); color: var(--color-accent-text); box-shadow: 0 0 0 2px var(--color-focus-ring); transform: translateY(-3px) scale(1.04); z-index: 1; }
+  .next-key { background: var(--main); border-color: var(--main); color: var(--color-accent-text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--main) 25%, transparent); transform: translateY(-3px) scale(1.04); z-index: 1; }
   .error-key { background: color-mix(in srgb, var(--error) 22%, var(--bg-sub)); border-color: var(--error); }
   .weak-critical { background: color-mix(in srgb, var(--error) 26%, var(--bg-sub)); border-color: var(--error); color: var(--text); }
   .weak-warning { background: color-mix(in srgb, var(--color-warning) 22%, var(--bg-sub)); border-color: var(--color-warning); color: var(--text); }
   .measured-key { border-color: color-mix(in srgb, var(--main) 45%, var(--sub)); }
-  .key.next-key { background: var(--color-key-active); border-color: var(--color-focus-ring); color: var(--color-accent-text); }
+  .key.next-key { background: var(--main); border-color: var(--main); color: var(--color-accent-text); }
   .num-key { width: var(--u); }
   .num-plus { grid-column: 4; grid-row: 2 / span 2; height: auto; }
   .num-enter { grid-column: 4; grid-row: 4 / span 2; height: auto; font-size: 0.62rem; }

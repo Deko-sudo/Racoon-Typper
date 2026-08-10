@@ -22,9 +22,43 @@
 - **Phase 3B.3.4:** accepted after independent re-review.
 - **Phase 3B.3.5:** accepted after independent re-review.
 - **Phase 3B.3.6:** accepted after independent re-review.
-- **Phase 3B.3.7:** final acceptance complete; Phase 3B.3 recovery architecture accepted and complete. Later Phase 3B milestones remain not started and require separate approval.
+- **Phase 3B.3.7:** final acceptance complete; the durable recovery subsystem is accepted. Normal live-completion wiring through that protocol remains separately deferred. Later Phase 3B milestones remain not started and require separate approval.
 
-The Phase 0 changes are limited to release topology, baseline/version tooling, support documentation, and outdated release-command corrections. Existing feature/resource work in the dirty tree remains separately identified in `BASELINE.md`.
+Historical **Phase 0 — Release Baseline** remains limited to release topology,
+baseline/version tooling, support documentation, and outdated release-command
+corrections. Existing feature/resource work in the dirty tree remains separately
+identified in `BASELINE.md`.
+
+### Current execution stages — 2026-08-07
+
+This file remains the repository's canonical execution roadmap. The historical
+modernization phases above are preserved as accepted records. The following
+uniquely named execution stages reconcile independently accepted local work with
+the published repository; they do not change the status or meaning of any
+historical phase:
+
+1. **Stage S0 — repository reconciliation and accepted-work publication.**
+   Publish the separately independently reviewed and accepted 25-theme pack with
+   its resources, registry, settings compatibility, selector integration,
+   documentation, tests, and provenance records. Preserve unrelated local work.
+   The accepted durable recovery subsystem is not reopened; its normal
+   live-completion wiring remains deferred.
+
+   **Stage S0 publication gate:** Only independently reviewed accepted work may
+   enter the publication branch. Unrelated dirty-worktree changes remain outside
+   the commit and outside the published baseline. Publication uses a clean,
+   isolated commit/branch containing only accepted Stage S0 work; the original
+   dirty worktree is preserved rather than cleaned destructively.
+2. **Stage S1 — small correctness fixes.** Do not begin before Stage S0 is
+   published and reviewed. Start with replay-pagination metadata consistency
+   (`offset`, `total`, and `has_more`) and its negative regression coverage.
+3. **Stage S2 — reporting architecture migration.** Migrate one read-only
+   reporting vertical slice at a time from Tauri command adapters to the
+   existing application reporting use cases and ports. Do not create a second
+   reporting architecture or change reporting semantics during Stage S0.
+
+No Stage S1 or Stage S2 implementation is authorized by this Stage S0
+publication work.
 
 ## 1. Executive decision
 

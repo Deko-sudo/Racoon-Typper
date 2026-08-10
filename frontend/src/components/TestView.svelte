@@ -163,6 +163,7 @@
   .char.backspaced { color:var(--color-typing-corrected); text-decoration:underline double; text-underline-offset:.18em; }
   .char.past { opacity:.9; }
   .char.current { color:var(--color-typing-current); background:var(--color-surface-active); outline:1px solid var(--color-border-strong); border-radius:.12em; opacity:1; font-weight:700; }
+  .char.current.pending { color:var(--color-typing-current); }
   .char.future { opacity:1; }
   .char.caret::before { content:''; position:absolute; left:-.18em; top:.08em; bottom:.08em; width:.11em; border-radius:999px; background:var(--color-caret); animation:blink .9s ease-in-out infinite; }
   @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} } @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }

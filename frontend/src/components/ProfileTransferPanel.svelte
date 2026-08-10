@@ -281,7 +281,7 @@
     outline: 2px solid var(--main);
     outline-offset: 2px;
   }
-  .primary { border: 1px solid var(--main); background: var(--main); color: var(--bg); }
+  .primary { border: 1px solid var(--main); background: var(--main); color: var(--color-accent-text); }
   .secondary { border: 1px solid var(--sub); background: var(--bg); color: var(--text); }
   .secondary:hover:not(:disabled) { border-color: var(--main); color: var(--main); }
 

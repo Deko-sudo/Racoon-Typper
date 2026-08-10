@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const themesRoot = path.join(repositoryRoot, 'resources', 'themes');
 const preferencesSourcePath = path.join(repositoryRoot, 'crates', 'app', 'src', 'commands', 'preferences.rs');
+const frontendComponentsRoot = path.join(repositoryRoot, 'frontend', 'src', 'components');
 
 const legacyAliases = new Map([
   ['--bg', 'var(--color-app-background)'],
@@ -138,10 +139,15 @@ async function loadThemeDirectories() {
 }
 
 function parseRegistryIdentifiers(source) {
-  const catalogIdentifiers = [...source.matchAll(/theme_info\(\s*"([a-z0-9_]+)"/g)].map((match) => match[1]);
+  const catalogEntries = [...source.matchAll(/theme_info\(\s*"([a-z0-9_]+)"\s*,\s*"([^"]+)"\s*,\s*(true|false)\s*,/g)]
+    .map((match) => ({
+      identifier: match[1],
+      displayName: match[2],
+      isDark: match[3] === 'true',
+    }));
   const cssIdentifiers = [...source.matchAll(/"([a-z0-9_]+)"\s*=>\s*(?:\{\s*)?include_str!\("\.\.\/\.\.\/\.\.\/\.\.\/resources\/themes\/([^/]+)\/theme\.css"\)/g)]
     .map((match) => ({ identifier: match[1], resource: match[2] }));
-  return { catalogIdentifiers, cssIdentifiers };
+  return { catalogEntries, cssIdentifiers };
 }
 
 function assertBalancedCss(css, identifier) {
@@ -152,6 +158,14 @@ function assertBalancedCss(css, identifier) {
     assert.ok(depth >= 0, `${identifier} contains an unmatched closing brace`);
   }
   assert.equal(depth, 0, `${identifier} contains unmatched CSS braces`);
+}
+
+function assertThemeCssIsSafe(css, identifier) {
+  assert.doesNotMatch(
+    css,
+    /(?:@import\b|url\(|javascript:|<script|https?:\/\/)/i,
+    `${identifier} contains executable, imported, or remote content`,
+  );
 }
 
 function hexToRgb(hex) {
@@ -179,6 +193,10 @@ async function loadTheme(identifier) {
   const metadata = JSON.parse(await readFile(path.join(directory, 'theme.json'), 'utf8'));
   const css = await readFile(path.join(directory, 'theme.css'), 'utf8');
   return { metadata, css, tokens: parseTokens(css) };
+}
+
+async function loadFrontendComponent(filename) {
+  return readFile(path.join(frontendComponentsRoot, filename), 'utf8');
 }
 
 function tokenColor(tokens, name) {
@@ -213,16 +231,19 @@ test('the built-in catalog contains exactly the 25 approved Racoon themes', asyn
 test('theme resources and static Rust registries stay one-to-one', async () => {
   const directories = await loadThemeDirectories();
   const manifestIdentifiers = [];
+  const manifestMetadata = new Map();
   for (const identifier of directories) {
     const directory = path.join(themesRoot, identifier);
     const metadata = JSON.parse(await readFile(path.join(directory, 'theme.json'), 'utf8'));
     await readFile(path.join(directory, 'theme.css'), 'utf8');
     assert.equal(metadata.name, identifier, `${identifier} manifest ID must match its directory`);
     manifestIdentifiers.push(metadata.name);
+    manifestMetadata.set(identifier, metadata);
   }
 
   const preferencesSource = await readFile(preferencesSourcePath, 'utf8');
-  const { catalogIdentifiers, cssIdentifiers } = parseRegistryIdentifiers(preferencesSource);
+  const { catalogEntries, cssIdentifiers } = parseRegistryIdentifiers(preferencesSource);
+  const catalogIdentifiers = catalogEntries.map(({ identifier }) => identifier);
   const cssRegistryIdentifiers = cssIdentifiers.map(({ identifier }) => identifier);
   const cssResourceIdentifiers = cssIdentifiers.map(({ resource }) => resource);
 
@@ -235,6 +256,17 @@ test('theme resources and static Rust registries stay one-to-one', async () => {
   assert.deepEqual([...new Set(cssResourceIdentifiers)].sort(), directories);
   assert.equal(cssIdentifiers.length, 25);
   assert.deepEqual(cssRegistryIdentifiers, cssResourceIdentifiers);
+
+  for (const catalogEntry of catalogEntries) {
+    const expected = expectedThemes.get(catalogEntry.identifier);
+    const manifest = manifestMetadata.get(catalogEntry.identifier);
+    assert.ok(expected, `${catalogEntry.identifier} Rust catalog entry must be accepted`);
+    assert.ok(manifest, `${catalogEntry.identifier} Rust catalog entry must have a manifest`);
+    assert.equal(catalogEntry.displayName, expected.displayName, `${catalogEntry.identifier} Rust display name must match the accepted catalog`);
+    assert.equal(catalogEntry.isDark, expected.isDark, `${catalogEntry.identifier} Rust dark-mode flag must match the accepted catalog`);
+    assert.equal(catalogEntry.displayName, manifest.display_name, `${catalogEntry.identifier} Rust display name must match the manifest`);
+    assert.equal(catalogEntry.isDark, manifest.is_dark, `${catalogEntry.identifier} Rust dark-mode flag must match the manifest`);
+  }
 });
 
 test('every built-in theme defines the complete semantic token contract', async () => {
@@ -254,8 +286,15 @@ test('every built-in theme defines the complete semantic token contract', async 
     for (const shadowToken of ['--shadow-surface', '--shadow-elevated']) {
       assert.match(tokens.get(shadowToken), /^(?:none|-?\d+(?:\.\d+)?(?:px)?(?:\s+-?\d+(?:\.\d+)?(?:px)?){1,3}\s+(?:#[0-9a-f]{6}|rgba?\([^)]*\)))$/i, `${identifier} ${shadowToken} has unsupported syntax`);
     }
-    assert.doesNotMatch(css, /(?:url\(|javascript:|<script|https?:\/\/)/i, `${identifier} contains executable or remote content`);
+    assertThemeCssIsSafe(css, identifier);
   }
+});
+
+test('built-in theme CSS rejects imports, including protocol-relative imports', () => {
+  assert.throws(
+    () => assertThemeCssIsSafe('@IMPORT "//example.invalid/theme.css";', 'fixture'),
+    /fixture contains executable, imported, or remote content/,
+  );
 });
 
 test('solid semantic colors meet contrast targets on their actual surfaces', async () => {
@@ -282,7 +321,54 @@ test('high contrast uses stronger text contrast and distinct typing-state tokens
   const background = tokenColor(tokens, '--color-app-background');
   assert.ok(contrast(tokenColor(tokens, '--color-text-primary'), background) >= 7);
   assert.ok(contrast(tokenColor(tokens, '--color-text-secondary'), background) >= 7);
-  assert.notEqual(tokens.get('--color-typing-current'), tokens.get('--color-typing-pending'));
-  assert.notEqual(tokens.get('--color-typing-correct'), tokens.get('--color-typing-incorrect'));
+  const typingStateValues = [
+    '--color-typing-pending',
+    '--color-typing-current',
+    '--color-typing-correct',
+    '--color-typing-incorrect',
+    '--color-typing-corrected',
+  ].map((token) => tokens.get(token));
+  assert.equal(new Set(typingStateValues).size, typingStateValues.length);
   assert.notEqual(tokens.get('--color-caret'), tokens.get('--color-surface-primary'));
+});
+
+test('accent-filled frontend controls use the semantic accent foreground', async () => {
+  const accentConsumers = [
+    'KeyboardTrainer.svelte',
+    'WeakKeysPanel.svelte',
+    'CustomTextsView.svelte',
+    'ResultOverlay.svelte',
+    'ProfileTransferPanel.svelte',
+  ];
+
+  for (const filename of accentConsumers) {
+    const source = await loadFrontendComponent(filename);
+    assert.match(
+      source,
+      /background(?:-color)?:\s*var\(--main\)[\s\S]{0,180}color:\s*var\(--color-accent-text\)/,
+      `${filename} must use --color-accent-text on accent-filled controls`,
+    );
+    assert.doesNotMatch(
+      source,
+      /background(?:-color)?:\s*var\(--main\)[\s\S]{0,180}color:\s*var\(--bg\)/,
+      `${filename} must not use --bg as an accent-filled control foreground`,
+    );
+  }
+});
+
+test('primary typing surfaces consume semantic typing-state tokens with explicit current precedence', async () => {
+  for (const filename of ['TestView.svelte', 'WeakKeysPanel.svelte']) {
+    const source = await loadFrontendComponent(filename);
+    for (const [status, token] of [
+      ['pending', '--color-typing-pending'],
+      ['correct', '--color-typing-correct'],
+      ['incorrect', '--color-typing-incorrect'],
+      ['backspaced', '--color-typing-corrected'],
+    ]) {
+      assert.match(source, new RegExp(`\\.char\\.${status}\\s*\\{[^}]*color:\\s*var\\(${token}\\)`), `${filename} must map ${status} to ${token}`);
+    }
+    assert.match(source, /\.char\.current\.pending\s*\{[^}]*color:\s*var\(--color-typing-current\)/, `${filename} must apply the current token only to pending current characters`);
+    assert.match(source, /\.char\.caret::before\s*\{[^}]*background:\s*var\(--color-caret\)/, `${filename} must use the semantic caret token`);
+    assert.doesNotMatch(source, /\.char\.backspaced\s*\{[^}]*#[0-9a-f]{3,8}/i, `${filename} must not hardcode a corrected-character color`);
+  }
 });

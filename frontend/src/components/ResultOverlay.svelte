@@ -63,8 +63,8 @@
   .stats-details { display: flex; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
   .result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
   button { background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main); padding: 0.5rem 2rem; font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 4px; }
-  button.primary { background-color: var(--main); color: var(--bg); }
-  button:hover { background-color: var(--main); color: var(--bg); }
+  button.primary { background-color: var(--main); color: var(--color-accent-text); }
+  button:hover { background-color: var(--main); color: var(--color-accent-text); }
 
   @media (max-width: 640px) {
     .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; gap: .75rem; }
