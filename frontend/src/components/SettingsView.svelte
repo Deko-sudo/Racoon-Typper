@@ -2,6 +2,7 @@
   import type { AppSettings, ThemeInfo } from '../lib/types/index';
   import { t, UI_LANGUAGES } from '../lib/i18n';
   import ProfileTransferPanel from './ProfileTransferPanel.svelte';
+  import { checkForUpdate, installUpdate } from '../lib/updater';
 
   let {
     settings,
@@ -18,6 +19,31 @@
     onSelectTheme: (name: string) => void;
     onUpdateSetting: (key: string, value: unknown) => void;
   } = $props();
+
+  let updateStatus = $state<string>('');
+  let updateVersion = $state<string | null>(null);
+  let checkingUpdate = $state(false);
+
+  async function handleCheckUpdate() {
+    checkingUpdate = true;
+    updateStatus = '';
+    updateVersion = null;
+    const result = await checkForUpdate();
+    checkingUpdate = false;
+    if (result.error) {
+      updateStatus = `Update check failed: ${result.error}`;
+    } else if (result.available) {
+      updateVersion = result.version ?? null;
+      updateStatus = `Update available: v${result.version}`;
+    } else {
+      updateStatus = 'You are up to date.';
+    }
+  }
+
+  async function handleInstallUpdate() {
+    const ok = await installUpdate();
+    if (!ok) updateStatus = 'Update install failed.';
+  }
 
   const themeDescriptions: Record<string, string> = {
     racoon_graphite: 'Calm graphite surfaces with soft silver contrast.',
@@ -160,6 +186,18 @@
       {/if}
     </div>
     <ProfileTransferPanel {uiLang} />
+    <h3>Updates</h3>
+    <div class="update-panel">
+      <button class="update-btn" onclick={handleCheckUpdate} disabled={checkingUpdate}>
+        {checkingUpdate ? 'Checking...' : 'Check for updates'}
+      </button>
+      {#if updateVersion}
+        <button class="update-btn primary" onclick={handleInstallUpdate}>Install v{updateVersion}</button>
+      {/if}
+      {#if updateStatus}
+        <span class="update-status">{updateStatus}</span>
+      {/if}
+    </div>
     <h3>{t(uiLang, 'settings.theme_preview')}</h3>
     <div class="theme-toolbar">
       <input
@@ -230,4 +268,13 @@
   .theme-state-preview span:nth-child(2) { border-left: 2px solid; padding-left: 0.25rem; }
   .theme-state-preview span:last-child { text-decoration: underline 2px; text-underline-offset: 0.16em; }
   .selected-label { font-size: 0.62rem; font-weight: 700; }
+  .update-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .update-btn {
+    background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main);
+    padding: 0.5rem 1.25rem; font-family: inherit; font-size: 0.875rem; cursor: pointer; border-radius: 4px;
+  }
+  .update-btn.primary { background-color: var(--main); color: var(--bg); }
+  .update-btn:hover:not(:disabled) { opacity: 0.85; }
+  .update-btn:disabled { opacity: 0.5; cursor: default; }
+  .update-status { color: var(--sub); font-size: 0.8rem; }
 </style>
