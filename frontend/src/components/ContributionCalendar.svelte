@@ -2,10 +2,15 @@
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
   import type { ProgressPoint } from '../lib/types/index';
-  import { buildGrid, formatTooltip } from '../lib/contributionCalendar';
+  import {
+    buildGrid,
+    formatTooltip,
+    type CalendarMetric,
+  } from '../lib/contributionCalendar';
 
   let points = $state<ProgressPoint[]>([]);
   let loading = $state(false);
+  let metric = $state<CalendarMetric>('tests');
 
   async function loadData() {
     loading = true;
@@ -28,7 +33,7 @@
   // Vertical space reserved for the month labels above the grid.
   const LABEL_H = 26;
 
-  let grid = $derived(buildGrid(points, new Date()));
+  let grid = $derived(buildGrid(points, new Date(), metric));
 
   const weeks = $derived(Math.ceil(grid.length / DAYS));
   const W = $derived(weeks * (CELL + GAP) + GAP);
@@ -61,6 +66,11 @@
   <div class="cal-header">
     <h3>Activity</h3>
     <span class="cal-sub">Last 365 days</span>
+    <div class="metric-selector" role="group" aria-label="Calendar metric">
+      <button class:active={metric === 'tests'} onclick={() => (metric = 'tests')}>Tests</button>
+      <button class:active={metric === 'time'} onclick={() => (metric = 'time')}>Time</button>
+      <button class:active={metric === 'lessons'} onclick={() => (metric = 'lessons')}>Lessons</button>
+    </div>
   </div>
 
   {#if loading}
@@ -87,7 +97,7 @@
             class:lvl3={c.level === 3}
             class:lvl4={c.level === 4}
           >
-            <title>{formatTooltip(c)}</title>
+            <title>{formatTooltip(c, metric)}</title>
           </rect>
         {/each}
       </svg>
@@ -106,9 +116,15 @@
 
 <style>
   .contribution-calendar { max-width: 1200px; width: 100%; margin-bottom: 2rem; }
-  .cal-header { display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.5rem; }
+  .cal-header { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; flex-wrap: wrap; }
   h3 { color: var(--main); font-size: 1.3rem; }
   .cal-sub { color: var(--sub); font-size: 0.85rem; }
+  .metric-selector { display: flex; gap: 0.25rem; margin-left: auto; }
+  .metric-selector button {
+    background: var(--bg-sub); color: var(--sub); border: 1px solid var(--sub);
+    padding: 0.2rem 0.6rem; font-family: inherit; font-size: 0.7rem; cursor: pointer; border-radius: 4px;
+  }
+  .metric-selector button.active { color: var(--main); border-color: var(--main); }
   .cal-scroll { overflow-x: auto; }
   .cal-svg { display: block; min-width: 900px; }
   .cal-cell { stroke: none; }

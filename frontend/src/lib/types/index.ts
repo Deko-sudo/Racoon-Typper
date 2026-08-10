@@ -224,6 +224,8 @@ export interface ProgressPoint {
   wpm: number;
   accuracy: number;
   tests: number;
+  time_ms: number;
+  lessons: number;
 }
 
 export type ProfileImportPolicy = 'merge' | 'replace';

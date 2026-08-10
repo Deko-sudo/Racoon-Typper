@@ -95,6 +95,8 @@ pub struct ProgressPoint {
     pub wpm: f64,
     pub accuracy: f64,
     pub tests: i64,
+    pub time_ms: i64,
+    pub lessons: i64,
 }
 
 #[derive(Debug, serde::Serialize)]

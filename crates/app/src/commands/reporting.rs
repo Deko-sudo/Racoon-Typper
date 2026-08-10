@@ -112,6 +112,8 @@ pub(crate) fn get_progress_history(
                 wpm: stats.avg_wpm,
                 accuracy: stats.avg_accuracy,
                 tests: stats.total_tests,
+                time_ms: stats.total_time_ms,
+                lessons: stats.lessons_completed,
             })
             .collect())
     })
