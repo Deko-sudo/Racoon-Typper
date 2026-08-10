@@ -5,6 +5,7 @@
   import { lessonResultNavigation } from './lib/lessonNavigation';
   import { createNavigationStore } from './lib/stores/navigation.svelte';
   import { createNotificationStore } from './lib/stores/notifications.svelte';
+  import { vimActionForKey, VIM_VIEWS } from './lib/vimNavigation';
   import type {
     CharStatus, EngineOutput, TestSessionResponse, FinalStats, TestSummary,
     PersonalBest, CustomText, AppSettings,
@@ -382,23 +383,26 @@
 
     // Vim mode navigation (only when not actively typing a test)
     if (settings?.vim_mode && !isRunning) {
-      const views: ViewName[] = ['dashboard', 'test', 'lessons', 'weakkeys', 'analytics', 'achievements', 'history', 'bests', 'custom', 'settings'];
-      const currentIdx = views.indexOf(view);
-      if (e.key === 'h' && currentIdx > 0) { e.preventDefault(); switchView(views[currentIdx - 1]); return; }
-      if (e.key === 'l' && currentIdx < views.length - 1) { e.preventDefault(); switchView(views[currentIdx + 1]); return; }
-      if (e.key === 'k') { e.preventDefault(); window.scrollBy(0, -100); return; }
-      if (e.key === 'j') { e.preventDefault(); window.scrollBy(0, 100); return; }
-      if (e.key === 'g') {
-        // 'gg' -> top of page, single 'g' -> wait for the second press.
-        if (vimPendingG) {
-          e.preventDefault(); vimPendingG = false; window.scrollTo(0, 0); return;
+      const { action, nextPendingG } = vimActionForKey(e.key, view, vimPendingG);
+      vimPendingG = nextPendingG;
+      switch (action.type) {
+        case 'prev_tab': {
+          const idx = VIM_VIEWS.indexOf(view as (typeof VIM_VIEWS)[number]);
+          if (idx > 0) { e.preventDefault(); switchView(VIM_VIEWS[idx - 1]); }
+          return;
         }
-        e.preventDefault(); vimPendingG = true;
-        window.setTimeout(() => { vimPendingG = false; }, 500);
-        return;
+        case 'next_tab': {
+          const idx = VIM_VIEWS.indexOf(view as (typeof VIM_VIEWS)[number]);
+          if (idx >= 0 && idx < VIM_VIEWS.length - 1) { e.preventDefault(); switchView(VIM_VIEWS[idx + 1]); }
+          return;
+        }
+        case 'scroll_up': e.preventDefault(); window.scrollBy(0, -100); return;
+        case 'scroll_down': e.preventDefault(); window.scrollBy(0, 100); return;
+        case 'scroll_top': e.preventDefault(); window.scrollTo(0, 0); return;
+        case 'scroll_bottom': e.preventDefault(); window.scrollTo(0, document.body.scrollHeight); return;
+        case 'restart': e.preventDefault(); void restartTest(); return;
+        case 'none': return;
       }
-      if (e.key === 'G') { e.preventDefault(); window.scrollTo(0, document.body.scrollHeight); return; }
-      if (e.key === 'r') { e.preventDefault(); void restartTest(); return; }
     }
 
     if (!isRunning || isComplete) return;
