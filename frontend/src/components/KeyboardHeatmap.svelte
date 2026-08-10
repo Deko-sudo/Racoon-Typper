@@ -58,7 +58,7 @@
 <style>
   .heatmap-container { max-width: 700px; width: 100%; }
   h3 { color: var(--main); font-size: 1.1rem; margin: 0 0 0.5rem; text-align: center; }
-  .keyboard { display: flex; flex-direction: column; gap: 0.25rem; align-items: center; }
+  .keyboard { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; width: fit-content; margin: 0 auto; }
   .keyboard-row { display: flex; gap: 0.25rem; }
   .key {
     width: 40px; height: 40px; border: 1px solid var(--color-key-border); border-radius: 4px;
