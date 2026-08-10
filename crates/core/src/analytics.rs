@@ -343,6 +343,18 @@ pub fn check_achievements(
             "Complete 75 tests",
             total_tests >= 75,
         ),
+        mk(
+            "wpm_90",
+            "Turbo",
+            "Reach 90 WPM",
+            best_wpm >= 90.0,
+        ),
+        mk(
+            "acc_98",
+            "Virtuoso",
+            "Reach 98% accuracy",
+            best_accuracy >= 98.0,
+        ),
     ];
 
     // Сортируем: разблокированные — сверху, по убыванию id-порога визуально ок.
@@ -673,7 +685,7 @@ mod tests {
     #[test]
     fn achievements_count() {
         let a = check_achievements(0, 0.0, 0.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
-        assert_eq!(a.len(), 50);
+        assert_eq!(a.len(), 52);
     }
 
     // ── Finger stats tests ──
