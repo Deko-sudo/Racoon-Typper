@@ -29,8 +29,8 @@ pub use finger_map::{
 };
 pub use input::{KeyAction, KeyClassifier, KeyEvent};
 pub use lesson::{
-    unlock_next_lesson, LessonMode, LessonResult, LessonSession, LessonState, NextKeyInfo,
-    RepeatRecommendation,
+    unlock_next_lesson, lesson_is_passed, LessonMode, LessonResult, LessonSession, LessonState,
+    NextKeyInfo, RepeatRecommendation, LESSON_PASS_MIN_ACCURACY, LESSON_PASS_MIN_WPM,
 };
 pub use modes::{CustomMode, ModeResult, ModeType, QuoteMode, TestMode, TimeMode, WordsMode};
 pub use racoon_domain::KeyResult;

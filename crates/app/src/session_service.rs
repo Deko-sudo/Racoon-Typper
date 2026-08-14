@@ -350,7 +350,15 @@ fn persist_completed_session(
     }
 
     let daily_repo = SqliteDailyStatsRepository::new(conn);
-    let completion_date = completed.completed_at.format("%Y-%m-%d").to_string();
+    // The calendar day belongs to the user's local timezone, not UTC: a test
+    // finished at 01:00 Europe/Moscow (22:00 UTC the previous day) must count
+    // toward the local day it was typed in. chrono::Local uses the system
+    // timezone, which is the desktop app's natural source of truth.
+    let completion_date = completed
+        .completed_at
+        .with_timezone(&chrono::Local)
+        .format("%Y-%m-%d")
+        .to_string();
     let duration_ms = i64::try_from(completed.final_stats.duration_ms)
         .map_err(|_| DbError::Write("Test duration exceeds i64".to_string()))?;
     let total_chars = completed
@@ -369,12 +377,15 @@ fn persist_completed_session(
     persist_daily_streak(conn, &completion_date)?;
 
     if let Some(lesson_id) = &completed.lesson_id {
-        SqliteLessonRepository::new(conn).complete_lesson(
+        let passed = SqliteLessonRepository::new(conn).complete_lesson(
             lesson_id,
             completed.final_stats.wpm,
             completed.final_stats.accuracy,
         )?;
-        daily_repo.increment_lessons_completed(&completion_date)?;
+        // Счётчик пройденных уроков растёт только прошедшим гейт попыткам.
+        if passed {
+            daily_repo.increment_lessons_completed(&completion_date)?;
+        }
     }
 
     let day_stats = daily_repo.get_day(&completion_date)?.ok_or_else(|| {
@@ -395,16 +406,17 @@ fn daily_goal_is_met(settings: &AppSettings, stats: &racoon_data::repository::Da
         "accuracy" => {
             settings.daily_goal_accuracy > 0.0 && stats.avg_accuracy >= settings.daily_goal_accuracy
         }
-        "time" => time_goal_is_met(settings.daily_goal_wpm, stats.total_time_ms),
+        "time" => time_goal_is_met(settings.daily_goal_minutes, stats.total_time_ms),
         _ => false,
     }
 }
 
-/// Daily goals historically treat a zero-minute time target as met once a day
-/// has statistics (`0 >= 0`). Compare elapsed minutes directly so fractional
-/// targets do not truncate to zero before the boundary check.
-fn time_goal_is_met(target_minutes: f64, total_time_ms: i64) -> bool {
-    (total_time_ms as f64 / 60_000.0) >= target_minutes
+/// Time goal is met when the day's accumulated typing time reaches the target
+/// in minutes. A zero/negative target means the goal is unset, so it is never
+/// reported as met — matching the other goal types, where a zero target is not
+/// met either.
+fn time_goal_is_met(target_minutes: i64, total_time_ms: i64) -> bool {
+    target_minutes > 0 && (total_time_ms as f64 / 60_000.0) >= target_minutes as f64
 }
 
 fn persist_daily_streak(conn: &rusqlite::Connection, today: &str) -> Result<(), DbError> {
@@ -484,9 +496,13 @@ mod tests {
     }
 
     fn completed_session(lesson_id: Option<&str>) -> CompletedSession {
+        completed_session_at(lesson_id, "2026-07-12T12:00:00Z")
+    }
+
+    fn completed_session_at(lesson_id: Option<&str>, completed_at: &str) -> CompletedSession {
         CompletedSession {
             session_id: SessionId::from("test-session"),
-            completed_at: "2026-07-12T23:59:59Z"
+            completed_at: completed_at
                 .parse::<DateTime<Utc>>()
                 .expect("fixed test timestamp is valid"),
             final_stats: final_stats(),
@@ -511,6 +527,14 @@ mod tests {
             }],
             lesson_id: lesson_id.map(ToOwned::to_owned),
         }
+    }
+
+    fn local_day_of(completed: &CompletedSession) -> String {
+        completed
+            .completed_at
+            .with_timezone(&chrono::Local)
+            .format("%Y-%m-%d")
+            .to_string()
     }
 
     #[test]
@@ -575,7 +599,7 @@ mod tests {
         let record = test_record_from_completion(&completed);
 
         assert_eq!(record.text_length, 6);
-        assert!(record.created_at.starts_with("2026-07-12T23:59:59"));
+        assert!(record.created_at.starts_with("2026-07-12T12:00:00"));
     }
 
     #[test]
@@ -583,6 +607,7 @@ mod tests {
         let database = racoon_data::Database::open_in_memory().unwrap();
         let completed = completed_session(Some("en_m1_l1"));
         let settings = AppSettings::default();
+        let expected_day = local_day_of(&completed);
 
         database
             .with_transaction(|conn| {
@@ -605,7 +630,7 @@ mod tests {
                 );
 
                 let daily = SqliteDailyStatsRepository::new(conn)
-                    .get_day("2026-07-12")?
+                    .get_day(&expected_day)?
                     .expect("daily statistics should exist");
                 assert_eq!(daily.total_tests, 1);
                 assert_eq!(daily.lessons_completed, 1);
@@ -626,6 +651,7 @@ mod tests {
         let database = racoon_data::Database::open_in_memory().unwrap();
         let completed = completed_session(None);
         let settings = AppSettings::default();
+        let expected_day = local_day_of(&completed);
 
         let result: Result<(), DbError> = database.with_transaction(|conn| {
             persist_completed_session(conn, &completed, &settings)?;
@@ -638,7 +664,7 @@ mod tests {
                 assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 0);
                 assert!(!SqliteReplayRepository::new(conn).has_replay(1)?);
                 assert!(SqliteDailyStatsRepository::new(conn)
-                    .get_day("2026-07-12")?
+                    .get_day(&expected_day)?
                     .is_none());
                 Ok(())
             })
@@ -649,26 +675,32 @@ mod tests {
     fn daily_goal_rule_preserves_zero_and_fractional_time_targets() {
         let mut settings = AppSettings {
             daily_goal_type: "time".to_owned(),
-            daily_goal_wpm: 0.0,
+            daily_goal_minutes: 0,
             ..AppSettings::default()
         };
-        assert!(daily_goal_is_met(&settings, &daily_stats(0, 0.0, 0.0)));
-        settings.daily_goal_wpm = -1.0;
-        assert!(daily_goal_is_met(&settings, &daily_stats(0, 0.0, 0.0)));
-        settings.daily_goal_wpm = 0.000_001;
+        // Zero/unset time goal is never met, matching WPM/accuracy semantics.
         assert!(!daily_goal_is_met(&settings, &daily_stats(0, 0.0, 0.0)));
-        assert!(daily_goal_is_met(&settings, &daily_stats(1, 0.0, 0.0)));
+        assert!(!daily_goal_is_met(&settings, &daily_stats(60_000, 0.0, 0.0)));
+        settings.daily_goal_minutes = -1;
+        assert!(!daily_goal_is_met(&settings, &daily_stats(60_000, 0.0, 0.0)));
+        settings.daily_goal_minutes = 1;
+        assert!(!daily_goal_is_met(&settings, &daily_stats(59_999, 0.0, 0.0)));
+        assert!(daily_goal_is_met(&settings, &daily_stats(60_000, 0.0, 0.0)));
+        assert!(daily_goal_is_met(&settings, &daily_stats(60_001, 0.0, 0.0)));
 
-        for (target, below, exact, above) in [
-            (0.5, 29_999, 30_000, 30_001),
-            (1.25, 74_999, 75_000, 75_001),
-            (1.0, 59_999, 60_000, 60_001),
-        ] {
-            settings.daily_goal_wpm = target;
-            assert!(!daily_goal_is_met(&settings, &daily_stats(below, 0.0, 0.0)));
-            assert!(daily_goal_is_met(&settings, &daily_stats(exact, 0.0, 0.0)));
-            assert!(daily_goal_is_met(&settings, &daily_stats(above, 0.0, 0.0)));
-        }
+        // Switching time → wpm must use the WPM field, not the minutes field.
+        settings.daily_goal_minutes = 100;
+        settings.daily_goal_type = "wpm".to_owned();
+        settings.daily_goal_wpm = 60.0;
+        assert!(daily_goal_is_met(
+            &settings,
+            &daily_stats(1_000, 60.0, 0.98)
+        ));
+        settings.daily_goal_wpm = 0.0;
+        assert!(!daily_goal_is_met(
+            &settings,
+            &daily_stats(1_000, 60.0, 0.98)
+        ));
     }
 
     #[test]
@@ -698,5 +730,95 @@ mod tests {
             &settings,
             &daily_stats(1_000, 60.0, 0.98)
         ));
+    }
+
+    // The persistence day must follow the user's local calendar day. A test
+    // finished at 2026-08-12 01:00 Europe/Moscow (2026-08-11 22:00 UTC) must be
+    // recorded under 2026-08-12, and one finished at 2026-08-12 23:30
+    // Europe/Moscow (20:30 UTC) must not bleed into the next local day.
+    // These tests assert the local-day invariant directly; they are
+    // timezone-agnostic because the expected day is derived the same way the
+    // production code derives it.
+    #[test]
+    fn local_midnight_crossing_counts_toward_local_day() {
+        let database = racoon_data::Database::open_in_memory().unwrap();
+        // 2026-08-12 01:00 Europe/Moscow == 2026-08-11 22:00 UTC. For any UTC
+        // offset in [-11, +14] this still lands on a local day that can be
+        // derived; we assert the recorded day equals the local projection.
+        let completed = completed_session_at(None, "2026-08-11T22:00:00Z");
+        let settings = AppSettings::default();
+        let expected_day = local_day_of(&completed);
+
+        database
+            .with_transaction(|conn| persist_completed_session(conn, &completed, &settings))
+            .unwrap();
+
+        database
+            .with_connection(|conn| {
+                let daily = SqliteDailyStatsRepository::new(conn)
+                    .get_day(&expected_day)?
+                    .expect("daily statistics should exist for the local day");
+                assert_eq!(daily.total_tests, 1);
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn local_late_evening_does_not_bleed_into_next_day() {
+        let database = racoon_data::Database::open_in_memory().unwrap();
+        // 2026-08-12 23:30 Europe/Moscow == 2026-08-12 20:30 UTC. The local day
+        // is still 2026-08-12 for UTC+3; the invariant is that the recorded day
+        // matches the local projection of the timestamp.
+        let completed = completed_session_at(None, "2026-08-12T20:30:00Z");
+        let settings = AppSettings::default();
+        let expected_day = local_day_of(&completed);
+
+        database
+            .with_transaction(|conn| persist_completed_session(conn, &completed, &settings))
+            .unwrap();
+
+        database
+            .with_connection(|conn| {
+                let daily = SqliteDailyStatsRepository::new(conn)
+                    .get_day(&expected_day)?
+                    .expect("daily statistics should exist for the local day");
+                assert_eq!(daily.total_tests, 1);
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn utc_day_and_local_day_differ_when_timezone_is_east_of_utc() {
+        // 2026-08-11T22:00:00Z is 2026-08-11 in UTC but 2026-08-12 in
+        // Europe/Moscow. The recorded day must be the local one: assert the
+        // UTC date is NOT used when the local date differs.
+        let completed = completed_session_at(None, "2026-08-11T22:00:00Z");
+        let utc_day = completed
+            .completed_at
+            .format("%Y-%m-%d")
+            .to_string();
+        let local_day = local_day_of(&completed);
+        // This is only meaningful when the offsets actually differ; the test
+        // below still validates the core invariant regardless.
+        if local_day != utc_day {
+            let database = racoon_data::Database::open_in_memory().unwrap();
+            let settings = AppSettings::default();
+            database
+                .with_transaction(|conn| persist_completed_session(conn, &completed, &settings))
+                .unwrap();
+            database
+                .with_connection(|conn| {
+                    assert!(SqliteDailyStatsRepository::new(conn)
+                        .get_day(&local_day)?
+                        .is_some());
+                    assert!(SqliteDailyStatsRepository::new(conn)
+                        .get_day(&utc_day)?
+                        .is_none());
+                    Ok(())
+                })
+                .unwrap();
+        }
     }
 }

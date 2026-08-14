@@ -417,6 +417,14 @@
 
     if (!isRunning || isComplete) return;
 
+    // View-gating: клавиши попадают в тест только на тестовых вью.
+    // WeakKeys нужна для inline-training, остальные вью не трогают сессию.
+    if (view !== 'test' && view !== 'weakkeys') return;
+
+    // IME-фильтр (ja/zh/ko): во время composition keydown приходит с
+    // isComposing/keyCode 229 — пропускать, иначе мусор попадает в тест.
+    if (e.isComposing || e.keyCode === 229) return;
+
     // Caps Lock detection
     if (e.getModifierState && e.getModifierState('CapsLock') !== capsLockOn) {
       capsLockOn = e.getModifierState('CapsLock');
@@ -425,8 +433,16 @@
       }
     }
 
+    // Модификатор-комбо (Ctrl+C/V, Alt+...) — не печатные символы.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
-    if (e.key === 'Backspace' || e.key === 'Tab' || e.key === ' ' || e.key.length === 1) e.preventDefault();
+
+    // Whitelist: только печатные символы (key.length === 1) и Backspace.
+    // Раньше сюда просачивались Arrow/Delete/Home/F-клавиши, и бэкенд
+    // превращал первую букву имени клавиши в фантомный символ ('A', 'D', 'H').
+    if (e.key.length !== 1 && e.key !== 'Backspace') return;
+
+    e.preventDefault();
 
     // Track last typed char for layout detection
     if (e.key.length === 1) {

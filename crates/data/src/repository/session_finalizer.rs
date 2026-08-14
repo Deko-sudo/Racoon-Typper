@@ -443,7 +443,11 @@ fn apply_completion_effects(
     );
     inject(failure_point, FailurePoint::AfterPersonalBestUpdate)?;
 
-    let date = payload.completed_at().format("%Y-%m-%d").to_string();
+    let date = payload
+        .completed_at()
+        .with_timezone(&chrono::Local)
+        .format("%Y-%m-%d")
+        .to_string();
     let duration = i64::try_from(stats.duration_ms)
         .map_err(|_| DbError::Integrity("duration exceeds i64".into()))?;
     let characters = stats
@@ -466,13 +470,17 @@ fn apply_completion_effects(
     );
 
     if let Some(lesson_id) = payload.lesson_id() {
-        SqliteLessonRepository::new(connection).complete_lesson_at(
+        let passed = SqliteLessonRepository::new(connection).complete_lesson_at(
             lesson_id,
             stats.wpm,
             stats.accuracy,
             &completion_timestamp,
         )?;
-        daily.increment_lessons_completed(&date)?;
+        // Счётчик пройденных уроков растёт только когда попытка прошла гейт
+        // (accuracy ≥ 90% first-attempt И WPM ≥ 20), синхронно со статусом.
+        if passed {
+            daily.increment_lessons_completed(&date)?;
+        }
         #[cfg(feature = "crash-test-support")]
         crash_at(
             crash_checkpoint,
