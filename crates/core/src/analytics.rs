@@ -104,12 +104,7 @@ pub fn check_achievements(
             "Complete your first test",
             total_tests >= 1,
         ),
-        mk(
-            "5_tests",
-            "Warm Up",
-            "Complete 5 tests",
-            total_tests >= 5,
-        ),
+        mk("5_tests", "Warm Up", "Complete 5 tests", total_tests >= 5),
         mk(
             "10_tests",
             "Getting Started",
@@ -307,18 +302,8 @@ pub fn check_achievements(
             "Reach 99% accuracy across 50 tests",
             best_accuracy >= 99.0 && total_tests >= 50,
         ),
-        mk(
-            "wpm_40",
-            "Cruising",
-            "Reach 40 WPM",
-            best_wpm >= 40.0,
-        ),
-        mk(
-            "wpm_70",
-            "Swift",
-            "Reach 70 WPM",
-            best_wpm >= 70.0,
-        ),
+        mk("wpm_40", "Cruising", "Reach 40 WPM", best_wpm >= 40.0),
+        mk("wpm_70", "Swift", "Reach 70 WPM", best_wpm >= 70.0),
         mk(
             "acc_92",
             "Precise",
@@ -343,12 +328,7 @@ pub fn check_achievements(
             "Complete 75 tests",
             total_tests >= 75,
         ),
-        mk(
-            "wpm_90",
-            "Turbo",
-            "Reach 90 WPM",
-            best_wpm >= 90.0,
-        ),
+        mk("wpm_90", "Turbo", "Reach 90 WPM", best_wpm >= 90.0),
         mk(
             "acc_98",
             "Virtuoso",
