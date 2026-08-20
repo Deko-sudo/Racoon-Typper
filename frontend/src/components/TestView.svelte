@@ -96,8 +96,64 @@
 
   // В режиме «after» курсор висит на предыдущем символе; если ещё ничего не
   // напечатано (viewportOffset === 0) — fallback на «before»-рендер.
-  let showCaretBefore = $derived((!isCaretAfter || viewportOffset === 0) && normalizedCaretStyle !== 'off');
-  let showCaretTrail = $derived(isCaretAfter && viewportOffset > 0 && normalizedCaretStyle !== 'off');
+  let showCaret = $derived(normalizedCaretStyle !== 'off');
+  let caretAfter = $derived(isCaretAfter && viewportOffset > 0);
+  let caretCharIndex = $derived(caretAfter ? viewportOffset - 1 : viewportOffset);
+  let caretAnimation = $derived(settings?.caret_animation === 'pulse' ? 'pulse' : 'blink');
+
+  // Единый плавный элемент каретки: позиция вычисляется из offsetLeft/offsetTop
+  // спана текущего символа (monkeytype-style). transition на left/top даёт
+  // «плывущий» курсор; при первом рендере transition отключён (caretSettled),
+  // чтобы каретка не «прилетала» из угла.
+  let textDisplayEl: HTMLElement | null = $state(null);
+  let caretEl: HTMLElement | null = $state(null);
+  let caretSettled = $state(false);
+  let caretLeft = $state(0);
+  let caretTop = $state(0);
+  let caretWidth = $state(0);
+  let caretHeight = $state(0);
+
+  // Новый тест — каретка встаёт на место без анимации.
+  $effect(() => {
+    void text;
+    caretSettled = false;
+  });
+
+  $effect(() => {
+    const display = textDisplayEl;
+    const caret = caretEl;
+    if (!display || !caret || !showCaret) return;
+    const index = caretCharIndex;
+    const style = normalizedCaretStyle;
+    const after = caretAfter;
+    const fontSize = settings?.font_size ?? 24;
+
+    const measure = () => {
+      const spans = display.querySelectorAll<HTMLElement>('.char');
+      const target = spans[index];
+      if (!target) return;
+      const em = fontSize;
+      let widthPx: number;
+      let offsetPx: number;
+      switch (style) {
+        case 'thick': widthPx = 0.24 * em; offsetPx = 0.46 * em; break;
+        case 'bubble': widthPx = 0.34 * em; offsetPx = 0.6 * em; break;
+        default: widthPx = 0.12 * em; offsetPx = 0.3 * em;
+      }
+      const charLeft = target.offsetLeft;
+      const charTop = target.offsetTop;
+      const charWidth = target.offsetWidth;
+      const charHeight = target.offsetHeight;
+      caretLeft = after ? charLeft + charWidth + offsetPx : charLeft - offsetPx;
+      caretTop = charTop;
+      caretWidth = widthPx;
+      caretHeight = style === 'bubble' ? Math.max(0, charHeight - 0.04 * em) : charHeight;
+      caretSettled = true;
+    };
+
+    const raf = requestAnimationFrame(measure);
+    return () => cancelAnimationFrame(raf);
+  });
 
   function charClass(char: CharStatus, idx: number): string {
     const classes: string[] = [char.status];
@@ -148,17 +204,28 @@
       class="text-display caret-{normalizedCaretStyle}"
       class:blind={settings?.blind_mode_enabled && isRunning}
       style:--typing-font-size={`${settings?.font_size ?? 24}px`}
+      bind:this={textDisplayEl}
     >
       {#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}
       {#each viewportChars as char, i}
         <span
           class="char {charClass(char, i)}"
-          class:caret={showCaretBefore && i === viewportOffset}
-          class:caret-trail={showCaretTrail && i === viewportOffset - 1}
           class:error-tail={erroredPositions.has(viewportStart + i)}
         >{char.expected === ' ' ? '\u00A0' : char.expected}</span>
       {/each}
       {#if viewportEnd < charStatuses.length}<span class="text-ellipsis">…</span>{/if}
+      {#if showCaret}
+        <span
+          class="caret-element caret-{normalizedCaretStyle} caret-{caretAfter ? 'after' : 'before'} anim-{caretAnimation}"
+          class:settled={caretSettled}
+          style:left={`${caretLeft}px`}
+          style:top={`${caretTop}px`}
+          style:width={`${caretWidth}px`}
+          style:height={`${caretHeight}px`}
+          bind:this={caretEl}
+          aria-hidden="true"
+        ></span>
+      {/if}
     </div></div>
     {#if settings?.blind_mode_enabled && isRunning}<div class="blind-badge" aria-label="Blind mode">{t(uiLang, 'test.blind_active')}</div>{/if}
   </section>
@@ -189,7 +256,7 @@
   .progress-track { width: 100%; height: 5px; overflow: hidden; border-radius: 999px; background: var(--color-progress-track); margin-top: .35rem; }
   .progress-fill { height: 100%; border-radius: inherit; background: var(--color-progress-fill); transition: width .12s ease; }
   .text-viewport { width:100%; overflow:hidden; background:var(--color-surface-primary); border:1px solid var(--color-border-strong); border-radius:8px; padding:1.5rem; }
-  .text-display { --typing-font-size:clamp(1.1rem,1.8vw,1.5rem); max-width:min(900px, 100%); margin:0 auto; font-size:0; line-height:1.65; letter-spacing:normal; text-align:center; user-select:none; white-space:pre-wrap; overflow-wrap:break-word; min-height:3.3em; display:block; }
+  .text-display { --typing-font-size:clamp(1.1rem,1.8vw,1.5rem); max-width:min(900px, 100%); margin:0 auto; font-size:0; line-height:1.65; letter-spacing:normal; text-align:center; user-select:none; white-space:pre-wrap; overflow-wrap:break-word; min-height:3.3em; display:block; position:relative; }
   .text-ellipsis { color:var(--color-text-muted); padding:0 .25rem; font-size:var(--typing-font-size); }
   .char { position:relative; z-index:0; display:inline-block; vertical-align:baseline; font-size:var(--typing-font-size); line-height:1.65; transition:color .05s, opacity .1s; }
   .char.pending { color:var(--color-typing-pending); }
@@ -204,33 +271,35 @@
   .char.current { color:var(--color-typing-current); background:var(--color-surface-active); outline:1px solid var(--color-border-strong); border-radius:.12em; opacity:1; font-weight:700; }
   .char.current.pending { color:var(--color-typing-current); }
   .char.future { opacity:1; }
-  /* Caret variants — ВСЕ стоят ПЕРЕД буквой (отрицательный left за пределы
-     символа + зазор), никогда не перекрывают символ. Базовый рендер = thin. */
-  .char.caret::before { content:''; position:absolute; left:-.3em; top:.05em; bottom:.05em; width:.12em; border-radius:999px; background:var(--color-caret); animation:blink .9s ease-in-out infinite; }
-  /* thick — широкая скобка-линия перед буквой. */
-  .text-display.caret-thick .char.caret::before { left:-.46em; width:.24em; border-radius:.05em; }
-  /* bubble — вытянутая капсула перед буквой: полупрозрачная заливка цвета
-     каретки + контур + мягкое свечение. */
-  .text-display.caret-bubble .char.caret::before {
-    left:-.6em; width:.34em; border-radius:999px;
+  /* Единый плавный элемент каретки: абсолютно позиционирован внутри
+     .text-display, координаты из offsetLeft/offsetTop текущего символа.
+     transition на left/top — курсор «плывёт» (monkeytype-style). */
+  .caret-element {
+    position:absolute; z-index:1; pointer-events:none;
+    border-radius:999px; background:var(--color-caret);
+    animation:blink .9s ease-in-out infinite;
+  }
+  .caret-element.settled { transition:left 80ms ease-out, top 80ms ease-out; }
+  /* thick — широкая скобка-линия. */
+  .caret-element.caret-thick { border-radius:.05em; }
+  /* bubble — вытянутая капсула: полупрозрачная заливка + контур + свечение. */
+  .caret-element.caret-bubble {
     background:color-mix(in srgb, var(--color-caret) 30%, transparent);
     border:.09em solid var(--color-caret);
     box-shadow:0 0 .35em color-mix(in srgb, var(--color-caret) 55%, transparent);
-    top:.02em; bottom:.02em;
   }
-  .text-display.caret-off .char.caret::before { content:none; }
-  /* Режим «after» (caret_position): курсор за последней напечатанной буквой —
-     те же варианты, но на ::after предыдущего символа, зеркально. */
-  .char.caret-trail::after { content:''; position:absolute; right:-.3em; top:.05em; bottom:.05em; width:.12em; border-radius:999px; background:var(--color-caret); animation:blink .9s ease-in-out infinite; }
-  .text-display.caret-thick .char.caret-trail::after { right:-.46em; width:.24em; border-radius:.05em; }
-  .text-display.caret-bubble .char.caret-trail::after {
-    right:-.6em; width:.34em; border-radius:999px;
-    background:color-mix(in srgb, var(--color-caret) 30%, transparent);
-    border:.09em solid var(--color-caret);
-    box-shadow:0 0 .35em color-mix(in srgb, var(--color-caret) 55%, transparent);
-    top:.02em; bottom:.02em;
+  /* Pulse-анимация (caret_animation=pulse): мягкая пульсация вместо мигания. */
+  .caret-element.anim-pulse { animation:pulse 1.1s ease-in-out infinite; }
+  @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:.55; transform:scale(1.25); }
   }
-  @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} } @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
+  @media (prefers-reduced-motion: reduce) {
+    .caret-element { animation:none; }
+    .caret-element.settled { transition:none; }
+  }
   .info { display: flex; align-items: center; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
   .abort-btn {
     background-color: var(--bg-sub); color: var(--sub); border: 1px solid var(--sub);

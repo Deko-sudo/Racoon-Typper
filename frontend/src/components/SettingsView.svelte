@@ -120,6 +120,17 @@
       return fallback;
     }
   }
+
+  // Нормализация стиля каретки для live-превью (legacy → актуальные рендеры).
+  let normalizedPreviewCaretStyle = $derived.by(() => {
+    switch (settings?.caret_style) {
+      case 'thick': return 'thick';
+      case 'bubble': return 'bubble';
+      case 'solid': return 'thick';
+      case 'block': return 'bubble';
+      default: return 'thin';
+    }
+  });
 </script>
 
 <div class="list-view">
@@ -166,6 +177,25 @@
           <option value="before">{t(uiLang, 'settings.caret_position_before')}</option>
           <option value="after">{t(uiLang, 'settings.caret_position_after')}</option>
         </select>
+      </div>
+      <div class="setting-row">
+        <label for="setting-caret-anim">{t(uiLang, 'settings.caret_animation')}</label>
+        <select id="setting-caret-anim" value={settings.caret_animation || 'blink'} onchange={(e) => onUpdateSetting('caret_animation', e.currentTarget.value)}>
+          <option value="blink">{t(uiLang, 'settings.caret_animation_blink')}</option>
+          <option value="pulse">{t(uiLang, 'settings.caret_animation_pulse')}</option>
+        </select>
+      </div>
+      <div class="setting-row caret-preview-row">
+        <span class="caret-preview-label">{t(uiLang, 'settings.caret_preview')}</span>
+        <span class="caret-preview" class:caret-preview-after={settings.caret_position === 'after'}>
+          <span class="caret-preview-text">Hello world</span>
+          {#if (settings.caret_style ?? 'thin') !== 'off'}
+            <span
+              class="caret-preview-caret caret-{normalizedPreviewCaretStyle} anim-{settings.caret_animation === 'pulse' ? 'pulse' : 'blink'}"
+              aria-hidden="true"
+            ></span>
+          {/if}
+        </span>
       </div>
       <div class="setting-row">
         <label for="setting-live-wpm">{t(uiLang, 'settings.show_live_wpm')}</label>
@@ -382,4 +412,38 @@
   .update-btn:hover:not(:disabled) { opacity: 0.85; }
   .update-btn:disabled { opacity: 0.5; cursor: default; }
   .update-status { color: var(--sub); font-size: 0.8rem; }
+  /* Live-preview каретки: мини-строка «Hello world|» с теми же классами
+     каретки, что и в TestView. Реагирует мгновенно на настройки. */
+  .caret-preview-row { align-items: center; }
+  .caret-preview-label { min-width: 180px; color: var(--sub); font-size: 0.875rem; }
+  .caret-preview {
+    position: relative; display: inline-block;
+    font-size: 1.1rem; line-height: 1.65; color: var(--color-typing-correct);
+    background: var(--color-surface-primary); border: 1px solid var(--color-border);
+    border-radius: 6px; padding: 0.35rem 0.75rem;
+  }
+  .caret-preview-text { font-family: inherit; }
+  .caret-preview-caret {
+    position: absolute; top: 0.35rem; bottom: 0.35rem; width: 0.12em;
+    border-radius: 999px; background: var(--color-caret);
+    animation: caret-preview-blink 0.9s ease-in-out infinite;
+    left: 0.45rem;
+  }
+  .caret-preview.caret-preview-after .caret-preview-caret { left: auto; right: 0.45rem; }
+  .caret-preview-caret.caret-thick { width: 0.24em; border-radius: 0.05em; }
+  .caret-preview-caret.caret-bubble {
+    width: 0.34em;
+    background: color-mix(in srgb, var(--color-caret) 30%, transparent);
+    border: 0.09em solid var(--color-caret);
+    box-shadow: 0 0 0.35em color-mix(in srgb, var(--color-caret) 55%, transparent);
+  }
+  .caret-preview-caret.anim-pulse { animation: caret-preview-pulse 1.1s ease-in-out infinite; }
+  @keyframes caret-preview-blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} }
+  @keyframes caret-preview-pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:.55; transform:scale(1.25); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .caret-preview-caret { animation: none; }
+  }
 </style>
