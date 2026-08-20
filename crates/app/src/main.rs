@@ -25,6 +25,7 @@ mod export;
 mod logging;
 mod paths;
 mod session_service;
+mod share_card;
 mod state;
 mod validation;
 
@@ -151,6 +152,7 @@ fn main() {
             commands::reporting::export_data,
             commands::reporting::export_report,
             commands::reporting::export_heatmap_png,
+            commands::reporting::export_result_png,
             // Versioned portable profile transfer
             commands::profile_transfer::export_profile,
             commands::profile_transfer::preview_profile_import,

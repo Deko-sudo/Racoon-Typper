@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { FinalStats } from '../lib/types/index';
+  import * as ipc from '../lib/api/ipc';
   import KeyboardHeatmap from './KeyboardHeatmap.svelte';
   import { t } from '../lib/i18n';
   import type { LessonResultNavigation } from '../lib/lessonNavigation';
@@ -11,6 +12,8 @@
     onRepeatLesson,
     onNextLesson,
     onReturnToLessons,
+    sessionModeType = '',
+    sessionLanguage = '',
     uiLang = 'en',
   }: {
     stats: FinalStats;
@@ -19,8 +22,59 @@
     onRepeatLesson: () => void;
     onNextLesson: () => void;
     onReturnToLessons: () => void;
+    sessionModeType?: string;
+    sessionLanguage?: string;
     uiLang?: string;
   } = $props();
+
+  let shareState = $state<'idle' | 'rendering' | 'error'>('idle');
+
+  function themeCssVar(name: string, fallback: string): string {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+
+  async function handleSharePng() {
+    if (shareState === 'rendering') return;
+    shareState = 'rendering';
+    try {
+      const colors = {
+        background: themeCssVar('--color-app-background', '#0d0f12'),
+        surface: themeCssVar('--color-surface-primary', '#15181d'),
+        text: themeCssVar('--color-text-primary', '#e7e9ed'),
+        sub: themeCssVar('--color-text-secondary', '#8c94a0'),
+        accent: themeCssVar('--color-accent', '#c5cbd4'),
+        error: themeCssVar('--color-error', '#dc8d8d'),
+      };
+      const heatmap = (stats.heatmap && typeof stats.heatmap === 'object'
+        ? stats.heatmap
+        : {}) as Record<string, { total_attempts: number; correct: number; incorrect: number; avg_wpm_at_key: number }>;
+      const bytes = await ipc.exportResultPng(
+        {
+          wpm: stats.wpm,
+          raw_wpm: stats.raw_wpm,
+          accuracy: stats.accuracy,
+          duration_ms: stats.duration_ms,
+          mode: sessionModeType || 'test',
+          language: sessionLanguage || '',
+          date: new Date().toISOString().slice(0, 10),
+          heatmap,
+        },
+        colors,
+      );
+      const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `racoon-typper-${Math.round(stats.wpm)}wpm-${Date.now()}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+      shareState = 'idle';
+    } catch (e) {
+      console.error('share png failed:', e);
+      shareState = 'error';
+    }
+  }
 </script>
 
 <div class="result-overlay">
@@ -48,7 +102,11 @@
     {:else}
       <button onclick={onRestart}>{t(uiLang, 'result.restart')}</button>
     {/if}
+    <button onclick={handleSharePng} disabled={shareState === 'rendering'}>
+      {shareState === 'rendering' ? '…' : t(uiLang, 'result.share_png')}
+    </button>
   </div>
+  {#if shareState === 'error'}<p class="share-error">{t(uiLang, 'result.share_png_error')}</p>{/if}
 </div>
 
 <style>
@@ -60,6 +118,7 @@
   .stat-label { font-size: 0.75rem; color: var(--sub); text-transform: uppercase; }
   .stats-details { display: flex; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
   .result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
+  .share-error { color: var(--error); font-size: 0.8rem; margin: 0; }
   button { background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main); padding: 0.5rem 2rem; font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 4px; }
   button.primary { background-color: var(--main); color: var(--color-accent-text); }
   button:hover { background-color: var(--main); color: var(--color-accent-text); }

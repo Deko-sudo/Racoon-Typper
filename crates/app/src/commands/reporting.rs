@@ -1,6 +1,6 @@
 //! Tauri adapters for persisted history, dashboards, analytics, exports, and replay.
 
-use chrono::{Duration, Utc};
+use chrono::Duration;
 use racoon_core::analytics::{Achievement, Insight};
 use racoon_core::consistency::ConsistencyReport;
 use racoon_data::repository::{
@@ -62,7 +62,7 @@ pub(crate) fn get_personal_bests(
 pub(crate) fn get_dashboard_stats(
     state: State<'_, AppState>,
 ) -> Result<DashboardStatsResponse, AppError> {
-    let (week_ago, today) = utc_date_range(7);
+    let (week_ago, today) = local_date_range(7);
     with_db(&state, |conn| {
         let test_repository = SqliteTestRepository::new(conn);
         let daily_repository = SqliteDailyStatsRepository::new(conn);
@@ -102,7 +102,7 @@ pub(crate) fn get_progress_history(
     days: Option<u32>,
 ) -> Result<Vec<ProgressPoint>, AppError> {
     let days = validate_progress_days(days.unwrap_or(30))?;
-    let (from, to) = utc_date_range(i64::from(days));
+    let (from, to) = local_date_range(i64::from(days));
     with_db(&state, |conn| {
         Ok(SqliteDailyStatsRepository::new(conn)
             .get_range(&from, &to)?
@@ -191,7 +191,7 @@ const RECENT_CONSISTENCY_SAMPLE_LIMIT: usize = 100;
 
 #[tauri::command]
 pub(crate) fn get_insights(state: State<'_, AppState>) -> Result<Vec<Vec<Insight>>, AppError> {
-    let (week_ago, today) = utc_date_range(7);
+    let (week_ago, today) = local_date_range(7);
     with_db(&state, |conn| {
         let daily_repository = SqliteDailyStatsRepository::new(conn);
         let test_repository = SqliteTestRepository::new(conn);
@@ -346,7 +346,7 @@ pub(crate) fn get_aggregated_heatmap(
 
 #[tauri::command]
 pub(crate) fn export_report(state: State<'_, AppState>) -> Result<String, AppError> {
-    let (week_ago, today) = utc_date_range(7);
+    let (week_ago, today) = local_date_range(7);
     let (history, dashboard, bests) = with_db(&state, |conn| {
         let test_repository = SqliteTestRepository::new(conn);
         let daily_repository = SqliteDailyStatsRepository::new(conn);
@@ -411,8 +411,24 @@ pub(crate) fn export_heatmap_png(
     Ok(render_heatmap_png(&ordered))
 }
 
-fn utc_date_range(days: i64) -> (String, String) {
-    let now = Utc::now();
+/// Рендерит PNG share-карточку результата теста в цветах активной темы.
+///
+/// Статистика приходит с фронтенда (только что завершённый тест из
+/// ResultOverlay), цвета — из getComputedStyle CSS-переменных. Возвращает
+/// PNG-байты; фронтенд скачивает их через Blob-download.
+#[tauri::command]
+pub(crate) fn export_result_png(
+    stats: crate::share_card::ShareStats,
+    colors: crate::share_card::ThemeColors,
+) -> Result<Vec<u8>, AppError> {
+    crate::share_card::render_share_card(&stats, &colors)
+        .map_err(|e| AppError::Internal(format!("share card render: {e}")))
+}
+
+fn local_date_range(days: i64) -> (String, String) {
+    // Boundaries must be expressed in the user's local calendar day to match
+    // the local dates written by daily_stats/streaks persistence.
+    let now = chrono::Local::now();
     (
         (now - Duration::days(days)).format("%Y-%m-%d").to_string(),
         now.format("%Y-%m-%d").to_string(),

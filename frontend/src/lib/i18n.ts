@@ -294,6 +294,8 @@ const ru: Dict = {
   'result.correct': 'Верно', 'result.incorrect': 'Ошибок',
   'result.backspaces': 'Стираний', 'result.duration': 'Длительность',
   'result.restart': 'Заново',
+  'result.share_png': 'Поделиться PNG',
+  'result.share_png_error': 'Не удалось создать карточку результата.',
   'result.next_lesson': 'Следующий урок',
   'result.repeat_lesson': 'Повторить урок',
   'result.back_to_lessons': 'К списку уроков',

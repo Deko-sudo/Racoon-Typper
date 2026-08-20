@@ -11,6 +11,7 @@
     "allow-delete-custom-text",
     "allow-export-data",
     "allow-export-heatmap-png",
+    "allow-export-result-png",
     "allow-export-profile",
     "allow-export-report",
     "allow-generate-weak-keys-training",

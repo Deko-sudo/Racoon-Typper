@@ -116,6 +116,8 @@
     {onRepeatLesson}
     {onNextLesson}
     {onReturnToLessons}
+    {sessionModeType}
+    {sessionLanguage}
     {uiLang}
   />
 {:else if text}
