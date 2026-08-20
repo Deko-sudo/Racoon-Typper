@@ -16,7 +16,7 @@ The authoritative machine-readable report is `licenses/dependencies.json`. Licen
 |---|---:|
 | (MIT OR Apache-2.0) AND Unicode-3.0 | 1 |
 | 0BSD OR MIT OR Apache-2.0 | 1 |
-| Apache-2.0 | 3 |
+| Apache-2.0 | 6 |
 | Apache-2.0 / MIT | 1 |
 | Apache-2.0 AND ISC | 1 |
 | Apache-2.0 AND MIT | 1 |
@@ -37,7 +37,7 @@ The authoritative machine-readable report is `licenses/dependencies.json`. Licen
 | CDLA-Permissive-2.0 | 2 |
 | ISC | 3 |
 | MIT | 120 |
-| MIT OR Apache-2.0 | 252 |
+| MIT OR Apache-2.0 | 253 |
 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | 2 |
 | MIT OR Apache-2.0 OR Zlib | 5 |
 | MIT OR Zlib OR Apache-2.0 | 1 |
@@ -49,7 +49,7 @@ The authoritative machine-readable report is `licenses/dependencies.json`. Licen
 | Zlib | 2 |
 | Zlib OR Apache-2.0 OR MIT | 18 |
 
-Total Rust packages: 534
+Total Rust packages: 538
 
 ## npm dependency license summary
 
@@ -73,6 +73,8 @@ The following tables identify every locked package, its original license express
 
 | Package | License expression | Source | Declared authors |
 |---|---|---|---|
+| ab_glyph_rasterizer@0.1.10 | Apache-2.0 | https://github.com/alexheretic/ab-glyph | Alex Butler <alexheretic@gmail.com> |
+| ab_glyph@0.2.32 | Apache-2.0 | https://github.com/alexheretic/ab-glyph | Alex Butler <alexheretic@gmail.com> |
 | adler2@2.0.1 | 0BSD OR MIT OR Apache-2.0 | https://github.com/oyvindln/adler2 | Jonas Schievink <jonasschievink@gmail.com>, oyvindln <oyvindln@users.noreply.github.com> |
 | ahash@0.8.12 | MIT OR Apache-2.0 | https://github.com/tkaitchuck/ahash | Tom Kaitchuck <Tom.Kaitchuck@gmail.com> |
 | aho-corasick@1.1.4 | Unlicense OR MIT | https://github.com/BurntSushi/aho-corasick | Andrew Gallant <jamslam@gmail.com> |
@@ -312,6 +314,7 @@ The following tables identify every locked package, its original license express
 | option-ext@0.2.0 | MPL-2.0 | https://github.com/soc/option-ext.git | Simon Ochsenreither <simon@ochsenreither.de> |
 | os_pipe@1.2.3 | MIT | https://github.com/oconnor663/os_pipe.rs | Jack O'Connor |
 | osakit@0.3.1 | MIT OR Apache-2.0 | https://github.com/mdevils/rust-osakit | Marat Dulin <mdevils@gmail.com> |
+| owned_ttf_parser@0.25.1 | Apache-2.0 | https://github.com/alexheretic/owned-ttf-parser | Alex Butler <alexheretic@gmail.com> |
 | pango-sys@0.18.0 | MIT | https://github.com/gtk-rs/gtk-rs-core | The gtk-rs Project Developers |
 | pango@0.18.3 | MIT | https://github.com/gtk-rs/gtk-rs-core | The gtk-rs Project Developers |
 | parking_lot_core@0.9.12 | MIT OR Apache-2.0 | https://github.com/Amanieu/parking_lot | Amanieu d'Antras <amanieu@gmail.com> |
@@ -481,6 +484,7 @@ The following tables identify every locked package, its original license express
 | tray-icon@0.24.1 | MIT OR Apache-2.0 | https://github.com/tauri-apps/tray-icon |  |
 | tree_magic_mini@3.2.2 | MIT | https://github.com/mbrubeck/tree_magic/ | Matt Brubeck <mbrubeck@limpet.net>, Allison Hancock <aahancoc@umich.edu> |
 | try-lock@0.2.5 | MIT | https://github.com/seanmonstar/try-lock | Sean McArthur <sean@seanmonstar.com> |
+| ttf-parser@0.25.1 | MIT OR Apache-2.0 | https://github.com/harfbuzz/ttf-parser | Caleb Maclennan <caleb@alerque.com>, Laurenz Stampfl <laurenz.stampfl@gmail.com>, Yevhenii Reizner <razrfalcon@gmail.com>, خالد حسني (Khaled Hosny) <khaled@aliftype.com> |
 | typeid@1.0.3 | MIT OR Apache-2.0 | https://github.com/dtolnay/typeid | David Tolnay <dtolnay@gmail.com> |
 | typenum@1.20.1 | MIT OR Apache-2.0 | https://github.com/paholg/typenum |  |
 | unic-char-property@0.9.0 | MIT/Apache-2.0 | https://github.com/open-i18n/rust-unic/ | The UNIC Project Developers |

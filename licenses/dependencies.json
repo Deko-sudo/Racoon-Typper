@@ -12,6 +12,26 @@
   ],
   "rust": [
     {
+      "name": "ab_glyph_rasterizer",
+      "version": "0.1.10",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/alexheretic/ab-glyph",
+      "authors": [
+        "Alex Butler <alexheretic@gmail.com>"
+      ]
+    },
+    {
+      "name": "ab_glyph",
+      "version": "0.2.32",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/alexheretic/ab-glyph",
+      "authors": [
+        "Alex Butler <alexheretic@gmail.com>"
+      ]
+    },
+    {
       "name": "adler2",
       "version": "2.0.1",
       "license": "0BSD OR MIT OR Apache-2.0",
@@ -2393,6 +2413,16 @@
       ]
     },
     {
+      "name": "owned_ttf_parser",
+      "version": "0.25.1",
+      "license": "Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/alexheretic/owned-ttf-parser",
+      "authors": [
+        "Alex Butler <alexheretic@gmail.com>"
+      ]
+    },
+    {
       "name": "pango-sys",
       "version": "0.18.0",
       "license": "MIT",
@@ -4058,6 +4088,19 @@
       "repository": "https://github.com/seanmonstar/try-lock",
       "authors": [
         "Sean McArthur <sean@seanmonstar.com>"
+      ]
+    },
+    {
+      "name": "ttf-parser",
+      "version": "0.25.1",
+      "license": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/harfbuzz/ttf-parser",
+      "authors": [
+        "Caleb Maclennan <caleb@alerque.com>",
+        "Laurenz Stampfl <laurenz.stampfl@gmail.com>",
+        "Yevhenii Reizner <razrfalcon@gmail.com>",
+        "خالد حسني (Khaled Hosny) <khaled@aliftype.com>"
       ]
     },
     {
