@@ -118,7 +118,11 @@
       <div><p class="typing-eyebrow">{t(uiLang, 'test.typing_label')}</p><h3>{t(uiLang, 'test.typing_title')}</h3></div>
       <div class="typing-progress"><span>{caretPos}/{text.length}</span><div class="progress-track"><div class="progress-fill" style:width={`${progress}%`}></div></div></div>
     </header>
-    <div class="text-viewport"><div class="text-display" class:blind={settings?.blind_mode_enabled && isRunning}>
+    <div class="text-viewport"><div
+      class="text-display caret-{settings?.caret_style || 'underline'}"
+      class:blind={settings?.blind_mode_enabled && isRunning}
+      style:--typing-font-size={`${settings?.font_size ?? 24}px`}
+    >
       {#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}
       {#each viewportChars as char, i}
         <span class="char {charClass(char, i)}" class:caret={i === viewportOffset}>{char.expected === ' ' ? '\u00A0' : char.expected}</span>
@@ -166,6 +170,12 @@
   .char.current.pending { color:var(--color-typing-current); }
   .char.future { opacity:1; }
   .char.caret::before { content:''; position:absolute; left:-.18em; top:.08em; bottom:.08em; width:.11em; border-radius:999px; background:var(--color-caret); animation:blink .9s ease-in-out infinite; }
+  /* caret_style варианты (settings.caret_style): underline (default — тонкая
+     вертикальная линия выше), block — прямоугольник на текущем символе,
+     solid — толстая линия без скругления, off — карет скрыт. */
+  .text-display.caret-block .char.caret::before { left:0; top:.05em; bottom:.05em; width:1em; border-radius:.08em; opacity:.55; }
+  .text-display.caret-solid .char.caret::before { left:-.22em; top:.05em; bottom:.05em; width:.18em; border-radius:0; }
+  .text-display.caret-off .char.caret::before { content:none; }
   @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} } @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
   .info { display: flex; align-items: center; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
   .abort-btn {

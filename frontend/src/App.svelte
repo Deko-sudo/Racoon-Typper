@@ -66,6 +66,7 @@
   // History
   let history = $state<TestSummary[]>([]);
   let historyTotal = $state(0);
+  let historyPage = $state(0);
 
   // Bests
   let bests = $state<PersonalBest[]>([]);
@@ -493,10 +494,19 @@
     await startTest();
   }
 
-  async function loadHistory() {
-    const r = await ipc.getStatsHistory(20);
+  async function loadHistory(page = 0) {
+    const r = await ipc.getStatsHistory(20, page * 20);
     history = r.tests;
     historyTotal = r.total;
+    historyPage = page;
+  }
+
+  function historyPrevPage() {
+    if (historyPage > 0) void loadHistory(historyPage - 1);
+  }
+
+  function historyNextPage() {
+    if ((historyPage + 1) * 20 < historyTotal) void loadHistory(historyPage + 1);
   }
 
   async function loadBests() {
@@ -608,6 +618,8 @@
   }
 
   async function startCustomTest(id: number) {
+    if (startingTest) return;
+    startingTest = true;
     try {
       if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
@@ -616,6 +628,8 @@
       switchView('test');
     } catch (error) {
       errorMsg = `Start custom text error: ${error}`;
+    } finally {
+      startingTest = false;
     }
   }
 
@@ -630,6 +644,12 @@
 
   function switchView(v: ViewName) {
     navigation.navigate(v);
+    // Уход с тестовых вью на любой другой — абандоним бегущую сессию,
+    // иначе таймер доедет в фоне и запишет брошенный тест в историю
+    // (и пометит урок выполненным).
+    if (v !== 'test' && v !== 'weakkeys' && isRunning && !isComplete) {
+      void abandonActiveSessionForReplacement();
+    }
     if (v === 'history') loadHistory();
     if (v === 'bests') loadBests();
     if (v === 'custom') loadCustomTexts();
@@ -641,6 +661,15 @@
   async function loadDashboard() {
     try {
       dashboardStats = await ipc.getDashboardStats();
+      // Weak-keys для виджета «Тренировка дня» — грузим и здесь, иначе
+      // при первом визите на дашборд виджет никогда не появляется
+      // (раньше weakKeysData заполнялся только на weakkeys-вью).
+      try {
+        const data = await ipc.analyzeWeakKeys();
+        weakKeysData = data.weak_keys || [];
+      } catch {
+        // Best-effort: без weak-keys дашборд просто без виджета.
+      }
     } catch (e) {
       errorMsg = `Dashboard error: ${e}`;
     }
@@ -670,6 +699,8 @@
   }
 
   async function onGenerateTraining() {
+    if (startingTest) return;
+    startingTest = true;
     try {
       if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
@@ -682,6 +713,8 @@
       startTestFromResponse(resp);
     } catch (e) {
       errorMsg = `Training error: ${e}`;
+    } finally {
+      startingTest = false;
     }
   }
 
@@ -703,6 +736,8 @@
   }
 
   async function onSelectLesson(lessonId: string, language: string) {
+    if (startingTest) return;
+    startingTest = true;
     try {
       if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
@@ -711,6 +746,8 @@
       switchView('test');
     } catch (e) {
       errorMsg = `Start lesson error: ${e}`;
+    } finally {
+      startingTest = false;
     }
   }
 
@@ -804,7 +841,7 @@
         expectedLanguage={sessionLanguage}
         {lastTypedChar}
         {capsLockOn}
-        showLayoutWarnings={true}
+        showLayoutWarnings={settings?.show_layout_warnings ?? true}
         showCapsLockWarnings={settings?.show_capslock_warnings ?? true}
         {uiLang}
       />
@@ -839,7 +876,15 @@
       uiLang={uiLang}
     />
   {:else if view === 'history'}
-    <HistoryView {history} total={historyTotal} uiLang={uiLang} />
+    <HistoryView
+      {history}
+      total={historyTotal}
+      page={historyPage}
+      pageSize={20}
+      onPrevPage={historyPrevPage}
+      onNextPage={historyNextPage}
+      uiLang={uiLang}
+    />
   {:else if view === 'bests'}
     <BestsView {bests} uiLang={uiLang} />
   {:else if view === 'custom'}

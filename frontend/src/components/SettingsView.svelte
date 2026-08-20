@@ -125,7 +125,12 @@
       </div>
       <div class="setting-row">
         <label for="setting-font-size">{t(uiLang, 'settings.font_size')}</label>
-        <input id="setting-font-size" type="number" value={settings.font_size} onchange={(e) => onUpdateSetting('font_size', parseInt(e.currentTarget.value))} />
+        <input id="setting-font-size" type="number" min="12" max="72" value={settings.font_size} onchange={(e) => {
+          // NaN-guard: пустое поле даёт NaN → JSON null → backend-ошибка.
+          // Clamp к допустимому диапазону вместо отправки мусора.
+          const n = Number(e.currentTarget.value);
+          if (Number.isFinite(n)) onUpdateSetting('font_size', Math.min(72, Math.max(12, Math.round(n))));
+        }} />
       </div>
       <div class="setting-row">
         <label for="setting-caret">{t(uiLang, 'settings.caret_style')}</label>
@@ -151,6 +156,10 @@
       <div class="setting-row">
         <label for="setting-capslock">{t(uiLang, 'settings.capslock_warnings')}</label>
         <label class="toggle"><input id="setting-capslock" type="checkbox" checked={settings.show_capslock_warnings} onchange={(e) => onUpdateSetting('show_capslock_warnings', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <label for="setting-layout">{t(uiLang, 'settings.layout_warnings')}</label>
+        <label class="toggle"><input id="setting-layout" type="checkbox" checked={settings.show_layout_warnings} onchange={(e) => onUpdateSetting('show_layout_warnings', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-sound">{t(uiLang, 'settings.sound_enabled')}</label>
@@ -194,13 +203,19 @@
       {#if settings.daily_goal_type === 'wpm'}
         <div class="setting-row">
           <label for="setting-goal-wpm">{t(uiLang, 'settings.daily_goal_wpm')}</label>
-          <input id="setting-goal-wpm" type="number" min="0" max="300" value={settings.daily_goal_wpm || 0} onchange={(e) => onUpdateSetting('daily_goal_wpm', parseFloat(e.currentTarget.value))} />
+          <input id="setting-goal-wpm" type="number" min="0" max="300" value={settings.daily_goal_wpm || 0} onchange={(e) => {
+            const n = Number(e.currentTarget.value);
+            if (Number.isFinite(n)) onUpdateSetting('daily_goal_wpm', Math.min(300, Math.max(0, n)));
+          }} />
         </div>
       {/if}
       {#if settings.daily_goal_type === 'accuracy'}
         <div class="setting-row">
           <label for="setting-goal-acc">{t(uiLang, 'settings.daily_goal_accuracy')}</label>
-          <input id="setting-goal-acc" type="number" min="0" max="100" step="0.1" value={settings.daily_goal_accuracy || 0} onchange={(e) => onUpdateSetting('daily_goal_accuracy', parseFloat(e.currentTarget.value))} />
+          <input id="setting-goal-acc" type="number" min="0" max="100" step="0.1" value={settings.daily_goal_accuracy || 0} onchange={(e) => {
+            const n = Number(e.currentTarget.value);
+            if (Number.isFinite(n)) onUpdateSetting('daily_goal_accuracy', Math.min(100, Math.max(0, n)));
+          }} />
         </div>
       {/if}
     </div>

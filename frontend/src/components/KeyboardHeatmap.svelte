@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { FINGERS, ROWS } from '../lib/keyboard';
+  import { FINGERS, ROWS, RU_ROWS } from '../lib/keyboard';
 
   let {
     heatmap = {},
@@ -9,26 +9,50 @@
     charStats?: Record<string, { correct: number; incorrect: number; total: number }>;
   } = $props();
 
-  const heatmapRows = ROWS.map((row) => row.filter((key) => /^[a-z;,./]$/.test(key)));
+  // Автоопределение раскладки по данным: если в stats заметно кириллических
+  // клавиш больше, чем латинских — рендерим ЙЦУКЕН-ряды. Раньше RU-сессии
+  // рендерили пустую QWERTY-клавиатуру (heatmap-ключи не совпадали).
+  const statsSource = $derived(Object.keys(charStats).length > 0 ? charStats : Object.fromEntries(
+    Object.entries(heatmap).map(([k, v]) => [k, { correct: v.correct, incorrect: v.incorrect, total: v.total_attempts }]),
+  ));
 
-  // Staggered offsets per row to mimic physical QWERTY layout.
-  const ROW_STAGGER = [0, 22, 44]; // top, home, bottom (px)
-
-  function getKeyData(key: string): { correct: number; incorrect: number; total: number } {
-    if (charStats[key]) return charStats[key];
-    if (heatmap[key]) {
-      return {
-        correct: heatmap[key].correct,
-        incorrect: heatmap[key].incorrect,
-        total: heatmap[key].total_attempts,
-      };
+  let isCyrillic = $derived.by(() => {
+    let cyr = 0, lat = 0;
+    for (const key of Object.keys(statsSource)) {
+      if (/[а-яА-ЯёЁ]/.test(key)) cyr++;
+      else if (/[a-zA-Z]/.test(key)) lat++;
     }
-    return { correct: 0, incorrect: 0, total: 0 };
+    return cyr > lat;
+  });
+
+  const heatmapRows = $derived(
+    (isCyrillic ? RU_ROWS : ROWS).map((row) => row.filter((key) => key.length === 1)),
+  );
+
+  // Case-insensitive агрегация: бэкенд ключует точным символом ('A' и 'a' —
+  // разные записи), а клавиша на раскладке одна. Складываем обе вариации.
+  function getKeyData(key: string): { correct: number; incorrect: number; total: number } {
+    const lower = key.toLowerCase();
+    const upper = key.toUpperCase();
+    const direct = charStats[key] || heatmap[key];
+    const lowerEntry = charStats[lower] || heatmap[lower];
+    const upperEntry = charStats[upper] || heatmap[upper];
+    const entries = [direct, lowerEntry, upperEntry].filter(Boolean) as Array<{ correct: number; incorrect: number; total?: number; total_attempts?: number }>;
+    if (entries.length === 0) return { correct: 0, incorrect: 0, total: 0 };
+    return {
+      correct: entries.reduce((s, e) => s + e.correct, 0),
+      incorrect: entries.reduce((s, e) => s + e.incorrect, 0),
+      total: entries.reduce((s, e) => s + (e.total ?? e.total_attempts ?? 0), 0),
+    };
   }
 
   function getFinger(key: string): string {
     return FINGERS[key] || '';
   }
+
+  // Staggered offsets per row: ANSI stagger 0.25u/0.5u при 40px-клавише и
+  // 4px-зазоре (44px pitch) = 11/22px.
+  const ROW_STAGGER = [0, 11, 22]; // top, home, bottom (px)
 
   function getKeyColor(key: string): string {
     const data = getKeyData(key);
