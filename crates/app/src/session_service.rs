@@ -680,11 +680,20 @@ mod tests {
         };
         // Zero/unset time goal is never met, matching WPM/accuracy semantics.
         assert!(!daily_goal_is_met(&settings, &daily_stats(0, 0.0, 0.0)));
-        assert!(!daily_goal_is_met(&settings, &daily_stats(60_000, 0.0, 0.0)));
+        assert!(!daily_goal_is_met(
+            &settings,
+            &daily_stats(60_000, 0.0, 0.0)
+        ));
         settings.daily_goal_minutes = -1;
-        assert!(!daily_goal_is_met(&settings, &daily_stats(60_000, 0.0, 0.0)));
+        assert!(!daily_goal_is_met(
+            &settings,
+            &daily_stats(60_000, 0.0, 0.0)
+        ));
         settings.daily_goal_minutes = 1;
-        assert!(!daily_goal_is_met(&settings, &daily_stats(59_999, 0.0, 0.0)));
+        assert!(!daily_goal_is_met(
+            &settings,
+            &daily_stats(59_999, 0.0, 0.0)
+        ));
         assert!(daily_goal_is_met(&settings, &daily_stats(60_000, 0.0, 0.0)));
         assert!(daily_goal_is_met(&settings, &daily_stats(60_001, 0.0, 0.0)));
 
@@ -795,10 +804,7 @@ mod tests {
         // Europe/Moscow. The recorded day must be the local one: assert the
         // UTC date is NOT used when the local date differs.
         let completed = completed_session_at(None, "2026-08-11T22:00:00Z");
-        let utc_day = completed
-            .completed_at
-            .format("%Y-%m-%d")
-            .to_string();
+        let utc_day = completed.completed_at.format("%Y-%m-%d").to_string();
         let local_day = local_day_of(&completed);
         // This is only meaningful when the offsets actually differ; the test
         // below still validates the core invariant regardless.

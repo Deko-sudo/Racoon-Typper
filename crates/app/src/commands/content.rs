@@ -251,28 +251,45 @@ pub(crate) fn import_text_from_url(url: String) -> Result<String, AppError> {
 /// Простой HTML→text экстрактор: убирает script/style блоки, теги, сущности.
 /// Нормализует пробелы и пустые строки. Не претендует на полную HTML-обработку,
 /// но достаточен для извлечения основного контента статей/глав.
+/// Returns the byte position of the first ASCII case-insensitive occurrence of
+/// `needle` in `haystack`, or `None`.
+///
+/// HTML tag names are ASCII, so an ASCII-only case-insensitive comparison is
+/// sufficient and never changes string length. Iterating with `char_indices`
+/// guarantees the returned position is a UTF-8 char boundary of `haystack`.
+fn find_ascii_case_insensitive(haystack: &str, needle: &str) -> Option<usize> {
+    haystack.char_indices().find_map(|(index, _)| {
+        haystack[index..]
+            .get(..needle.len())
+            .filter(|candidate| {
+                candidate
+                    .as_bytes()
+                    .iter()
+                    .zip(needle.as_bytes())
+                    .all(|(a, b)| a.eq_ignore_ascii_case(b))
+            })
+            .map(|_| index)
+    })
+}
+
 fn strip_html(html: &str) -> String {
     let mut result = html.to_string();
 
-    // Убираем <script>...</script> и <style>...</style> целиком.
-    while let (Some(start), Some(end)) = (
-        result.to_lowercase().find("<script"),
-        result.to_lowercase().find("</script>"),
-    ) {
-        if end > start {
-            result.replace_range(start..end + 9, "");
-        } else {
-            break;
-        }
-    }
-    while let (Some(start), Some(end)) = (
-        result.to_lowercase().find("<style"),
-        result.to_lowercase().find("</style>"),
-    ) {
-        if end > start {
-            result.replace_range(start..end + 8, "");
-        } else {
-            break;
+    // Убираем <script>...</script> и <style>...</style> целиком. Поиск ведётся
+    // в оригинальной строке (ASCII case-insensitive): байтовые позиции из
+    // lowercased-копии нельзя применять к оригиналу — Unicode-lowercase может
+    // менять длину строки и приводить к панике или повреждению текста.
+    for (open, close) in [("<script", "</script>"), ("<style", "</style>")] {
+        while let Some(start) = find_ascii_case_insensitive(&result, open) {
+            let Some(end) = find_ascii_case_insensitive(&result, close) else {
+                break;
+            };
+            let end = end + close.len();
+            if end <= start {
+                // Закрывающий тег встретился раньше открывающего — не удаляем.
+                break;
+            }
+            result.replace_range(start..end, "");
         }
     }
 
@@ -382,5 +399,87 @@ fn utf8_char_len(first_byte: u8) -> usize {
         4
     } else {
         1
+    }
+}
+
+#[cfg(test)]
+mod strip_html_tests {
+    use super::strip_html;
+
+    #[test]
+    fn ascii_script_removed() {
+        assert_eq!(strip_html("a<script>alert(1)</script>b"), "ab");
+    }
+
+    #[test]
+    fn ascii_style_removed() {
+        assert_eq!(strip_html("a<style>p{color:red}</style>b"), "ab");
+    }
+
+    #[test]
+    fn unicode_before_script_is_preserved() {
+        // 'İ' lowercase expands to two chars; the old index-based removal
+        // silently dropped the trailing text.
+        assert_eq!(strip_html("İ<script>alert(1)</script>tail"), "İtail");
+    }
+
+    #[test]
+    fn unicode_inside_script_body() {
+        // Unicode inside the script body used to shift byte offsets and panic.
+        assert_eq!(
+            strip_html("<script>var x = \"İstanbul\";</script>after"),
+            "after"
+        );
+    }
+
+    #[test]
+    fn capital_eszett_before_script() {
+        // 'ẞ' (U+1E9E) lowercases to 'ß' (shorter); the old code panicked.
+        assert_eq!(strip_html("ẞ<script>x</script>"), "ẞ");
+    }
+
+    #[test]
+    fn cyrillic_before_script() {
+        assert_eq!(
+            strip_html("Привет мир<script>x</script>конец"),
+            "Привет мирконец"
+        );
+    }
+
+    #[test]
+    fn script_only_unicode_body() {
+        assert_eq!(strip_html("<script>İ</script>"), "");
+    }
+
+    #[test]
+    fn unclosed_script_keeps_content() {
+        // No closing tag: the script block is left in place and the rest of
+        // the pipeline strips the tags themselves.
+        assert_eq!(strip_html("a<script>alert(1)"), "aalert(1)");
+    }
+
+    #[test]
+    fn multiple_script_and_style_blocks() {
+        let html = "a<script>1</script>b<style>c</style>d<script>2</script>e";
+        assert_eq!(strip_html(html), "abde");
+    }
+
+    #[test]
+    fn script_open_before_close_removed() {
+        // Opening tag before closing tag: block is removed.
+        assert_eq!(strip_html("x<script>y</script>z"), "xz");
+    }
+
+    #[test]
+    fn close_before_open_is_left_intact() {
+        // A stray closing tag before any opening tag must not cause a panic
+        // or an out-of-bounds removal.
+        assert_eq!(strip_html("</script>after"), "after");
+    }
+
+    #[test]
+    fn mixed_unicode_and_multiple_blocks() {
+        let html = "Привет <script>var s=\"İ\";</script>мир<style>a{}</style>!";
+        assert_eq!(strip_html(html), "Привет мир!");
     }
 }
