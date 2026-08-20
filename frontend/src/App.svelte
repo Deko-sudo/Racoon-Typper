@@ -45,6 +45,10 @@
   let errorMsg = $state('');
   // Tracks a pending single 'g' press for the 'gg' Vim scroll-to-top command.
   let vimPendingG = $state(false);
+  // When the pending 'g' was pressed (for the 1s 'gg' expiry).
+  let vimPendingGAt = 0;
+  // Timestamp of the last "accuracy above 95%" toast — debounce (30s).
+  let lastHighAccToastAt = 0;
   let liveWpm = $state(0);
   let liveAccuracy = $state(100);
   let elapsedMs = $state(0);
@@ -182,6 +186,10 @@
     liveWpm = 0;
     liveAccuracy = 100;
     elapsedMs = 0;
+    // Сброс layout/caps-детекции: иначе после RU-теста новый EN-тест
+    // показывает карточку «неверная раскладка» до первого нажатия.
+    lastTypedChar = '';
+    capsLockOn = false;
     charStatuses = Array.from(resp.text, (ch) => ({
       expected: ch,
       typed: null,
@@ -239,7 +247,7 @@
     try {
       await snapshotAchievements();
       const params: {
-        mode: string;
+        mode: ModeName;
         language: string;
         duration?: number;
         wordCount?: number;
@@ -298,17 +306,23 @@
     const lessonId = currentLessonId;
     if (sessionModeType === 'lesson' && lessonId) {
       // The backend persisted lesson completion in the same transaction as the
-      // completed test. This local update only renders that confirmed state.
+      // completed test, applying the pass gate (accuracy ≥90% AND wpm ≥20).
+      // Mirror that gate locally so the UI matches the persisted status.
+      const passed = stats.accuracy >= 90 && stats.wpm >= 20;
       lessonProgress = {
         ...lessonProgress,
         [lessonId]: {
-          status: 'completed',
+          status: passed
+            ? 'completed'
+            : (lessonProgress[lessonId]?.status === 'completed' ? 'completed' : 'in_progress'),
           best_wpm: Math.max(lessonProgress[lessonId]?.best_wpm ?? 0, stats.wpm),
           best_accuracy: Math.max(lessonProgress[lessonId]?.best_accuracy ?? 0, stats.accuracy),
         },
       };
       void playSound('lesson_complete');
     }
+    // Держим счётчик истории актуальным для бейджа в навигации.
+    void loadHistoryTotal();
     await checkNewAchievements();
   }
 
@@ -321,7 +335,13 @@
       elapsedMs = output.live_stats.elapsed_ms;
       testStartedAt = Date.now() - output.live_stats.elapsed_ms;
 
-      if (liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05) {
+      // Toast не чаще раза в 30 секунд — иначе спам на каждый 20-й keystroke.
+      const now = Date.now();
+      if (
+        liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05
+        && now - lastHighAccToastAt > 30_000
+      ) {
+        lastHighAccToastAt = now;
         notificationStore.add('SUCCESS', t(uiLang, 'notification.high_accuracy'));
       }
     }
@@ -394,8 +414,12 @@
 
     // Vim mode navigation (only when not actively typing a test)
     if (settings?.vim_mode && !isRunning) {
+      // 'gg' — это двойное нажатие: одиночный 'g' истекает через 1 секунду,
+      // иначе залипший pending-g срабатывает на первом 'g' следующего теста.
+      if (vimPendingG && Date.now() - vimPendingGAt > 1000) vimPendingG = false;
       const { action, nextPendingG } = vimActionForKey(e.key, view, vimPendingG);
       vimPendingG = nextPendingG;
+      if (vimPendingG) vimPendingGAt = Date.now();
       switch (action.type) {
         case 'prev_tab': {
           const idx = VIM_VIEWS.indexOf(view as (typeof VIM_VIEWS)[number]);
@@ -499,6 +523,16 @@
     history = r.tests;
     historyTotal = r.total;
     historyPage = page;
+  }
+
+  // Лёгкое обновление только счётчика (бейдж навигации) без перезагрузки списка.
+  async function loadHistoryTotal() {
+    try {
+      const r = await ipc.getStatsHistory(1, 0);
+      historyTotal = r.total;
+    } catch {
+      // Best-effort: бейдж обновится при следующем визите History.
+    }
   }
 
   function historyPrevPage() {

@@ -72,8 +72,19 @@ impl AdaptiveTextGenerator for FrequencyAdaptiveGenerator {
             .filter(|w| w.error_count > 0)
             .collect();
 
-        // Сортировка по error_count descending
-        weak.sort_by_key(|b| std::cmp::Reverse(b.error_count));
+        // Ранжирование по «слабости», а не сырому числу ошибок: редкий символ
+        // с 30% точности важнее частого с 98%. Сортируем по убыванию error-rate
+        // (100 - accuracy), tie-break — по error_count (статистическая
+        // значимость), затем детерминированно по символу.
+        weak.sort_by(|a, b| {
+            let rate_a = 100.0 - a.accuracy;
+            let rate_b = 100.0 - b.accuracy;
+            rate_b
+                .partial_cmp(&rate_a)
+                .unwrap_or(std::cmp::Ordering::Equal)
+                .then_with(|| b.error_count.cmp(&a.error_count))
+                .then_with(|| a.ch.cmp(&b.ch))
+        });
         weak
     }
 
@@ -118,7 +129,9 @@ impl AdaptiveTextGenerator for FrequencyAdaptiveGenerator {
 
         // Окно топ-слов для выбора (разнообразие без потери фокуса на слабых).
         // Не больше, чем есть слов, и не меньше 1.
-        let top_window = scored.len().clamp(1, 8);
+        // Окно из 16 топ-слов: 8 давало слишком однообразный текст (цикл
+        // по ≤8 словам), 16 сохраняет фокус на слабых символах с разнообразием.
+        let top_window = scored.len().clamp(1, 16);
 
         let mut result = Vec::with_capacity(word_count);
         let mut last_word: Option<&str> = None;

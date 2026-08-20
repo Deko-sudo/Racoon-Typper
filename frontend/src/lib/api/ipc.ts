@@ -11,6 +11,7 @@ import type {
   EngineOutput,
   Insight,
   LessonProgressRecord,
+  ModeName,
   PersonalBest,
   ProfileImportPlan,
   ProfileImportPolicy,
@@ -38,7 +39,7 @@ export function ipcErrorMessage(error: unknown): string {
 }
 
 export async function startTest(params: {
-  mode: string;
+  mode: ModeName;
   language: string;
   duration?: number;
   wordCount?: number;

@@ -223,6 +223,13 @@ pub struct StatisticsEngine {
     pub tracker: LiveTracker,
     first_key_timestamp_ms: Option<u64>,
     graph_points: Vec<WpmGraphPoint>,
+    /// Мгновенный (per-second) raw WPM — основа честной consistency.
+    /// Кумулятивные graph_points сглаживаются по построению и завышали score.
+    instant_wpm_samples: Vec<f64>,
+    /// Секунда текущего бакета (от первой клавиши).
+    current_bucket_sec: u64,
+    /// Печатные нажатия (correct+incorrect) в текущем секундном бакете.
+    bucket_presses: usize,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -237,6 +244,9 @@ impl StatisticsEngine {
             tracker: LiveTracker::new(),
             first_key_timestamp_ms: None,
             graph_points: Vec::new(),
+            instant_wpm_samples: Vec::new(),
+            current_bucket_sec: 0,
+            bucket_presses: 0,
         }
     }
 
@@ -274,6 +284,21 @@ impl StatisticsEngine {
             timestamp_ms: elapsed_ms,
             wpm,
         });
+
+        // Секундные бакеты мгновенного raw WPM: нажатия текущей секунды / 5
+        // * 60. При переходе на новую секунду закрываем бакет (плюс нулевые
+        // бакеты за паузу), затем учитываем текущее нажатие в новом бакете.
+        let elapsed_sec = elapsed_ms / 1000;
+        if elapsed_sec > self.current_bucket_sec {
+            let bucket_wpm = self.bucket_presses as f64 / 5.0 * 60.0;
+            self.instant_wpm_samples.push(bucket_wpm);
+            for _ in (self.current_bucket_sec + 1)..elapsed_sec {
+                self.instant_wpm_samples.push(0.0);
+            }
+            self.current_bucket_sec = elapsed_sec;
+            self.bucket_presses = 0;
+        }
+        self.bucket_presses += 1;
     }
 
     /// Возвращает live статистику (WPM, Raw WPM, Accuracy, elapsed_ms).
@@ -335,16 +360,29 @@ impl StatisticsEngine {
 
         let char_stats = HeatmapBuilder::build_char_stats(buf);
         let heatmap = HeatmapBuilder::build(buf);
-        let mut wpm_samples: Vec<f64> = self
-            .graph_points
-            .iter()
-            .filter(|point| point.timestamp_ms > 0)
-            .map(|point| point.wpm)
-            .collect();
-        if wpm_samples.is_empty() {
-            wpm_samples.push(wpm);
+        // Consistency из мгновенного per-second raw WPM (индустриальный
+        // стандарт). Кумулятивные graph_points сглаживаются по построению
+        // и систематически завышали score. Fallback — для очень коротких
+        // тестов (<1 полной секунды в бакетах не набралось).
+        let mut instant_samples = self.instant_wpm_samples.clone();
+        // Незакрытый последний бакет тоже учитываем.
+        if self.bucket_presses > 0 {
+            instant_samples.push(self.bucket_presses as f64 / 5.0 * 60.0);
         }
-        let consistency = crate::consistency::calc_consistency(&wpm_samples).score;
+        let consistency = if instant_samples.is_empty() {
+            let mut wpm_samples: Vec<f64> = self
+                .graph_points
+                .iter()
+                .filter(|point| point.timestamp_ms > 0)
+                .map(|point| point.wpm)
+                .collect();
+            if wpm_samples.is_empty() {
+                wpm_samples.push(wpm);
+            }
+            crate::consistency::calc_consistency(&wpm_samples).score
+        } else {
+            crate::consistency::calc_consistency(&instant_samples).score
+        };
         let graph_data = serde_json::to_value(&self.graph_points)
             .unwrap_or_else(|_| serde_json::Value::Array(Vec::new()));
 
@@ -368,6 +406,9 @@ impl StatisticsEngine {
         self.tracker.reset();
         self.first_key_timestamp_ms = None;
         self.graph_points.clear();
+        self.instant_wpm_samples.clear();
+        self.current_bucket_sec = 0;
+        self.bucket_presses = 0;
     }
 }
 
@@ -683,7 +724,11 @@ mod tests {
         // Честная accuracy: 5 верных нажатий / (5 верных + 1 ошибочное) = 83.3%.
         // Исправленная backspace'ом ошибка НЕ прощается (индустриальный стандарт).
         assert_eq!(final_stats.incorrect_chars, 1);
-        assert!((final_stats.accuracy - 83.33).abs() < 0.1, "accuracy was {:.2}", final_stats.accuracy);
+        assert!(
+            (final_stats.accuracy - 83.33).abs() < 0.1,
+            "accuracy was {:.2}",
+            final_stats.accuracy
+        );
         // Raw accuracy: first attempt on 'h' was wrong (x), rest correct
         // total_first_attempts = 5, first_correct = 4
         assert!((final_stats.raw_accuracy - 80.0).abs() < 0.1);
@@ -727,7 +772,10 @@ mod tests {
 
         let final_stats = engine.finalize(&buf, 10_000);
         // 5 верных нажатий + 3 ошибочных (x, z, q) = 8; 5/8 = 62.5%
-        assert_eq!(final_stats.incorrect_chars, 2, "two tracked error presses expected (first 'x' call was not tracked)");
+        assert_eq!(
+            final_stats.incorrect_chars, 2,
+            "two tracked error presses expected (first 'x' call was not tracked)"
+        );
         let total_presses = final_stats.correct_chars + final_stats.incorrect_chars;
         assert_eq!(total_presses, 7);
         assert!((final_stats.accuracy - 71.43).abs() < 0.1);
