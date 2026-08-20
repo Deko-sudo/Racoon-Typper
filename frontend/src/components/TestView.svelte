@@ -13,6 +13,7 @@
     text,
     caretPos,
     charStatuses,
+    erroredPositions = new Set<number>(),
     isRunning,
     isComplete,
     liveWpm,
@@ -41,6 +42,7 @@
     text: string;
     caretPos: number;
     charStatuses: CharStatus[];
+    erroredPositions?: Set<number>;
     isRunning: boolean;
     isComplete: boolean;
     liveWpm: number;
@@ -151,6 +153,7 @@
           class="char {charClass(char, i)}"
           class:caret={showCaretBefore && i === viewportOffset}
           class:caret-trail={showCaretTrail && i === viewportOffset - 1}
+          class:error-tail={erroredPositions.has(viewportStart + i)}
         >{char.expected === ' ' ? '\u00A0' : char.expected}</span>
       {/each}
       {#if viewportEnd < charStatuses.length}<span class="text-ellipsis">…</span>{/if}
@@ -191,6 +194,10 @@
   .char.correct { color:var(--color-typing-correct); }
   .char.incorrect { color:var(--color-typing-incorrect); text-decoration:underline 2px; text-underline-offset:.18em; animation:shake .2s; }
   .char.backspaced { color:var(--color-typing-corrected); text-decoration:underline double; text-underline-offset:.18em; }
+  /* Хвост ошибки: тонкая красная полоска под символом, где была ошибка.
+     Выживает backspace/ретайп. box-shadow вместо ::after — псевдоэлементы
+     заняты кареткой (caret-trail), z-index под кареткой автоматически. */
+  .char.error-tail { box-shadow: inset 0 -2px 0 var(--error); }
   .char.past { opacity:.9; }
   .char.current { color:var(--color-typing-current); background:var(--color-surface-active); outline:1px solid var(--color-border-strong); border-radius:.12em; opacity:1; font-weight:700; }
   .char.current.pending { color:var(--color-typing-current); }

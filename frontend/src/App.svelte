@@ -55,6 +55,9 @@
   let liveAccuracy = $state(100);
   let elapsedMs = $state(0);
   let finalStats = $state<FinalStats | null>(null);
+  // Позиции, где была допущена ошибка — хвост ошибки остаётся видимым
+  // после backspace/ретайпа до конца теста.
+  let erroredPositions = $state(new Set<number>());
 
   // Test config
   let selectedMode = $state<ModeName>('time');
@@ -195,6 +198,7 @@
     // показывает карточку «неверная раскладка» до первого нажатия.
     lastTypedChar = '';
     capsLockOn = false;
+    erroredPositions = new Set();
     charStatuses = Array.from(resp.text, (ch) => ({
       expected: ch,
       typed: null,
@@ -213,6 +217,7 @@
     elapsedMs = 0;
     caretPos = 0;
     charStatuses = [];
+    erroredPositions = new Set();
   }
 
   // Replacing a running test is an explicit user action. The backend must
@@ -359,6 +364,7 @@
       };
     } else if (output.key_result === 'incorrect' && caretPos < charStatuses.length) {
       charStatuses[caretPos] = { ...charStatuses[caretPos], typed: key, status: 'incorrect' };
+      erroredPositions.add(caretPos);
     } else if (output.key_result === 'undone_correct' && caretPos < charStatuses.length) {
       charStatuses[caretPos] = { ...charStatuses[caretPos], typed: null, status: 'backspaced' };
     } else if (output.key_result === 'undone_incorrect' && caretPos < charStatuses.length) {
@@ -904,6 +910,7 @@
       {text}
       {caretPos}
       {charStatuses}
+      {erroredPositions}
       {isRunning}
       {isComplete}
       {liveWpm}
