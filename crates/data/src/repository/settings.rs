@@ -22,6 +22,9 @@ pub struct AppSettings {
     /// индустриальный стандарт — дефолт) или "after" (за последней напечатанной).
     #[serde(default = "default_caret_position")]
     pub caret_position: String,
+    /// Анимация каретки: "blink" (мигание) или "pulse" (мягкая пульсация).
+    #[serde(default = "default_caret_animation")]
+    pub caret_animation: String,
     #[serde(default = "default_true")]
     pub show_live_wpm: bool,
     #[serde(default = "default_true")]
@@ -114,8 +117,16 @@ fn default_caret_position() -> String {
     "before".to_string()
 }
 
+fn default_caret_animation() -> String {
+    "blink".to_string()
+}
+
 fn valid_caret_position(value: &str) -> bool {
     matches!(value, "before" | "after")
+}
+
+fn valid_caret_animation(value: &str) -> bool {
+    matches!(value, "blink" | "pulse")
 }
 
 fn default_true() -> bool {
@@ -209,6 +220,7 @@ impl Default for AppSettings {
             font_size: 24,
             caret_style: "underline".to_string(),
             caret_position: "before".to_string(),
+            caret_animation: "blink".to_string(),
             show_live_wpm: true,
             show_accuracy: true,
             show_keyboard_trainer: true,
@@ -356,6 +368,15 @@ impl SettingsStore {
                     )));
                 }
                 settings.caret_position = value.to_string();
+            }
+            "caret_animation" => {
+                let value = string_value(&value, key)?;
+                if !valid_caret_animation(value) {
+                    return Err(validation_error(format!(
+                        "Unsupported caret animation: {value}"
+                    )));
+                }
+                settings.caret_animation = value.to_string();
             }
             "show_live_wpm" => {
                 settings.show_live_wpm = boolean_value(&value, key)?;
@@ -642,6 +663,24 @@ mod tests {
     }
 
     #[test]
+    fn caret_animation_defaults_to_blink_and_validates() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert_eq!(store.load().unwrap().caret_animation, "blink");
+        let settings = store
+            .set("caret_animation", toml::Value::String("pulse".to_string()))
+            .unwrap();
+        assert_eq!(settings.caret_animation, "pulse");
+        assert_eq!(store.load().unwrap().caret_animation, "pulse");
+        assert!(store
+            .set("caret_animation", toml::Value::String("spin".to_string()))
+            .is_err());
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
     fn set_show_live_wpm() {
         let path = temp_settings_path();
         let store = SettingsStore::new(path.clone());
@@ -760,6 +799,7 @@ mod tests {
             font_size: 30,
             caret_style: "solid".to_string(),
             caret_position: "after".to_string(),
+            caret_animation: "pulse".to_string(),
             show_live_wpm: false,
             show_accuracy: true,
             show_keyboard_trainer: true,

@@ -99,6 +99,7 @@ export interface AppSettings {
   font_size: number;
   caret_style: string;
   caret_position: string;
+  caret_animation: string;
   show_live_wpm: boolean;
   show_accuracy: boolean;
   show_keyboard_trainer: boolean;
