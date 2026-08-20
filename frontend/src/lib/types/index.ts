@@ -118,6 +118,7 @@ export interface AppSettings {
   daily_goal_minutes: number;
   pomodoro_work_min: number;
   pomodoro_break_min: number;
+  custom_theme_colors: string;
 }
 
 export interface ThemeInfo {

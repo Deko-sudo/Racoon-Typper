@@ -66,6 +66,10 @@ pub struct AppSettings {
     /// Pomodoro break phase length in minutes.
     #[serde(default = "default_pomodoro_break_min")]
     pub pomodoro_break_min: i64,
+    /// Кастомная тема: JSON-объект { "--color-*": "#rrggbb" }. Пустая строка —
+    /// тема не настроена. Ключи валидируются по белому списку при set().
+    #[serde(default)]
+    pub custom_theme_colors: String,
 }
 
 fn default_theme() -> String {
@@ -98,7 +102,8 @@ fn normalize_theme(theme: &str) -> String {
         | "carbon"
         | "moonlight"
         | "dawn"
-        | "sage" => theme.to_string(),
+        | "sage"
+        | "custom" => theme.to_string(),
         "racoon_dark" => "racoon_graphite".to_string(),
         "racoon_light" => "racoon_silver".to_string(),
         _ => default_theme(),
@@ -127,6 +132,46 @@ fn valid_caret_position(value: &str) -> bool {
 
 fn valid_caret_animation(value: &str) -> bool {
     matches!(value, "blink" | "pulse")
+}
+
+/// Валидирует JSON кастомной темы: объект, ключи из белого списка,
+/// значения — hex-цвета "#rrggbb" (или "rrggbb"). Возвращает нормализованный
+/// компактный JSON (ключи отсортированы) или ошибку.
+fn validate_custom_theme_json(value: &str) -> Result<String, DbError> {
+    if value.trim().is_empty() {
+        return Ok(String::new());
+    }
+    if value.chars().count() > MAX_CUSTOM_THEME_JSON_CHARS {
+        return Err(validation_error(format!(
+            "custom_theme_colors must be at most {MAX_CUSTOM_THEME_JSON_CHARS} characters"
+        )));
+    }
+    let parsed: serde_json::Value = serde_json::from_str(value)
+        .map_err(|error| validation_error(format!("custom_theme_colors must be valid JSON: {error}")))?;
+    let object = parsed
+        .as_object()
+        .ok_or_else(|| validation_error("custom_theme_colors must be a JSON object"))?;
+
+    let mut normalized: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+    for (key, color) in object {
+        if !CUSTOM_THEME_VARIABLES.contains(&key.as_str()) {
+            return Err(validation_error(format!(
+                "Unsupported custom theme variable: {key}"
+            )));
+        }
+        let color = color
+            .as_str()
+            .ok_or_else(|| validation_error(format!("{key} must be a hex color string")))?;
+        let hex = color.trim().trim_start_matches('#');
+        if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(validation_error(format!(
+                "{key} must be a six-digit hex color like #rrggbb"
+            )));
+        }
+        normalized.insert(key.clone(), format!("#{}", hex.to_ascii_lowercase()));
+    }
+    serde_json::to_string(&normalized)
+        .map_err(|error| validation_error(format!("custom_theme_colors serialization failed: {error}")))
 }
 
 fn default_true() -> bool {
@@ -159,6 +204,60 @@ const MAX_DAILY_GOAL_WPM: f64 = 300.0;
 const MAX_DAILY_GOAL_ACCURACY: f64 = 100.0;
 const MAX_DAILY_GOAL_MINUTES: i64 = 1_440;
 const MAX_POMODORO_MINUTES: i64 = 180;
+const MAX_CUSTOM_THEME_JSON_CHARS: usize = 16_384;
+
+/// Белый список CSS-переменных, которые может задавать кастомная тема.
+/// Совпадает с семантическим контрактом тем (docs/THEMES.md).
+const CUSTOM_THEME_VARIABLES: &[&str] = &[
+    "--color-app-background",
+    "--color-surface-primary",
+    "--color-surface-raised",
+    "--color-surface-hover",
+    "--color-surface-active",
+    "--color-text-primary",
+    "--color-text-secondary",
+    "--color-text-muted",
+    "--color-text-disabled",
+    "--color-border",
+    "--color-border-strong",
+    "--color-accent",
+    "--color-accent-hover",
+    "--color-accent-active",
+    "--color-accent-text",
+    "--color-focus-ring",
+    "--color-selection",
+    "--color-caret",
+    "--color-typing-pending",
+    "--color-typing-current",
+    "--color-typing-correct",
+    "--color-typing-incorrect",
+    "--color-typing-corrected",
+    "--color-key-background",
+    "--color-key-border",
+    "--color-key-active",
+    "--color-key-pressed",
+    "--color-success",
+    "--color-warning",
+    "--color-error",
+    "--color-information",
+    "--color-chart-primary",
+    "--color-chart-secondary",
+    "--color-chart-positive",
+    "--color-chart-negative",
+    "--color-chart-grid",
+    "--color-chart-axis",
+    "--color-chart-label",
+    "--color-chart-tooltip-background",
+    "--color-chart-tooltip-border",
+    "--color-chart-selected",
+    "--color-progress-track",
+    "--color-progress-fill",
+    "--color-overlay",
+    "--color-modal-surface",
+    "--color-tooltip-surface",
+    "--color-scrollbar",
+    "--color-scrollbar-hover",
+];
 static SETTINGS_TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 fn validation_error(message: impl Into<String>) -> DbError {
@@ -240,6 +339,7 @@ impl Default for AppSettings {
             daily_goal_minutes: 0,
             pomodoro_work_min: 25,
             pomodoro_break_min: 5,
+            custom_theme_colors: String::new(),
         }
     }
 }
@@ -480,6 +580,10 @@ impl SettingsStore {
                     )));
                 }
                 settings.pomodoro_break_min = value;
+            }
+            "custom_theme_colors" => {
+                let value = string_value(&value, key)?;
+                settings.custom_theme_colors = validate_custom_theme_json(value)?;
             }
             _ => {
                 return Err(validation_error(format!("Unknown setting key: {key}")));
@@ -783,6 +887,68 @@ mod tests {
     }
 
     #[test]
+    fn custom_theme_colors_accepts_whitelisted_hex_json() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        let json = r##"{"--color-app-background":"#0d0f12","--color-accent":"#C5CBD4"}"##;
+        let settings = store
+            .set("custom_theme_colors", toml::Value::String(json.to_string()))
+            .unwrap();
+        // Нормализация: lowercase hex, отсортированные ключи.
+        assert!(settings.custom_theme_colors.contains("\"#c5cbd4\""));
+        assert_eq!(store.load().unwrap().custom_theme_colors, settings.custom_theme_colors);
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn custom_theme_colors_rejects_unknown_keys_and_bad_hex() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert!(store
+            .set(
+                "custom_theme_colors",
+                toml::Value::String(r##"{"--evil":"#000000"}"##.to_string()),
+            )
+            .is_err());
+        assert!(store
+            .set(
+                "custom_theme_colors",
+                toml::Value::String(r#"{"--color-accent":"red"}"#.to_string()),
+            )
+            .is_err());
+        assert!(store
+            .set(
+                "custom_theme_colors",
+                toml::Value::String("not json".to_string()),
+            )
+            .is_err());
+        // Пустая строка — валидный сброс.
+        let settings = store
+            .set("custom_theme_colors", toml::Value::String(String::new()))
+            .unwrap();
+        assert_eq!(settings.custom_theme_colors, "");
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn custom_theme_id_survives_save_and_reload() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        let settings = store
+            .set("theme", toml::Value::String("custom".to_string()))
+            .unwrap();
+        assert_eq!(settings.theme, "custom");
+        assert_eq!(store.load().unwrap().theme, "custom");
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
     fn default_values() {
         let settings = AppSettings::default();
         assert_eq!(settings.theme, "racoon_graphite");
@@ -819,6 +985,7 @@ mod tests {
             daily_goal_minutes: 0,
             pomodoro_work_min: 25,
             pomodoro_break_min: 5,
+            custom_theme_colors: String::new(),
         };
 
         let toml_str = toml::to_string(&settings).unwrap();

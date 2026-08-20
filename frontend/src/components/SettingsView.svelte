@@ -2,6 +2,7 @@
   import type { AppSettings, ThemeInfo } from '../lib/types/index';
   import { t, UI_LANGUAGES } from '../lib/i18n';
   import ProfileTransferPanel from './ProfileTransferPanel.svelte';
+  import ThemeEditor from './ThemeEditor.svelte';
   import { checkForUpdate, installUpdate } from '../lib/updater';
   import * as ipc from '../lib/api/ipc';
 
@@ -101,6 +102,24 @@
       || theme.display_name.toLowerCase().includes(query),
     );
   });
+
+  // Превью-цвета карточки «Custom» из сохранённого JSON (fallback — graphite).
+  let customPreviewBg = $derived(customThemeColor('--color-app-background', '#0d0f12'));
+  let customPreviewMain = $derived(customThemeColor('--color-accent', '#c5cbd4'));
+  let customPreviewText = $derived(customThemeColor('--color-text-primary', '#e7e9ed'));
+  let customPreviewError = $derived(customThemeColor('--color-error', '#dc8d8d'));
+
+  function customThemeColor(variable: string, fallback: string): string {
+    const raw = settings?.custom_theme_colors ?? '';
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const value = parsed[variable];
+      return typeof value === 'string' ? value : fallback;
+    } catch {
+      return fallback;
+    }
+  }
 </script>
 
 <div class="list-view">
@@ -260,6 +279,22 @@
       <span>{filteredThemes.length}/{themes.length}</span>
     </div>
     <div class="theme-cards">
+      <button
+        type="button"
+        class="theme-card {activeTheme === 'custom' ? 'active' : ''}"
+        aria-pressed={activeTheme === 'custom'}
+        style="background: {customPreviewBg}; border-color: {customPreviewMain};"
+        onclick={() => onSelectTheme('custom')}
+      >
+        <span style="color: {customPreviewMain}">{t(uiLang, 'theme_editor.title')}</span>
+        <span class="theme-description" style="color: {customPreviewText}">{t(uiLang, 'theme_editor.hint')}</span>
+        <span class="theme-state-preview">
+          <span style="color: {customPreviewText}">Aa</span>
+          <span style="color: {customPreviewMain}; border-left-color: {customPreviewMain}">caret</span>
+          <span style="color: {customPreviewError}; text-decoration-color: {customPreviewError}">error</span>
+        </span>
+        {#if activeTheme === 'custom'}<span class="selected-label" style="color: {customPreviewMain}">✓ Selected</span>{/if}
+      </button>
       {#each filteredThemes as t2}
         <button
           type="button"
@@ -279,6 +314,7 @@
         </button>
       {/each}
     </div>
+    <ThemeEditor {settings} {uiLang} onUpdateSetting={onUpdateSetting} />
   {/if}
 </div>
 
