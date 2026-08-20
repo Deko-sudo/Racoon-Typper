@@ -75,6 +75,20 @@
   let nextChar = $derived(isRunning && !isComplete && caretPos < text.length ? text[caretPos] : '');
   let isRussian = $derived(sessionLanguage === 'ru');
 
+  // Нормализация стиля каретки: legacy-значения (underline/solid/block) из
+  // старых настроек маппятся на актуальные рендеры. Все стили рисуются
+  // ПЕРЕД буквой — никогда не перекрывают символ.
+  let normalizedCaretStyle = $derived.by(() => {
+    switch (settings?.caret_style) {
+      case 'thick': return 'thick';
+      case 'bubble': return 'bubble';
+      case 'off': return 'off';
+      case 'solid': return 'thick';   // legacy
+      case 'block': return 'bubble';  // legacy
+      default: return 'thin';         // thin + underline + undefined
+    }
+  });
+
   function charClass(char: CharStatus, idx: number): string {
     const classes: string[] = [char.status];
     if (idx < viewportOffset) classes.push('past');
@@ -119,7 +133,7 @@
       <div class="typing-progress"><span>{caretPos}/{text.length}</span><div class="progress-track"><div class="progress-fill" style:width={`${progress}%`}></div></div></div>
     </header>
     <div class="text-viewport"><div
-      class="text-display caret-{settings?.caret_style || 'underline'}"
+      class="text-display caret-{normalizedCaretStyle}"
       class:blind={settings?.blind_mode_enabled && isRunning}
       style:--typing-font-size={`${settings?.font_size ?? 24}px`}
     >
@@ -160,7 +174,7 @@
   .text-viewport { width:100%; overflow:hidden; background:var(--color-surface-primary); border:1px solid var(--color-border-strong); border-radius:8px; padding:1.5rem; }
   .text-display { --typing-font-size:clamp(1.1rem,1.8vw,1.5rem); max-width:min(900px, 100%); margin:0 auto; font-size:0; line-height:1.65; letter-spacing:normal; text-align:center; user-select:none; white-space:pre-wrap; overflow-wrap:break-word; min-height:3.3em; display:block; }
   .text-ellipsis { color:var(--color-text-muted); padding:0 .25rem; font-size:var(--typing-font-size); }
-  .char { position:relative; display:inline-block; vertical-align:baseline; font-size:var(--typing-font-size); line-height:1.65; transition:color .05s, opacity .1s; }
+  .char { position:relative; z-index:0; display:inline-block; vertical-align:baseline; font-size:var(--typing-font-size); line-height:1.65; transition:color .05s, opacity .1s; }
   .char.pending { color:var(--color-typing-pending); }
   .char.correct { color:var(--color-typing-correct); }
   .char.incorrect { color:var(--color-typing-incorrect); text-decoration:underline 2px; text-underline-offset:.18em; animation:shake .2s; }
@@ -169,12 +183,20 @@
   .char.current { color:var(--color-typing-current); background:var(--color-surface-active); outline:1px solid var(--color-border-strong); border-radius:.12em; opacity:1; font-weight:700; }
   .char.current.pending { color:var(--color-typing-current); }
   .char.future { opacity:1; }
-  .char.caret::before { content:''; position:absolute; left:-.18em; top:.08em; bottom:.08em; width:.11em; border-radius:999px; background:var(--color-caret); animation:blink .9s ease-in-out infinite; }
-  /* caret_style варианты (settings.caret_style): underline (default — тонкая
-     вертикальная линия выше), block — прямоугольник на текущем символе,
-     solid — толстая линия без скругления, off — карет скрыт. */
-  .text-display.caret-block .char.caret::before { left:0; top:.05em; bottom:.05em; width:1em; border-radius:.08em; opacity:.55; }
-  .text-display.caret-solid .char.caret::before { left:-.22em; top:.05em; bottom:.05em; width:.18em; border-radius:0; }
+  /* Caret variants — ВСЕ стоят ПЕРЕД буквой (отрицательный left за пределы
+     символа + зазор), никогда не перекрывают символ. Базовый рендер = thin. */
+  .char.caret::before { content:''; position:absolute; left:-.3em; top:.05em; bottom:.05em; width:.12em; border-radius:999px; background:var(--color-caret); animation:blink .9s ease-in-out infinite; }
+  /* thick — широкая скобка-линия перед буквой. */
+  .text-display.caret-thick .char.caret::before { left:-.46em; width:.24em; border-radius:.05em; }
+  /* bubble — вытянутая капсула перед буквой: полупрозрачная заливка цвета
+     каретки + контур + мягкое свечение. */
+  .text-display.caret-bubble .char.caret::before {
+    left:-.6em; width:.34em; border-radius:999px;
+    background:color-mix(in srgb, var(--color-caret) 30%, transparent);
+    border:.09em solid var(--color-caret);
+    box-shadow:0 0 .35em color-mix(in srgb, var(--color-caret) 55%, transparent);
+    top:.02em; bottom:.02em;
+  }
   .text-display.caret-off .char.caret::before { content:none; }
   @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} } @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
   .info { display: flex; align-items: center; gap: 2rem; font-size: 0.875rem; color: var(--sub); }

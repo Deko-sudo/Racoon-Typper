@@ -50,6 +50,9 @@ pub struct AppSettings {
     pub daily_goal_wpm: f64,
     #[serde(default)]
     pub daily_goal_accuracy: f64,
+    /// Daily typing-time goal in minutes, used when `daily_goal_type == "time"`.
+    #[serde(default)]
+    pub daily_goal_minutes: i64,
 }
 
 fn default_theme() -> String {
@@ -117,6 +120,7 @@ const MIN_FONT_SIZE: i64 = 12;
 const MAX_FONT_SIZE: i64 = 72;
 const MAX_DAILY_GOAL_WPM: f64 = 300.0;
 const MAX_DAILY_GOAL_ACCURACY: f64 = 100.0;
+const MAX_DAILY_GOAL_MINUTES: i64 = 1_440;
 static SETTINGS_TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 fn validation_error(message: impl Into<String>) -> DbError {
@@ -124,7 +128,13 @@ fn validation_error(message: impl Into<String>) -> DbError {
 }
 
 fn valid_caret_style(value: &str) -> bool {
-    matches!(value, "underline" | "block" | "solid" | "off")
+    // thin/thick/bubble/off — актуальные стили. underline/solid/block —
+    // legacy-значения из старых настроек: принимаются, фронтенд маппит их
+    // на новые рендеры (underline→thin, solid→thick, block→bubble).
+    matches!(
+        value,
+        "thin" | "thick" | "bubble" | "off" | "underline" | "block" | "solid"
+    )
 }
 
 fn valid_daily_goal_type(value: &str) -> bool {
@@ -187,6 +197,7 @@ impl Default for AppSettings {
             daily_goal_type: "time".to_string(),
             daily_goal_wpm: 0.0,
             daily_goal_accuracy: 0.0,
+            daily_goal_minutes: 0,
         }
     }
 }
@@ -382,6 +393,15 @@ impl SettingsStore {
                     )));
                 }
                 settings.daily_goal_accuracy = value;
+            }
+            "daily_goal_minutes" => {
+                let value = integer_value(&value, key)?;
+                if !(0..=MAX_DAILY_GOAL_MINUTES).contains(&value) {
+                    return Err(validation_error(format!(
+                        "daily_goal_minutes must be between 0 and {MAX_DAILY_GOAL_MINUTES}"
+                    )));
+                }
+                settings.daily_goal_minutes = value;
             }
             _ => {
                 return Err(validation_error(format!("Unknown setting key: {key}")));
@@ -663,6 +683,7 @@ mod tests {
             daily_goal_type: "time".to_string(),
             daily_goal_wpm: 0.0,
             daily_goal_accuracy: 0.0,
+            daily_goal_minutes: 0,
         };
 
         let toml_str = toml::to_string(&settings).unwrap();

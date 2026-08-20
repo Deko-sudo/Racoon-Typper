@@ -135,9 +135,9 @@
       <div class="setting-row">
         <label for="setting-caret">{t(uiLang, 'settings.caret_style')}</label>
         <select id="setting-caret" value={settings.caret_style} onchange={(e) => onUpdateSetting('caret_style', e.currentTarget.value)}>
-          <option value="underline">Underline</option>
-          <option value="block">Block</option>
-          <option value="solid">Solid</option>
+          <option value="thin">Thin</option>
+          <option value="thick">Thick</option>
+          <option value="bubble">Bubble</option>
           <option value="off">Off</option>
         </select>
       </div>
