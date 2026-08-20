@@ -18,7 +18,7 @@
   --color-selection: #D3C6C1;
   --color-caret: #87534D;
   --color-typing-pending: #6B625F;
-  --color-typing-current: #332E2D;
+  --color-typing-current: #000000;
   --color-typing-correct: #64806A;
   --color-typing-incorrect: #A95353;
   --color-typing-corrected: #AC7469;

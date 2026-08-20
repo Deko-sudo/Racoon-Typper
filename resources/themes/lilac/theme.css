@@ -12,12 +12,12 @@
   --color-border-strong: #a898b4;
   --color-accent: #8a6db0;
   --color-accent-hover: #a888cc;
-  --color-accent-text: #f0ecf4;
+  --color-accent-text: #0f0c12;
   --color-focus-ring: #8a6db0;
   --color-selection: #d8cce4;
   --color-caret: #6a4e90;
   --color-typing-pending: #6a5e74;
-  --color-typing-current: #ffffff;
+  --color-typing-current: #000000;
   --color-typing-correct: #6a8a5a;
   --color-typing-incorrect: #aa4868;
   --color-typing-corrected: #b07840;
