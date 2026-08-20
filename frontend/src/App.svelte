@@ -26,6 +26,8 @@
   import DashboardView from './components/DashboardView.svelte';
   import AnalyticsView from './components/AnalyticsView.svelte';
   import AchievementGallery from './components/AchievementGallery.svelte';
+  import PomodoroView from './components/PomodoroView.svelte';
+  import CheatsheetOverlay from './components/CheatsheetOverlay.svelte';
 
   // Navigation
   const navigation = createNavigationStore('test');
@@ -110,6 +112,9 @@
 
   // Zen mode — hide everything except text
   let zenActive = $state(false);
+
+  // Cheatsheet overlay
+  let cheatsheetOpen = $state(false);
 
   // Achievement tracking — snapshot before test for auto-toast
   let preTestAchievements = $state<Array<{ id: string; unlocked: boolean }>>([]);
@@ -409,6 +414,21 @@
       || activeElement instanceof HTMLTextAreaElement
       || (activeElement instanceof HTMLElement && activeElement.isContentEditable)
     ) {
+      return;
+    }
+
+    // Cheatsheet overlay: '?' toggles, Esc closes. Handled before vim-mode so
+    // the overlay never leaks keys into navigation or a running test.
+    if (cheatsheetOpen) {
+      if (e.key === 'Escape' || e.key === '?') {
+        e.preventDefault();
+        cheatsheetOpen = false;
+      }
+      return;
+    }
+    if (e.key === '?' && !isRunning) {
+      e.preventDefault();
+      cheatsheetOpen = true;
       return;
     }
 
@@ -909,6 +929,13 @@
       {onReturnToLessons}
       uiLang={uiLang}
     />
+  {:else if view === 'pomodoro'}
+    <PomodoroView
+      {settings}
+      {uiLang}
+      onUpdateSetting={updateSetting}
+      onPhaseComplete={() => void playSound('lesson_complete')}
+    />
   {:else if view === 'history'}
     <HistoryView
       {history}
@@ -982,6 +1009,10 @@
 </main>
 
 <NotificationStack notifications={notificationStore.notifications} />
+
+{#if cheatsheetOpen}
+  <CheatsheetOverlay {uiLang} onClose={() => { cheatsheetOpen = false; }} />
+{/if}
 
 <style>
   :root {

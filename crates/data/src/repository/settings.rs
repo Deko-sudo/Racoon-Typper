@@ -57,6 +57,12 @@ pub struct AppSettings {
     /// Daily typing-time goal in minutes, used when `daily_goal_type == "time"`.
     #[serde(default)]
     pub daily_goal_minutes: i64,
+    /// Pomodoro work phase length in minutes.
+    #[serde(default = "default_pomodoro_work_min")]
+    pub pomodoro_work_min: i64,
+    /// Pomodoro break phase length in minutes.
+    #[serde(default = "default_pomodoro_break_min")]
+    pub pomodoro_break_min: i64,
 }
 
 fn default_theme() -> String {
@@ -128,11 +134,20 @@ fn default_daily_goal_type() -> String {
     "time".to_string()
 }
 
+fn default_pomodoro_work_min() -> i64 {
+    25
+}
+
+fn default_pomodoro_break_min() -> i64 {
+    5
+}
+
 const MIN_FONT_SIZE: i64 = 12;
 const MAX_FONT_SIZE: i64 = 72;
 const MAX_DAILY_GOAL_WPM: f64 = 300.0;
 const MAX_DAILY_GOAL_ACCURACY: f64 = 100.0;
 const MAX_DAILY_GOAL_MINUTES: i64 = 1_440;
+const MAX_POMODORO_MINUTES: i64 = 180;
 static SETTINGS_TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 fn validation_error(message: impl Into<String>) -> DbError {
@@ -211,6 +226,8 @@ impl Default for AppSettings {
             daily_goal_wpm: 0.0,
             daily_goal_accuracy: 0.0,
             daily_goal_minutes: 0,
+            pomodoro_work_min: 25,
+            pomodoro_break_min: 5,
         }
     }
 }
@@ -424,6 +441,24 @@ impl SettingsStore {
                     )));
                 }
                 settings.daily_goal_minutes = value;
+            }
+            "pomodoro_work_min" => {
+                let value = integer_value(&value, key)?;
+                if !(1..=MAX_POMODORO_MINUTES).contains(&value) {
+                    return Err(validation_error(format!(
+                        "pomodoro_work_min must be between 1 and {MAX_POMODORO_MINUTES}"
+                    )));
+                }
+                settings.pomodoro_work_min = value;
+            }
+            "pomodoro_break_min" => {
+                let value = integer_value(&value, key)?;
+                if !(1..=MAX_POMODORO_MINUTES).contains(&value) {
+                    return Err(validation_error(format!(
+                        "pomodoro_break_min must be between 1 and {MAX_POMODORO_MINUTES}"
+                    )));
+                }
+                settings.pomodoro_break_min = value;
             }
             _ => {
                 return Err(validation_error(format!("Unknown setting key: {key}")));
@@ -674,6 +709,41 @@ mod tests {
     }
 
     #[test]
+    fn pomodoro_settings_default_and_update() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        let defaults = store.load().unwrap();
+        assert_eq!(defaults.pomodoro_work_min, 25);
+        assert_eq!(defaults.pomodoro_break_min, 5);
+
+        let settings = store
+            .set("pomodoro_work_min", toml::Value::Integer(50))
+            .unwrap();
+        assert_eq!(settings.pomodoro_work_min, 50);
+        let settings = store
+            .set("pomodoro_break_min", toml::Value::Integer(10))
+            .unwrap();
+        assert_eq!(settings.pomodoro_break_min, 10);
+        assert_eq!(store.load().unwrap().pomodoro_work_min, 50);
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn pomodoro_settings_reject_out_of_range() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert!(store.set("pomodoro_work_min", toml::Value::Integer(0)).is_err());
+        assert!(store
+            .set("pomodoro_break_min", toml::Value::Integer(181))
+            .is_err());
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
     fn default_values() {
         let settings = AppSettings::default();
         assert_eq!(settings.theme, "racoon_graphite");
@@ -707,6 +777,8 @@ mod tests {
             daily_goal_wpm: 0.0,
             daily_goal_accuracy: 0.0,
             daily_goal_minutes: 0,
+            pomodoro_work_min: 25,
+            pomodoro_break_min: 5,
         };
 
         let toml_str = toml::to_string(&settings).unwrap();

@@ -519,6 +519,56 @@ pub fn export_json(data: &serde_json::Value) -> String {
     serde_json::to_string_pretty(data).unwrap_or_default()
 }
 
+/// Экспорт данных в Markdown: таблица + сводка.
+pub fn export_markdown(rows: &[Vec<String>], summary: &[(&str, String)]) -> String {
+    let mut out = String::new();
+    out.push_str("# Racoon Typper export\n\n");
+
+    if !summary.is_empty() {
+        out.push_str("## Summary\n\n");
+        out.push_str("| Metric | Value |\n|---|---|\n");
+        for (label, value) in summary {
+            out.push_str(&format!(
+                "| {} | {} |\n",
+                escape_markdown_cell(label),
+                escape_markdown_cell(value)
+            ));
+        }
+        out.push('\n');
+    }
+
+    if let Some(header) = rows.first() {
+        out.push_str("## Tests\n\n");
+        out.push_str("| ");
+        out.push_str(
+            &header
+                .iter()
+                .map(|cell| escape_markdown_cell(cell))
+                .collect::<Vec<_>>()
+                .join(" | "),
+        );
+        out.push_str(" |\n");
+        out.push_str(&format!("|{}|\n", "---|".repeat(header.len())));
+        for row in &rows[1..] {
+            out.push_str("| ");
+            out.push_str(
+                &row.iter()
+                    .map(|cell| escape_markdown_cell(cell))
+                    .collect::<Vec<_>>()
+                    .join(" | "),
+            );
+            out.push_str(" |\n");
+        }
+        out.push('\n');
+    }
+
+    out
+}
+
+fn escape_markdown_cell(cell: &str) -> String {
+    cell.replace('|', "\\|").replace('\n', " ")
+}
+
 /// Экспорт данных в CSV.
 pub fn export_csv(rows: &[Vec<String>]) -> String {
     rows.iter()
@@ -812,6 +862,34 @@ mod tests {
         let rows = vec![vec!["Name, with comma".to_string(), "Value".to_string()]];
         let csv = export_csv(&rows);
         assert!(csv.contains("\"Name, with comma\""));
+    }
+
+    #[test]
+    fn export_markdown_renders_table_and_summary() {
+        let rows = vec![
+            vec!["Date".to_string(), "WPM".to_string()],
+            vec!["2026-06-01".to_string(), "40".to_string()],
+        ];
+        let summary = vec![("Total tests", "1".to_string())];
+        let md = export_markdown(&rows, &summary);
+        assert!(md.contains("# Racoon Typper export"));
+        assert!(md.contains("| Total tests | 1 |"));
+        assert!(md.contains("| Date | WPM |"));
+        assert!(md.contains("| 2026-06-01 | 40 |"));
+    }
+
+    #[test]
+    fn export_markdown_escapes_pipes() {
+        let rows = vec![vec!["A|B".to_string()]];
+        let md = export_markdown(&rows, &[]);
+        assert!(md.contains("A\\|B"));
+    }
+
+    #[test]
+    fn export_markdown_empty_rows_omits_table() {
+        let md = export_markdown(&[], &[]);
+        assert!(md.contains("# Racoon Typper export"));
+        assert!(!md.contains("## Tests"));
     }
 
     // ── Session Replay tests ──

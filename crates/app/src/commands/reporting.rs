@@ -265,6 +265,50 @@ pub(crate) fn export_data(state: State<'_, AppState>, format: String) -> Result<
             }
             Ok(racoon_core::analytics::export_csv(&rows))
         }
+        "markdown" => {
+            let mut rows = vec![vec![
+                "Session_id".to_string(),
+                "Date".to_string(),
+                "Mode".to_string(),
+                "WPM".to_string(),
+                "Accuracy".to_string(),
+                "Duration_ms".to_string(),
+            ]];
+            for test in &history {
+                rows.push(vec![
+                    test.session_id.to_string(),
+                    test.created_at.clone(),
+                    test.mode_type.clone(),
+                    format!("{:.1}", test.wpm),
+                    format!("{:.1}", test.accuracy),
+                    test.duration_ms.to_string(),
+                ]);
+            }
+            let total = history.len();
+            let avg_wpm = if total > 0 {
+                history.iter().map(|test| test.wpm).sum::<f64>() / total as f64
+            } else {
+                0.0
+            };
+            let best_wpm = history.iter().map(|test| test.wpm).fold(0.0_f64, f64::max);
+            let avg_accuracy = if total > 0 {
+                history.iter().map(|test| test.accuracy).sum::<f64>() / total as f64
+            } else {
+                0.0
+            };
+            let best_accuracy = history
+                .iter()
+                .map(|test| test.accuracy)
+                .fold(0.0_f64, f64::max);
+            let summary: Vec<(&str, String)> = vec![
+                ("Total tests", total.to_string()),
+                ("Avg WPM", format!("{avg_wpm:.1}")),
+                ("Best WPM", format!("{best_wpm:.1}")),
+                ("Avg accuracy", format!("{avg_accuracy:.1}%")),
+                ("Best accuracy", format!("{best_accuracy:.1}%")),
+            ];
+            Ok(racoon_core::analytics::export_markdown(&rows, &summary))
+        }
         _ => Err(AppError::InvalidConfig(format!(
             "Unknown export format: {format}"
         ))),

@@ -7,12 +7,21 @@ import assert from 'node:assert/strict';
 import { vimActionForKey } from '../frontend/src/lib/vimNavigation.ts';
 
 test('h/l navigate between tabs, bounded at the edges', () => {
-  // From 'test' (index 1), h goes to dashboard, l goes to lessons.
+  // From 'test' (index 1), h goes to dashboard, l goes to pomodoro.
   assert.deepEqual(vimActionForKey('h', 'test', false), {
     action: { type: 'prev_tab' },
     nextPendingG: false,
   });
   assert.deepEqual(vimActionForKey('l', 'test', false), {
+    action: { type: 'next_tab' },
+    nextPendingG: false,
+  });
+  // From 'pomodoro' (index 2), h goes back to test, l goes to lessons.
+  assert.deepEqual(vimActionForKey('h', 'pomodoro', false), {
+    action: { type: 'prev_tab' },
+    nextPendingG: false,
+  });
+  assert.deepEqual(vimActionForKey('l', 'pomodoro', false), {
     action: { type: 'next_tab' },
     nextPendingG: false,
   });

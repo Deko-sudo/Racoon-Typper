@@ -10,7 +10,7 @@
   let achievements = $state<Achievement[]>([]);
   let insights = $state<Insight[]>([]);
   let consistency = $state<ConsistencyReport | null>(null);
-  let exportFormat = $state<'json' | 'csv'>('json');
+  let exportFormat = $state<'json' | 'csv' | 'markdown'>('json');
   let exportResult = $state('');
   let reportResult = $state('');
   let errorMsg = $state('');
@@ -35,11 +35,12 @@
 
   function downloadExport() {
     if (!exportResult) return;
-    const blob = new Blob([exportResult], { type: 'text/plain' });
+    const isMarkdown = exportFormat === 'markdown';
+    const blob = new Blob([exportResult], { type: isMarkdown ? 'text/markdown' : 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `racoon-typper-export.${exportFormat}`;
+    a.download = `racoon-typper-export.${isMarkdown ? 'md' : exportFormat}`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -142,6 +143,7 @@
       <select bind:value={exportFormat}>
         <option value="json">JSON</option>
         <option value="csv">CSV</option>
+        <option value="markdown">{t(uiLang, 'analytics.export_markdown')}</option>
       </select>
       <button onclick={doExport}>{t(uiLang, 'analytics.generate')}</button>
       {#if exportResult}<button onclick={downloadExport}>{t(uiLang, 'analytics.download')}</button>{/if}

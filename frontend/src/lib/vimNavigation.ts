@@ -17,6 +17,7 @@ export type VimAction =
 export const VIM_VIEWS = [
   'dashboard',
   'test',
+  'pomodoro',
   'lessons',
   'weakkeys',
   'analytics',
