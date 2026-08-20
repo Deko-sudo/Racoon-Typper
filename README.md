@@ -50,9 +50,9 @@
 > _Screenshot pending — `hero-test.png` (Test view, mid-test, `racoon_graphite`)_
 <!-- <p align="center"><img src="docs/screenshots/hero-test.png" alt="Racoon Typper typing test in progress" width="720" /></p> -->
 
-### 🎨 25 built-in themes
+### 🎨 50 built-in themes
 
-Racoon Typper includes 25 local themes spanning graphite, light, warm, nature,
+Racoon Typper includes 50 local themes spanning graphite, light, warm, nature,
 terminal, dark blue-gray and high-contrast variants.
 
 | Graphite | Silver | Warm | High Contrast |
@@ -88,7 +88,7 @@ local SQLite data store. **No accounts, no servers, no telemetry** — your
 typing data never leaves your machine.
 
 > **Status:** The repository is undergoing a controlled modernization.
-> Release metadata is `1.1.0`, but this is **not** a production-ready release
+> Release metadata is `1.2.0`, but this is **not** a production-ready release
 > claim until the [roadmap gates](ROADMAP.md) are complete. The verified
 > development target is **Linux x86_64**. See
 > [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) for the distinction between
@@ -103,7 +103,7 @@ typing data never leaves your machine.
   **15 languages** (en, ru, de, es, fr, it, pt, pl, cs, ro, uk, ja, ko,
   zh-hk, zh-tw)
 - **Keyboard training** — weak-key analysis and adaptive practice
-- **Themes** — 25 local built-in themes spanning graphite, light, warm, nature,
+- **Themes** — 50 local built-in themes spanning graphite, light, warm, nature,
   terminal, dark blue-gray, and high-contrast variants with a documented
   semantic token contract
 - **Replay & review** — replay past tests, frame by frame
