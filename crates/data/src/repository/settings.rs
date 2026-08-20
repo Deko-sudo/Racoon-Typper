@@ -146,13 +146,15 @@ fn validate_custom_theme_json(value: &str) -> Result<String, DbError> {
             "custom_theme_colors must be at most {MAX_CUSTOM_THEME_JSON_CHARS} characters"
         )));
     }
-    let parsed: serde_json::Value = serde_json::from_str(value)
-        .map_err(|error| validation_error(format!("custom_theme_colors must be valid JSON: {error}")))?;
+    let parsed: serde_json::Value = serde_json::from_str(value).map_err(|error| {
+        validation_error(format!("custom_theme_colors must be valid JSON: {error}"))
+    })?;
     let object = parsed
         .as_object()
         .ok_or_else(|| validation_error("custom_theme_colors must be a JSON object"))?;
 
-    let mut normalized: std::collections::BTreeMap<String, String> = std::collections::BTreeMap::new();
+    let mut normalized: std::collections::BTreeMap<String, String> =
+        std::collections::BTreeMap::new();
     for (key, color) in object {
         if !CUSTOM_THEME_VARIABLES.contains(&key.as_str()) {
             return Err(validation_error(format!(
@@ -170,8 +172,9 @@ fn validate_custom_theme_json(value: &str) -> Result<String, DbError> {
         }
         normalized.insert(key.clone(), format!("#{}", hex.to_ascii_lowercase()));
     }
-    serde_json::to_string(&normalized)
-        .map_err(|error| validation_error(format!("custom_theme_colors serialization failed: {error}")))
+    serde_json::to_string(&normalized).map_err(|error| {
+        validation_error(format!("custom_theme_colors serialization failed: {error}"))
+    })
 }
 
 fn default_true() -> bool {
@@ -878,7 +881,9 @@ mod tests {
         let path = temp_settings_path();
         let store = SettingsStore::new(path.clone());
 
-        assert!(store.set("pomodoro_work_min", toml::Value::Integer(0)).is_err());
+        assert!(store
+            .set("pomodoro_work_min", toml::Value::Integer(0))
+            .is_err());
         assert!(store
             .set("pomodoro_break_min", toml::Value::Integer(181))
             .is_err());
@@ -897,7 +902,10 @@ mod tests {
             .unwrap();
         // Нормализация: lowercase hex, отсортированные ключи.
         assert!(settings.custom_theme_colors.contains("\"#c5cbd4\""));
-        assert_eq!(store.load().unwrap().custom_theme_colors, settings.custom_theme_colors);
+        assert_eq!(
+            store.load().unwrap().custom_theme_colors,
+            settings.custom_theme_colors
+        );
 
         std::fs::remove_file(&path).ok();
     }

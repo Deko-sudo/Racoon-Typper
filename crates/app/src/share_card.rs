@@ -82,7 +82,10 @@ fn draw_text(
         Ok(f) => f,
         Err(_) => return 0.0,
     };
-    let scale = PxScale { x: size_px, y: size_px };
+    let scale = PxScale {
+        x: size_px,
+        y: size_px,
+    };
     let scaled = font.as_scaled(scale);
     let mut pen_x = x;
 
@@ -91,7 +94,10 @@ fn draw_text(
         let glyph = Glyph {
             id: glyph_id,
             scale,
-            position: Point { x: pen_x, y: baseline_y },
+            position: Point {
+                x: pen_x,
+                y: baseline_y,
+            },
         };
         if let Some(outlined) = font.outline_glyph(glyph) {
             let bounds = outlined.px_bounds();
@@ -115,9 +121,14 @@ fn text_width(font_data: &[u8], text: &str, size_px: f32) -> f32 {
         Ok(f) => f,
         Err(_) => return 0.0,
     };
-    let scale = PxScale { x: size_px, y: size_px };
+    let scale = PxScale {
+        x: size_px,
+        y: size_px,
+    };
     let scaled = font.as_scaled(scale);
-    text.chars().map(|ch| scaled.h_advance(font.glyph_id(ch))).sum()
+    text.chars()
+        .map(|ch| scaled.h_advance(font.glyph_id(ch)))
+        .sum()
 }
 
 /// Рисует stat-блок: значение (крупно, акцент) + подпись (мелко, sub).
@@ -132,7 +143,15 @@ fn draw_stat_block(
 ) {
     let vw = draw_text(img, fonts.bold, value, x, y_baseline, 56.0, colors.accent);
     let _ = vw;
-    draw_text(img, fonts.regular, label, x, y_baseline + 28.0, 20.0, colors.sub);
+    draw_text(
+        img,
+        fonts.regular,
+        label,
+        x,
+        y_baseline + 28.0,
+        20.0,
+        colors.sub,
+    );
 }
 
 struct ShareFonts {
@@ -174,9 +193,25 @@ pub fn render_share_card(stats: &ShareStats, colors: &ThemeColors) -> Result<Vec
     }
 
     // Заголовок.
-    draw_text(&mut img, fonts.bold, "RACOON TYPPER", 48.0, 76.0, 34.0, pc.accent);
+    draw_text(
+        &mut img,
+        fonts.bold,
+        "RACOON TYPPER",
+        48.0,
+        76.0,
+        34.0,
+        pc.accent,
+    );
     let subtitle = format!("{} · {} · {}", stats.mode, stats.language, stats.date);
-    draw_text(&mut img, fonts.regular, &subtitle, 48.0, 108.0, 18.0, pc.sub);
+    draw_text(
+        &mut img,
+        fonts.regular,
+        &subtitle,
+        48.0,
+        108.0,
+        18.0,
+        pc.sub,
+    );
 
     // Разделитель.
     let divider = mix(pc.background, pc.sub, 0.25);
@@ -190,7 +225,11 @@ pub fn render_share_card(stats: &ShareStats, colors: &ThemeColors) -> Result<Vec
         (48.0f32, format!("{:.1}", stats.wpm), "WPM"),
         (264.0f32, format!("{:.1}", stats.raw_wpm), "RAW WPM"),
         (480.0f32, format!("{:.1}%", stats.accuracy), "ACCURACY"),
-        (696.0f32, format!("{:.1}s", stats.duration_ms as f64 / 1000.0), "TIME"),
+        (
+            696.0f32,
+            format!("{:.1}s", stats.duration_ms as f64 / 1000.0),
+            "TIME",
+        ),
     ];
     for (x, value, label) in cols {
         draw_stat_block(&mut img, &fonts, &value, label, x, baseline, &pc);
@@ -200,7 +239,15 @@ pub fn render_share_card(stats: &ShareStats, colors: &ThemeColors) -> Result<Vec
     for x in 48..(CARD_WIDTH - 48) {
         img.put_pixel(x, 330, divider);
     }
-    draw_text(&mut img, fonts.regular, "KEYBOARD HEATMAP", 48.0, 366.0, 16.0, pc.sub);
+    draw_text(
+        &mut img,
+        fonts.regular,
+        "KEYBOARD HEATMAP",
+        48.0,
+        366.0,
+        16.0,
+        pc.sub,
+    );
 
     // Мини-heatmap: буквы EN-раскладки, 3 ряда, клетка 24px.
     const ROWS: &[&str] = &["qwertyuiop", "asdfghjkl", "zxcvbnm"];
@@ -216,9 +263,9 @@ pub fn render_share_card(stats: &ShareStats, colors: &ThemeColors) -> Result<Vec
                 Some(d) if d.total_attempts > 0 => {
                     let acc = d.correct as f32 / d.total_attempts as f32;
                     // accuracy 1.0 → accent, 0.0 → error.
-                    (mix(pc.accent, pc.error, 1.0 - acc), pc.background)
+                    (mix(pc.accent, pc.error, 1.0 - acc), pc.text)
                 }
-                _ => (mix(pc.background, pc.sub, 0.15), pc.sub),
+                _ => (mix(pc.surface, pc.sub, 0.15), pc.sub),
             };
             let x0 = 48 + row_offset + (col_idx as u32) * (CELL + GAP);
             let y0 = HEAT_TOP + (row_idx as u32) * (CELL + GAP);
@@ -229,10 +276,8 @@ pub fn render_share_card(stats: &ShareStats, colors: &ThemeColors) -> Result<Vec
                         continue;
                     }
                     // Скругление углов: пропускаем угловые пиксели.
-                    let corner = (dx < rounded && dy < rounded)
-                        || (dx >= CELL - rounded && dy < rounded)
-                        || (dx < rounded && dy >= CELL - rounded)
-                        || (dx >= CELL - rounded && dy >= CELL - rounded);
+                    let corner = (dx < rounded || dx >= CELL - rounded)
+                        && (dy < rounded || dy >= CELL - rounded);
                     let in_corner_circle = |cx: u32, cy: u32| {
                         let ddx = (dx as i64 - cx as i64).abs();
                         let ddy = (dy as i64 - cy as i64).abs();
@@ -240,8 +285,16 @@ pub fn render_share_card(stats: &ShareStats, colors: &ThemeColors) -> Result<Vec
                     };
                     let skip = corner
                         && !in_corner_circle(
-                            if dx < rounded { rounded - 1 } else { CELL - rounded },
-                            if dy < rounded { rounded - 1 } else { CELL - rounded },
+                            if dx < rounded {
+                                rounded - 1
+                            } else {
+                                CELL - rounded
+                            },
+                            if dy < rounded {
+                                rounded - 1
+                            } else {
+                                CELL - rounded
+                            },
                         );
                     if skip {
                         continue;
@@ -267,7 +320,10 @@ pub fn render_share_card(stats: &ShareStats, colors: &ThemeColors) -> Result<Vec
 
     let mut bytes = Vec::new();
     image::DynamicImage::ImageRgb8(img)
-        .write_to(&mut std::io::Cursor::new(&mut bytes), image::ImageFormat::Png)
+        .write_to(
+            &mut std::io::Cursor::new(&mut bytes),
+            image::ImageFormat::Png,
+        )
         .map_err(|e| format!("PNG encode failed: {e}"))?;
     Ok(bytes)
 }
@@ -291,11 +347,21 @@ mod tests {
         let mut heatmap = BTreeMap::new();
         heatmap.insert(
             "a".to_string(),
-            KeyHeatData { total_attempts: 12, correct: 11, incorrect: 1, avg_wpm_at_key: 0.0 },
+            KeyHeatData {
+                total_attempts: 12,
+                correct: 11,
+                incorrect: 1,
+                avg_wpm_at_key: 0.0,
+            },
         );
         heatmap.insert(
             "z".to_string(),
-            KeyHeatData { total_attempts: 8, correct: 2, incorrect: 6, avg_wpm_at_key: 0.0 },
+            KeyHeatData {
+                total_attempts: 8,
+                correct: 2,
+                incorrect: 6,
+                avg_wpm_at_key: 0.0,
+            },
         );
         ShareStats {
             wpm: 87.4,
@@ -317,7 +383,11 @@ mod tests {
             &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A],
             "PNG magic bytes"
         );
-        assert!(bytes.len() > 10_000, "card should be substantial, got {} bytes", bytes.len());
+        assert!(
+            bytes.len() > 10_000,
+            "card should be substantial, got {} bytes",
+            bytes.len()
+        );
     }
 
     #[test]
@@ -325,7 +395,10 @@ mod tests {
         let mut colors = sample_colors();
         colors.background = "not-a-hex".to_string();
         let bytes = render_share_card(&sample_stats(), &colors).unwrap();
-        assert_eq!(&bytes[..8], &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]);
+        assert_eq!(
+            &bytes[..8],
+            &[0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A]
+        );
     }
 
     #[test]
