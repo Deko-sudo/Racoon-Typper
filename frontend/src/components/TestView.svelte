@@ -76,8 +76,9 @@
   let isRussian = $derived(sessionLanguage === 'ru');
 
   // Нормализация стиля каретки: legacy-значения (underline/solid/block) из
-  // старых настроек маппятся на актуальные рендеры. Все стили рисуются
-  // ПЕРЕД буквой — никогда не перекрывают символ.
+  // старых настроек маппятся на актуальные рендеры. Стиль «before» рисует
+  // курсор перед следующей буквой, «after» — за последней напечатанной
+  // (::after предыдущего символа). Никогда не перекрывают символ.
   let normalizedCaretStyle = $derived.by(() => {
     switch (settings?.caret_style) {
       case 'thick': return 'thick';
@@ -88,6 +89,13 @@
       default: return 'thin';         // thin + underline + undefined
     }
   });
+
+  let isCaretAfter = $derived(settings?.caret_position === 'after');
+
+  // В режиме «after» курсор висит на предыдущем символе; если ещё ничего не
+  // напечатано (viewportOffset === 0) — fallback на «before»-рендер.
+  let showCaretBefore = $derived((!isCaretAfter || viewportOffset === 0) && normalizedCaretStyle !== 'off');
+  let showCaretTrail = $derived(isCaretAfter && viewportOffset > 0 && normalizedCaretStyle !== 'off');
 
   function charClass(char: CharStatus, idx: number): string {
     const classes: string[] = [char.status];
@@ -139,7 +147,11 @@
     >
       {#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}
       {#each viewportChars as char, i}
-        <span class="char {charClass(char, i)}" class:caret={i === viewportOffset}>{char.expected === ' ' ? '\u00A0' : char.expected}</span>
+        <span
+          class="char {charClass(char, i)}"
+          class:caret={showCaretBefore && i === viewportOffset}
+          class:caret-trail={showCaretTrail && i === viewportOffset - 1}
+        >{char.expected === ' ' ? '\u00A0' : char.expected}</span>
       {/each}
       {#if viewportEnd < charStatuses.length}<span class="text-ellipsis">…</span>{/if}
     </div></div>
@@ -198,6 +210,17 @@
     top:.02em; bottom:.02em;
   }
   .text-display.caret-off .char.caret::before { content:none; }
+  /* Режим «after» (caret_position): курсор за последней напечатанной буквой —
+     те же варианты, но на ::after предыдущего символа, зеркально. */
+  .char.caret-trail::after { content:''; position:absolute; right:-.3em; top:.05em; bottom:.05em; width:.12em; border-radius:999px; background:var(--color-caret); animation:blink .9s ease-in-out infinite; }
+  .text-display.caret-thick .char.caret-trail::after { right:-.46em; width:.24em; border-radius:.05em; }
+  .text-display.caret-bubble .char.caret-trail::after {
+    right:-.6em; width:.34em; border-radius:999px;
+    background:color-mix(in srgb, var(--color-caret) 30%, transparent);
+    border:.09em solid var(--color-caret);
+    box-shadow:0 0 .35em color-mix(in srgb, var(--color-caret) 55%, transparent);
+    top:.02em; bottom:.02em;
+  }
   @keyframes blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} } @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-2px)} 75%{transform:translateX(2px)} }
   .info { display: flex; align-items: center; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
   .abort-btn {

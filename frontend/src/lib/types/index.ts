@@ -98,6 +98,7 @@ export interface AppSettings {
   theme: string;
   font_size: number;
   caret_style: string;
+  caret_position: string;
   show_live_wpm: boolean;
   show_accuracy: boolean;
   show_keyboard_trainer: boolean;

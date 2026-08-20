@@ -18,6 +18,10 @@ pub struct AppSettings {
     pub font_size: i64,
     #[serde(default = "default_caret_style")]
     pub caret_style: String,
+    /// Позиция каретки относительно символа: "before" (перед следующей буквой,
+    /// индустриальный стандарт — дефолт) или "after" (за последней напечатанной).
+    #[serde(default = "default_caret_position")]
+    pub caret_position: String,
     #[serde(default = "default_true")]
     pub show_live_wpm: bool,
     #[serde(default = "default_true")]
@@ -98,6 +102,14 @@ fn default_font_size() -> i64 {
 
 fn default_caret_style() -> String {
     "underline".to_string()
+}
+
+fn default_caret_position() -> String {
+    "before".to_string()
+}
+
+fn valid_caret_position(value: &str) -> bool {
+    matches!(value, "before" | "after")
 }
 
 fn default_true() -> bool {
@@ -181,6 +193,7 @@ impl Default for AppSettings {
             theme: default_theme(),
             font_size: 24,
             caret_style: "underline".to_string(),
+            caret_position: "before".to_string(),
             show_live_wpm: true,
             show_accuracy: true,
             show_keyboard_trainer: true,
@@ -317,6 +330,15 @@ impl SettingsStore {
                     )));
                 }
                 settings.caret_style = value.to_string();
+            }
+            "caret_position" => {
+                let value = string_value(&value, key)?;
+                if !valid_caret_position(value) {
+                    return Err(validation_error(format!(
+                        "Unsupported caret position: {value}"
+                    )));
+                }
+                settings.caret_position = value.to_string();
             }
             "show_live_wpm" => {
                 settings.show_live_wpm = boolean_value(&value, key)?;
@@ -667,6 +689,7 @@ mod tests {
             theme: "racoon_graphite".to_string(),
             font_size: 30,
             caret_style: "solid".to_string(),
+            caret_position: "after".to_string(),
             show_live_wpm: false,
             show_accuracy: true,
             show_keyboard_trainer: true,

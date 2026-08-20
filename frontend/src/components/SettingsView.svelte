@@ -142,6 +142,13 @@
         </select>
       </div>
       <div class="setting-row">
+        <label for="setting-caret-pos">{t(uiLang, 'settings.caret_position')}</label>
+        <select id="setting-caret-pos" value={settings.caret_position || 'before'} onchange={(e) => onUpdateSetting('caret_position', e.currentTarget.value)}>
+          <option value="before">{t(uiLang, 'settings.caret_position_before')}</option>
+          <option value="after">{t(uiLang, 'settings.caret_position_after')}</option>
+        </select>
+      </div>
+      <div class="setting-row">
         <label for="setting-live-wpm">{t(uiLang, 'settings.show_live_wpm')}</label>
         <label class="toggle"><input id="setting-live-wpm" type="checkbox" checked={settings.show_live_wpm} onchange={(e) => onUpdateSetting('show_live_wpm', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
