@@ -17,6 +17,7 @@ pub trait TestRepository {
         mode_filter: Option<&str>,
     ) -> Result<Vec<TestSummary>, DbError>;
     fn get_by_id(&self, id: i64) -> Result<TestDetail, DbError>;
+    fn get_id_by_session_id(&self, session_id: &SessionId) -> Result<i64, DbError>;
     fn get_count(&self, mode_filter: Option<&str>) -> Result<i64, DbError>;
     fn get_recent_heatmaps(
         &self,
@@ -166,6 +167,16 @@ impl<'a> TestRepository for SqliteTestRepository<'a> {
             .map_err(|e| DbError::NotFound(format!("Test id={}: {}", id, e)))?;
 
         Ok(TestDetail::from(row))
+    }
+
+    fn get_id_by_session_id(&self, session_id: &SessionId) -> Result<i64, DbError> {
+        self.conn
+            .query_row(
+                "SELECT id FROM tests WHERE session_id = ?1",
+                params![session_id.as_str()],
+                |row| row.get(0),
+            )
+            .map_err(|e| DbError::NotFound(format!("Test session={}: {}", session_id, e)))
     }
 
     fn get_count(&self, mode_filter: Option<&str>) -> Result<i64, DbError> {

@@ -6,21 +6,21 @@
 //! adapters without exposing those concerns to the kernel.
 
 use racoon_application::{
-    SessionCompletion, SessionCompletionStore, SessionIdSource, SessionKernel, SessionModeFactory,
-    SessionPersistenceReceipt, SessionRandomSource,
+    CompletionIntent, CompletionPolicySnapshot, FinalizationClaimOutcome, FinalizationLedger,
+    FinalizationLedgerClaimOutcome, FinalizationOutcome, LedgerMutationOutcome, SessionCompletion,
+    SessionCompletionStore, SessionFinalizer, SessionIdSource, SessionKernel, SessionModeFactory,
+    SessionPersistenceReceipt, SessionRandomSource, SessionRecoveryLedger, SessionWallClock,
+    StartedSession,
 };
 use racoon_core::{
     CoreEngine, CustomMode, LessonMode, QuoteMode, TestMode, TestSessionInfo, TimeMode, WordsMode,
 };
 use racoon_data::repository::{
-    AppSettings, CustomTextRepository, DailyStatsRepository, LessonRepository,
-    PersonalBestsRepository, ReplayRepository, SqliteCustomTextRepository,
-    SqliteDailyStatsRepository, SqliteLessonRepository, SqlitePersonalBestsRepository,
-    SqliteReplayRepository, SqliteStreakRepository, SqliteTestRepository, StreakRecord,
-    StreakRepository, TestRepository,
+    AppSettings, CustomTextRepository, LessonRepository, SqliteCustomTextRepository,
+    SqliteFinalizationLedger, SqliteLessonRepository, SqliteSessionFinalizer,
+    SqliteSessionRecoveryLedger, SqliteTestRepository, TestRepository,
 };
-use racoon_data::DbError;
-use racoon_domain::{EngineOutput, SessionId, TestRecord};
+use racoon_domain::{EngineOutput, SessionId};
 use racoon_resources::{course_loader, quote_loader, word_pack_loader, SystemRandomSource};
 use std::sync::Mutex;
 
@@ -32,8 +32,6 @@ use crate::validation::{
 };
 
 pub(crate) use racoon_application::SessionStartRequest as StartTestRequest;
-
-type CompletedSession = SessionCompletion;
 
 struct UuidV7SessionIdSource;
 
@@ -58,11 +56,21 @@ impl SessionModeFactory for BackendSessionModeFactory {
     }
 }
 
-struct SqliteSessionCompletionStore<'a> {
+/// Durable completion store: routes live completion through the accepted
+/// V006–V008 recovery protocol instead of writing effects directly.
+///
+/// The sequence is: record the immutable completion intent (V006 running →
+/// awaiting_persistence, V007 payload), claim it for finalization (V006 →
+/// finalization_pending, V008 pending), then finalize (effects + V008
+/// committed + V006 finalized) in one transaction. Every step is idempotent
+/// for retries: a repeated attempt converges on AlreadyExistsIdentical /
+/// AlreadyPending / AlreadyFinalized, so the engine's retry-pending path
+/// keeps working unchanged.
+struct DurableSessionCompletionStore<'a> {
     app_state: &'a AppState,
 }
 
-impl SessionCompletionStore for SqliteSessionCompletionStore<'_> {
+impl SessionCompletionStore for DurableSessionCompletionStore<'_> {
     type Error = AppError;
 
     fn persist_completion(
@@ -70,23 +78,220 @@ impl SessionCompletionStore for SqliteSessionCompletionStore<'_> {
         completion: &SessionCompletion,
     ) -> Result<SessionPersistenceReceipt, Self::Error> {
         let settings = self.app_state.with_settings(|store| store.load())?;
-        let test_id = self
-            .app_state
-            .db
-            .with_transaction(|conn| persist_completed_session(conn, completion, &settings))?;
-        Ok(SessionPersistenceReceipt { test_id })
+        let policy = completion_policy_snapshot(&settings);
+        let intent = CompletionIntent::from_completion(completion, policy)
+            .map_err(|error| AppError::Internal(format!("completion intent: {error}")))?;
+
+        let recovery = SqliteSessionRecoveryLedger::new(&self.app_state.db);
+        let finalizations = SqliteFinalizationLedger::new(&self.app_state.db);
+        let finalizer = SqliteSessionFinalizer::new(&self.app_state.db);
+
+        match recovery.record_completion_intent(&intent) {
+            Ok(LedgerMutationOutcome::Created | LedgerMutationOutcome::AlreadyExistsIdentical) => {}
+            Ok(LedgerMutationOutcome::NotFound) => {
+                return Err(AppError::Internal(
+                    "completion intent has no durable session record".to_string(),
+                ));
+            }
+            Ok(LedgerMutationOutcome::Conflicting(_)) => {
+                return Err(AppError::Internal(
+                    "completion intent conflicts with the stored intent".to_string(),
+                ));
+            }
+            Ok(LedgerMutationOutcome::Quarantined(reason)) => {
+                return Err(AppError::Internal(format!(
+                    "completion intent quarantined: {reason:?}"
+                )));
+            }
+            Err(_) => {
+                return Err(AppError::DbWrite(
+                    "completion intent recording failed".to_string(),
+                ));
+            }
+        }
+
+        match recovery
+            .claim_completion_for_finalization(&completion.session_id, intent.fingerprint())
+        {
+            Ok(FinalizationClaimOutcome::Claimed | FinalizationClaimOutcome::AlreadyPending) => {}
+            Ok(FinalizationClaimOutcome::AlreadyFinalized) => {
+                return Ok(SessionPersistenceReceipt {
+                    test_id: self.test_id_for(&completion.session_id)?,
+                });
+            }
+            Ok(FinalizationClaimOutcome::NotFound) => {
+                return Err(AppError::Internal(
+                    "finalization claim has no durable session record".to_string(),
+                ));
+            }
+            Ok(FinalizationClaimOutcome::Conflict(_)) => {
+                return Err(AppError::Internal(
+                    "finalization claim conflicts with the stored intent".to_string(),
+                ));
+            }
+            Ok(FinalizationClaimOutcome::Quarantined(reason)) => {
+                return Err(AppError::Internal(format!(
+                    "finalization claim quarantined: {reason:?}"
+                )));
+            }
+            Ok(FinalizationClaimOutcome::RejectedTerminal { state }) => {
+                return Err(AppError::Internal(format!(
+                    "finalization claim rejected from terminal state {state:?}"
+                )));
+            }
+            Err(_) => {
+                return Err(AppError::DbWrite("finalization claim failed".to_string()));
+            }
+        }
+
+        match finalizations.claim_finalization(
+            &completion.session_id,
+            intent.fingerprint(),
+            self.app_state.utc_now(),
+        ) {
+            Ok(
+                FinalizationLedgerClaimOutcome::Claimed
+                | FinalizationLedgerClaimOutcome::AlreadyPending
+                | FinalizationLedgerClaimOutcome::AlreadyCommitted,
+            ) => {}
+            Ok(
+                FinalizationLedgerClaimOutcome::NotFound
+                | FinalizationLedgerClaimOutcome::MissingCompletionIntent,
+            ) => {
+                return Err(AppError::Internal(
+                    "finalization ledger claim has no durable session record".to_string(),
+                ));
+            }
+            Ok(FinalizationLedgerClaimOutcome::Conflict(_)) => {
+                return Err(AppError::Internal(
+                    "finalization ledger claim conflicts with the stored intent".to_string(),
+                ));
+            }
+            Ok(FinalizationLedgerClaimOutcome::Quarantined(reason)) => {
+                return Err(AppError::Internal(format!(
+                    "finalization ledger claim quarantined: {reason:?}"
+                )));
+            }
+            Ok(FinalizationLedgerClaimOutcome::Corrupt) => {
+                return Err(AppError::Internal(
+                    "finalization ledger metadata is corrupt".to_string(),
+                ));
+            }
+            Err(_) => {
+                return Err(AppError::DbWrite(
+                    "finalization ledger claim failed".to_string(),
+                ));
+            }
+        }
+
+        match finalizer.finalize_completion(&completion.session_id, intent.fingerprint()) {
+            Ok(FinalizationOutcome::NewlyFinalized | FinalizationOutcome::AlreadyFinalized) => {
+                Ok(SessionPersistenceReceipt {
+                    test_id: self.test_id_for(&completion.session_id)?,
+                })
+            }
+            Ok(FinalizationOutcome::NotFound) => Err(AppError::Internal(
+                "finalization has no durable session record".to_string(),
+            )),
+            Ok(FinalizationOutcome::Conflict(_)) => Err(AppError::Internal(
+                "finalization conflicts with the stored intent".to_string(),
+            )),
+            Ok(FinalizationOutcome::Quarantined(reason)) => Err(AppError::Internal(format!(
+                "finalization quarantined: {reason:?}"
+            ))),
+            Err(_) => Err(AppError::DbWrite("finalization failed".to_string())),
+        }
     }
+}
+
+impl DurableSessionCompletionStore<'_> {
+    fn test_id_for(&self, session_id: &SessionId) -> Result<i64, AppError> {
+        self.app_state
+            .db
+            .with_connection(|conn| {
+                SqliteTestRepository::new(conn).get_id_by_session_id(session_id)
+            })
+            .map_err(AppError::from)
+    }
+}
+
+/// Captures the completion-affecting daily-goal setting as an immutable
+/// policy snapshot, mirroring the legacy live-completion semantics.
+fn completion_policy_snapshot(settings: &AppSettings) -> CompletionPolicySnapshot {
+    match settings.daily_goal_type.as_str() {
+        "wpm" => CompletionPolicySnapshot::wpm(settings.daily_goal_wpm),
+        "accuracy" => CompletionPolicySnapshot::accuracy(settings.daily_goal_accuracy),
+        _ => CompletionPolicySnapshot::time(settings.daily_goal_minutes as f64),
+    }
+}
+
+/// Records the durable session start (V006 running) after the engine accepted
+/// the session. A failure here fails the start: a session without a ledger row
+/// would fail at completion with NotFound.
+fn record_session_started(app_state: &AppState, info: &TestSessionInfo) -> Result<(), AppError> {
+    let session_id = SessionId::parse(&info.session_id).map_err(|_| {
+        AppError::Internal("backend issued an invalid session identity".to_string())
+    })?;
+    let started = StartedSession::new(
+        session_id,
+        info.mode_type.clone(),
+        info.mode_config.clone(),
+        info.language.clone(),
+        app_state.utc_now(),
+    )
+    .map_err(|error| AppError::Internal(format!("session descriptor: {error}")))?;
+    let recovery = SqliteSessionRecoveryLedger::new(&app_state.db);
+    match recovery.record_started(&started) {
+        Ok(LedgerMutationOutcome::Created | LedgerMutationOutcome::AlreadyExistsIdentical) => {
+            Ok(())
+        }
+        Ok(LedgerMutationOutcome::Conflicting(_)) => Err(AppError::Internal(
+            "session start conflicts with the durable ledger".to_string(),
+        )),
+        Ok(LedgerMutationOutcome::NotFound) => Err(AppError::Internal(
+            "session start has no durable ledger row".to_string(),
+        )),
+        Ok(LedgerMutationOutcome::Quarantined(reason)) => Err(AppError::Internal(format!(
+            "session start quarantined: {reason:?}"
+        ))),
+        Err(_) => Err(AppError::DbWrite(
+            "session start recording failed".to_string(),
+        )),
+    }
+}
+
+/// Marks the durable session aborted after an explicit abort. Tolerates
+/// terminal states: the startup coordinator may already have marked the
+/// session interrupted, and interrupted → aborted is a forbidden transition.
+fn record_session_aborted(app_state: &AppState, session_id: &SessionId) {
+    let recovery = SqliteSessionRecoveryLedger::new(&app_state.db);
+    match recovery.mark_aborted(session_id) {
+        Ok(
+            LedgerMutationOutcome::Created
+            | LedgerMutationOutcome::AlreadyExistsIdentical
+            | LedgerMutationOutcome::Quarantined(_),
+        ) => {}
+        Ok(LedgerMutationOutcome::Conflicting(_) | LedgerMutationOutcome::NotFound) => {}
+        Err(_) => {}
+    }
+}
+
+/// Marks the durable session aborted after an implicit abandon (startup
+/// cleanup or view switch). Same tolerance as `record_session_aborted`.
+pub(crate) fn record_session_abandoned(app_state: &AppState, session_id: &SessionId) {
+    record_session_aborted(app_state, session_id);
 }
 
 /// Starts a standard mode after validating and selecting backend-owned content.
 pub(crate) fn start_test(
     engine: &mut CoreEngine,
+    app_state: &AppState,
     mut request: StartTestRequest,
 ) -> Result<TestSessionInfo, AppError> {
     let language = validate_language(request.language.take().unwrap_or_else(|| "en".to_string()))?;
     let mut id_source = UuidV7SessionIdSource;
     let mut random_source = SystemRandomSource;
-    SessionKernel::new()
+    let info = SessionKernel::new()
         .start_session(
             engine,
             &request,
@@ -95,7 +300,9 @@ pub(crate) fn start_test(
             &mut random_source,
             &BackendSessionModeFactory,
         )
-        .map_err(AppError::from)
+        .map_err(AppError::from)?;
+    record_session_started(app_state, &info)?;
+    Ok(info)
 }
 
 /// Starts a stored custom text only after the engine lifecycle gate has been
@@ -119,13 +326,15 @@ pub(crate) fn start_custom_text_test(
     })?;
 
     let mut id_source = UuidV7SessionIdSource;
-    SessionKernel::new()
+    let info = SessionKernel::new()
         .start_mode(
             engine,
             Box::new(CustomMode::new(custom_text.text, custom_text.language)),
             &mut id_source,
         )
-        .map_err(AppError::from)
+        .map_err(AppError::from)?;
+    record_session_started(app_state, &info)?;
+    Ok(info)
 }
 
 /// Starts a lesson only after resource validation and the lifecycle gate. Its
@@ -154,7 +363,7 @@ pub(crate) fn start_lesson(
     })?;
 
     let mut id_source = UuidV7SessionIdSource;
-    SessionKernel::new()
+    let info = SessionKernel::new()
         .start_mode(
             engine,
             Box::new(LessonMode::new(
@@ -165,7 +374,9 @@ pub(crate) fn start_lesson(
             )),
             &mut id_source,
         )
-        .map_err(AppError::from)
+        .map_err(AppError::from)?;
+    record_session_started(app_state, &info)?;
+    Ok(info)
 }
 
 /// Processes one backend-authoritative input frame and commits a completed
@@ -177,7 +388,7 @@ pub(crate) fn process_key(
     key: String,
     code: String,
 ) -> Result<EngineOutput, AppError> {
-    let completion_store = SqliteSessionCompletionStore { app_state };
+    let completion_store = DurableSessionCompletionStore { app_state };
     SessionKernel::new()
         .process_key(
             engine_state,
@@ -196,12 +407,15 @@ pub(crate) fn process_key(
 /// the identity used when a session is created.
 pub(crate) fn abort_session(
     engine_state: &Mutex<CoreEngine>,
+    app_state: &AppState,
     session_id: SessionId,
 ) -> Result<(), AppError> {
     let mut engine = engine_state.lock()?;
     SessionKernel::new()
-        .abort_session(&mut engine, session_id)
-        .map_err(AppError::from)
+        .abort_session(&mut engine, session_id.clone())
+        .map_err(AppError::from)?;
+    record_session_aborted(app_state, &session_id);
+    Ok(())
 }
 
 /// Allows a new session only after the prior one has either never started or is
@@ -272,210 +486,33 @@ fn build_test_mode(
     }
 }
 
-fn test_record_from_completion(completed: &CompletedSession) -> TestRecord {
-    TestRecord {
-        session_id: completed.session_id.clone(),
-        created_at: completed.completed_at.to_rfc3339(),
-        mode_type: completed.mode_type.clone(),
-        mode_config: completed.mode_config.clone(),
-        language: completed.language.clone(),
-        text_length: completed.text_length,
-        duration_ms: completed.final_stats.duration_ms,
-        wpm: completed.final_stats.wpm,
-        raw_wpm: completed.final_stats.raw_wpm,
-        accuracy: completed.final_stats.accuracy,
-        raw_accuracy: completed.final_stats.raw_accuracy,
-        consistency: completed.final_stats.consistency,
-        correct_chars: completed.final_stats.correct_chars,
-        incorrect_chars: completed.final_stats.incorrect_chars,
-        backspaces: completed.final_stats.backspaces,
-        char_stats: completed.final_stats.char_stats.clone(),
-        heatmap_data: completed.final_stats.heatmap.clone(),
-        graph_data: completed.final_stats.graph_data.clone(),
-        is_pb: false,
-        tags: String::new(),
-    }
-}
-
-/// Persists all completion-side effects in the transaction opened by the caller.
-///
-/// The sequence deliberately has no externally visible intermediate state:
-/// history, replay, personal bests, daily statistics, streaks, daily goals, and
-/// lesson completion either commit together or are rolled back together.
-fn persist_completed_session(
-    conn: &rusqlite::Connection,
-    completed: &CompletedSession,
-    settings: &AppSettings,
-) -> Result<i64, DbError> {
-    let test_repo = SqliteTestRepository::new(conn);
-    let test_id = test_repo.save_test(test_record_from_completion(completed))?;
-
-    let replay_frames = completed
-        .replay_frames
-        .iter()
-        .enumerate()
-        .map(|(index, frame)| {
-            Ok(racoon_data::repository::ReplayFrame {
-                id: 0,
-                test_id,
-                frame_index: i64::try_from(index)
-                    .map_err(|_| DbError::Write("Replay frame index exceeds i64".to_string()))?,
-                timestamp_ms: i64::try_from(frame.timestamp_ms)
-                    .map_err(|_| DbError::Write("Replay timestamp exceeds i64".to_string()))?,
-                position: i64::try_from(frame.caret_pos)
-                    .map_err(|_| DbError::Write("Replay position exceeds i64".to_string()))?,
-                expected_char: frame.expected_char.to_string(),
-                typed_char: Some(
-                    frame
-                        .typed_char
-                        .map_or_else(|| frame.key.clone(), |character| character.to_string()),
-                ),
-                correct: frame.char_status == racoon_domain::CharStatus::Correct,
-            })
-        })
-        .collect::<Result<Vec<_>, DbError>>()?;
-    SqliteReplayRepository::new(conn).save_replay(test_id, &replay_frames)?;
-
-    let mode_config = serde_json::to_string(&completed.mode_config)
-        .map_err(|error| DbError::Write(format!("mode configuration serialization: {error}")))?;
-    let personal_best_updates = SqlitePersonalBestsRepository::new(conn).check_and_update(
-        &completed.mode_type,
-        &mode_config,
-        completed.final_stats.wpm,
-        completed.final_stats.accuracy,
-        test_id,
-    )?;
-    if !personal_best_updates.is_empty() {
-        test_repo.mark_as_pb(test_id)?;
-    }
-
-    let daily_repo = SqliteDailyStatsRepository::new(conn);
-    // The calendar day belongs to the user's local timezone, not UTC: a test
-    // finished at 01:00 Europe/Moscow (22:00 UTC the previous day) must count
-    // toward the local day it was typed in. chrono::Local uses the system
-    // timezone, which is the desktop app's natural source of truth.
-    let completion_date = completed
-        .completed_at
-        .with_timezone(&chrono::Local)
-        .format("%Y-%m-%d")
-        .to_string();
-    let duration_ms = i64::try_from(completed.final_stats.duration_ms)
-        .map_err(|_| DbError::Write("Test duration exceeds i64".to_string()))?;
-    let total_chars = completed
-        .final_stats
-        .correct_chars
-        .checked_add(completed.final_stats.incorrect_chars)
-        .and_then(|count| i64::try_from(count).ok())
-        .ok_or_else(|| DbError::Write("Test character count exceeds i64".to_string()))?;
-    daily_repo.update_after_test(
-        &completion_date,
-        duration_ms,
-        total_chars,
-        completed.final_stats.wpm,
-        completed.final_stats.accuracy,
-    )?;
-    persist_daily_streak(conn, &completion_date)?;
-
-    if let Some(lesson_id) = &completed.lesson_id {
-        let passed = SqliteLessonRepository::new(conn).complete_lesson(
-            lesson_id,
-            completed.final_stats.wpm,
-            completed.final_stats.accuracy,
-        )?;
-        // Счётчик пройденных уроков растёт только прошедшим гейт попыткам.
-        if passed {
-            daily_repo.increment_lessons_completed(&completion_date)?;
-        }
-    }
-
-    let day_stats = daily_repo.get_day(&completion_date)?.ok_or_else(|| {
-        DbError::Integrity(format!(
-            "Daily stats were not created for {completion_date}"
-        ))
-    })?;
-    if daily_goal_is_met(settings, &day_stats) {
-        daily_repo.set_daily_goal_met(&completion_date, true)?;
-    }
-
-    Ok(test_id)
-}
-
-fn daily_goal_is_met(settings: &AppSettings, stats: &racoon_data::repository::DailyStats) -> bool {
-    match settings.daily_goal_type.as_str() {
-        "wpm" => settings.daily_goal_wpm > 0.0 && stats.best_wpm >= settings.daily_goal_wpm,
-        "accuracy" => {
-            settings.daily_goal_accuracy > 0.0 && stats.avg_accuracy >= settings.daily_goal_accuracy
-        }
-        "time" => time_goal_is_met(settings.daily_goal_minutes, stats.total_time_ms),
-        _ => false,
-    }
-}
-
-/// Time goal is met when the day's accumulated typing time reaches the target
-/// in minutes. A zero/negative target means the goal is unset, so it is never
-/// reported as met — matching the other goal types, where a zero target is not
-/// met either.
-fn time_goal_is_met(target_minutes: i64, total_time_ms: i64) -> bool {
-    target_minutes > 0 && (total_time_ms as f64 / 60_000.0) >= target_minutes as f64
-}
-
-fn persist_daily_streak(conn: &rusqlite::Connection, today: &str) -> Result<(), DbError> {
-    let repository = SqliteStreakRepository::new(conn);
-    let existing = repository.get("daily_test")?;
-    let (previous_current, previous_longest, last_date, previous_started_date) = existing
-        .map(|streak| {
-            (
-                streak.current_streak,
-                streak.longest_streak,
-                streak.last_date,
-                streak.started_date,
-            )
-        })
-        .unwrap_or((0, 0, None, None));
-    let starts_new_streak = last_date
-        .as_deref()
-        .is_none_or(|last| racoon_core::StreakEngine::days_between(last, today) > 1);
-    let (current, longest, _) = racoon_core::StreakEngine::compute_streak(
-        previous_current,
-        previous_longest,
-        last_date.as_deref(),
-        today,
-    );
-    let started_date = if starts_new_streak {
-        today.to_string()
-    } else {
-        previous_started_date.unwrap_or_else(|| today.to_string())
-    };
-
-    repository.upsert(&StreakRecord {
-        streak_type: "daily_test".to_string(),
-        current_streak: current,
-        longest_streak: longest,
-        last_date: Some(today.to_string()),
-        started_date: Some(started_date),
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use chrono::{DateTime, Utc};
+    use racoon_application::DurableSessionState;
     use racoon_core::KeyEvent;
-    use racoon_data::repository::DailyStats;
+    use racoon_data::repository::{
+        DailyStatsRepository, PersonalBestsRepository, ReplayRepository,
+        SqliteDailyStatsRepository, SqlitePersonalBestsRepository, SqliteReplayRepository,
+        SqliteSessionRecoveryLedger,
+    };
+    use racoon_data::DbError;
     use racoon_domain::FinalStats;
+    use rusqlite::OptionalExtension;
 
-    fn daily_stats(total_time_ms: i64, best_wpm: f64, avg_accuracy: f64) -> DailyStats {
-        DailyStats {
-            date: "2026-07-16".to_owned(),
-            total_tests: 1,
-            total_time_ms,
-            total_chars: 1,
-            best_wpm,
-            avg_wpm: best_wpm,
-            avg_accuracy,
-            lessons_completed: 0,
-            daily_goal_met: false,
-        }
+    fn test_app_state() -> AppState {
+        let settings_path = std::env::temp_dir().join(format!(
+            "racoon-durable-store-{}-{}.toml",
+            std::process::id(),
+            std::thread::current().name().unwrap_or("test")
+        ));
+        let _ = std::fs::remove_file(&settings_path);
+        AppState::new(
+            racoon_data::Database::open_in_memory().expect("database"),
+            settings_path,
+            racoon_application::StartupRecoveryGate::new(),
+        )
     }
 
     fn final_stats() -> FinalStats {
@@ -495,46 +532,205 @@ mod tests {
         }
     }
 
-    fn completed_session(lesson_id: Option<&str>) -> CompletedSession {
-        completed_session_at(lesson_id, "2026-07-12T12:00:00Z")
-    }
-
-    fn completed_session_at(lesson_id: Option<&str>, completed_at: &str) -> CompletedSession {
-        CompletedSession {
-            session_id: SessionId::from("test-session"),
-            completed_at: completed_at
+    fn completion(session_id: &str) -> SessionCompletion {
+        SessionCompletion {
+            session_id: SessionId::parse(session_id).expect("fixture UUIDv7"),
+            completed_at: "2026-07-16T12:00:00Z"
                 .parse::<DateTime<Utc>>()
-                .expect("fixed test timestamp is valid"),
+                .expect("fixed timestamp"),
             final_stats: final_stats(),
-            mode_type: if lesson_id.is_some() {
-                "lesson".to_string()
-            } else {
-                "custom".to_string()
-            },
-            mode_config: lesson_id.map_or_else(
-                || serde_json::json!({"language": "ru"}),
-                |lesson_id| serde_json::json!({"lesson_id": lesson_id, "module_id": "en_m1"}),
-            ),
+            mode_type: "custom".to_string(),
+            mode_config: serde_json::json!({"language": "en"}),
             language: "en".to_string(),
-            text_length: "привет".chars().count(),
+            text_length: 6,
             replay_frames: vec![racoon_core::ReplayFrame {
                 timestamp_ms: 0,
-                key: "п".to_string(),
+                key: "a".to_string(),
                 caret_pos: 1,
                 char_status: racoon_domain::CharStatus::Correct,
-                expected_char: 'п',
-                typed_char: Some('п'),
+                expected_char: 'a',
+                typed_char: Some('a'),
             }],
-            lesson_id: lesson_id.map(ToOwned::to_owned),
+            lesson_id: None,
         }
     }
 
-    fn local_day_of(completed: &CompletedSession) -> String {
-        completed
-            .completed_at
-            .with_timezone(&chrono::Local)
-            .format("%Y-%m-%d")
-            .to_string()
+    fn record_started_for(app_state: &AppState, session_id: &str) {
+        let started = StartedSession::new(
+            SessionId::parse(session_id).expect("fixture UUIDv7"),
+            "custom",
+            serde_json::json!({"language": "en"}),
+            "en",
+            "2026-07-16T10:00:00Z"
+                .parse::<DateTime<Utc>>()
+                .expect("fixed timestamp"),
+        )
+        .expect("fixture start");
+        assert!(matches!(
+            SqliteSessionRecoveryLedger::new(&app_state.db).record_started(&started),
+            Ok(LedgerMutationOutcome::Created)
+        ));
+    }
+
+    fn durable_state(app_state: &AppState, session_id: &str) -> Option<DurableSessionState> {
+        app_state
+            .db
+            .with_connection(|conn| {
+                let state = conn
+                    .query_row(
+                        "SELECT state FROM session_ledger WHERE session_id = ?1",
+                        rusqlite::params![session_id],
+                        |row| row.get::<_, String>(0),
+                    )
+                    .optional()
+                    .map_err(|error| DbError::Query(error.to_string()))?;
+                Ok(state.and_then(|state| match state.as_str() {
+                    "running" => Some(DurableSessionState::Running),
+                    "awaiting_persistence" => Some(DurableSessionState::AwaitingPersistence),
+                    "finalization_pending" => Some(DurableSessionState::FinalizationPending),
+                    "finalized" => Some(DurableSessionState::Finalized),
+                    "aborted" => Some(DurableSessionState::Aborted),
+                    "interrupted" => Some(DurableSessionState::Interrupted),
+                    "quarantined" => Some(DurableSessionState::Quarantined),
+                    _ => None,
+                }))
+            })
+            .expect("durable state read")
+    }
+
+    #[test]
+    fn durable_completion_finalizes_effects_and_terminal_markers() {
+        let app_state = test_app_state();
+        let session_id = "018f0c2e-7b8d-7abc-8def-0123456789aa";
+        record_started_for(&app_state, session_id);
+
+        let store = DurableSessionCompletionStore {
+            app_state: &app_state,
+        };
+        let receipt = store
+            .persist_completion(&completion(session_id))
+            .expect("durable completion");
+        assert!(receipt.test_id > 0);
+
+        assert_eq!(
+            durable_state(&app_state, session_id),
+            Some(DurableSessionState::Finalized)
+        );
+        app_state
+            .db
+            .with_connection(|conn| {
+                assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 1);
+                assert!(SqliteReplayRepository::new(conn).has_replay(receipt.test_id)?);
+                assert_eq!(
+                    SqlitePersonalBestsRepository::new(conn)
+                        .get_bests(None)?
+                        .len(),
+                    1
+                );
+                let day = SqliteDailyStatsRepository::new(conn)
+                    .get_day("2026-07-16")?
+                    .expect("daily stats");
+                assert_eq!(day.total_tests, 1);
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn durable_completion_retry_is_idempotent() {
+        let app_state = test_app_state();
+        let session_id = "018f0c2e-7b8d-7abc-8def-0123456789ab";
+        record_started_for(&app_state, session_id);
+
+        let store = DurableSessionCompletionStore {
+            app_state: &app_state,
+        };
+        let first = store
+            .persist_completion(&completion(session_id))
+            .expect("first completion");
+        let second = store
+            .persist_completion(&completion(session_id))
+            .expect("retry completion");
+        assert_eq!(first.test_id, second.test_id);
+
+        app_state
+            .db
+            .with_connection(|conn| {
+                assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 1);
+                Ok(())
+            })
+            .unwrap();
+    }
+
+    #[test]
+    fn durable_completion_without_ledger_row_fails() {
+        let app_state = test_app_state();
+        let store = DurableSessionCompletionStore {
+            app_state: &app_state,
+        };
+        let error = store
+            .persist_completion(&completion("018f0c2e-7b8d-7abc-8def-0123456789ac"))
+            .unwrap_err();
+        assert!(matches!(error, AppError::Internal(_)));
+    }
+
+    #[test]
+    fn record_session_started_creates_running_row_and_abort_marks_aborted() {
+        let app_state = test_app_state();
+        let session_id = "018f0c2e-7b8d-7abc-8def-0123456789ad";
+        let info = TestSessionInfo {
+            session_id: session_id.to_string(),
+            text: "hello".to_string(),
+            text_length: 5,
+            mode_type: "custom".to_string(),
+            mode_config: serde_json::json!({"language": "en"}),
+            language: "en".to_string(),
+        };
+        record_session_started(&app_state, &info).expect("start record");
+        assert_eq!(
+            durable_state(&app_state, session_id),
+            Some(DurableSessionState::Running)
+        );
+
+        let session_id = SessionId::parse(session_id).expect("fixture UUIDv7");
+        record_session_aborted(&app_state, &session_id);
+        assert_eq!(
+            durable_state(&app_state, session_id.as_str()),
+            Some(DurableSessionState::Aborted)
+        );
+    }
+
+    #[test]
+    fn completion_policy_snapshot_mirrors_legacy_goal_rules() {
+        let wpm_settings = AppSettings {
+            daily_goal_type: "wpm".to_string(),
+            daily_goal_wpm: 60.0,
+            ..AppSettings::default()
+        };
+        assert!(matches!(
+            completion_policy_snapshot(&wpm_settings).daily_goal(),
+            racoon_application::DailyGoalPolicy::Wpm { target_wpm } if *target_wpm == 60.0
+        ));
+
+        let accuracy_settings = AppSettings {
+            daily_goal_type: "accuracy".to_string(),
+            daily_goal_accuracy: 0.98,
+            ..AppSettings::default()
+        };
+        assert!(matches!(
+            completion_policy_snapshot(&accuracy_settings).daily_goal(),
+            racoon_application::DailyGoalPolicy::Accuracy { target_accuracy } if *target_accuracy == 0.98
+        ));
+
+        let time_settings = AppSettings {
+            daily_goal_type: "time".to_string(),
+            daily_goal_minutes: 25,
+            ..AppSettings::default()
+        };
+        assert!(matches!(
+            completion_policy_snapshot(&time_settings).daily_goal(),
+            racoon_application::DailyGoalPolicy::Time { target_minutes } if *target_minutes == 25.0
+        ));
     }
 
     #[test]
@@ -569,262 +765,18 @@ mod tests {
         let mut engine = CoreEngine::new();
         engine
             .start_test_mode(
-                SessionId::from("backend-session"),
+                "018f0c2e-7b8d-7abc-8def-0123456789ae",
                 Box::new(TimeMode::new("a".to_string(), "en".to_string(), 30)),
             )
-            .unwrap();
-
-        assert!(SessionKernel::new()
-            .abort_session(&mut engine, SessionId::from("backend-session"))
-            .is_ok());
-
-        let mut engine = CoreEngine::new();
-        engine
-            .start_test_mode(
-                SessionId::from("backend-session"),
-                Box::new(TimeMode::new("a".to_string(), "en".to_string(), 30)),
-            )
-            .unwrap();
-        assert!(matches!(
-            SessionKernel::new()
-                .abort_session(&mut engine, SessionId::from("frontend-chosen-session"))
-                .map_err(AppError::from),
-            Err(AppError::SessionNotFound(_))
-        ));
-    }
-
-    #[test]
-    fn completed_session_record_preserves_unicode_text_length_and_one_timestamp() {
-        let completed = completed_session(None);
-        let record = test_record_from_completion(&completed);
-
-        assert_eq!(record.text_length, 6);
-        assert!(record.created_at.starts_with("2026-07-12T12:00:00"));
-    }
-
-    #[test]
-    fn completed_lesson_persists_all_related_records_in_one_transaction() {
-        let database = racoon_data::Database::open_in_memory().unwrap();
-        let completed = completed_session(Some("en_m1_l1"));
-        let settings = AppSettings::default();
-        let expected_day = local_day_of(&completed);
-
-        database
-            .with_transaction(|conn| {
-                SqliteLessonRepository::new(conn)
-                    .create_progress("en_m1_l1", "en_m1", "en", "beginner")?;
-                persist_completed_session(conn, &completed, &settings)
-            })
-            .unwrap();
-
-        database
-            .with_connection(|conn| {
-                let test_repo = SqliteTestRepository::new(conn);
-                assert_eq!(test_repo.get_count(None)?, 1);
-                assert!(SqliteReplayRepository::new(conn).has_replay(1)?);
-                assert_eq!(
-                    SqlitePersonalBestsRepository::new(conn)
-                        .get_bests(None)?
-                        .len(),
-                    1
-                );
-
-                let daily = SqliteDailyStatsRepository::new(conn)
-                    .get_day(&expected_day)?
-                    .expect("daily statistics should exist");
-                assert_eq!(daily.total_tests, 1);
-                assert_eq!(daily.lessons_completed, 1);
-                assert_eq!(
-                    SqliteLessonRepository::new(conn)
-                        .get_lesson_progress("en_m1_l1")?
-                        .expect("lesson progress should exist")
-                        .status,
-                    "completed"
-                );
-                Ok(())
-            })
-            .unwrap();
-    }
-
-    #[test]
-    fn completion_side_effects_roll_back_together() {
-        let database = racoon_data::Database::open_in_memory().unwrap();
-        let completed = completed_session(None);
-        let settings = AppSettings::default();
-        let expected_day = local_day_of(&completed);
-
-        let result: Result<(), DbError> = database.with_transaction(|conn| {
-            persist_completed_session(conn, &completed, &settings)?;
-            Err(DbError::Write("forced rollback".to_string()))
-        });
-        assert!(result.is_err());
-
-        database
-            .with_connection(|conn| {
-                assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 0);
-                assert!(!SqliteReplayRepository::new(conn).has_replay(1)?);
-                assert!(SqliteDailyStatsRepository::new(conn)
-                    .get_day(&expected_day)?
-                    .is_none());
-                Ok(())
-            })
-            .unwrap();
-    }
-
-    #[test]
-    fn daily_goal_rule_preserves_zero_and_fractional_time_targets() {
-        let mut settings = AppSettings {
-            daily_goal_type: "time".to_owned(),
-            daily_goal_minutes: 0,
-            ..AppSettings::default()
-        };
-        // Zero/unset time goal is never met, matching WPM/accuracy semantics.
-        assert!(!daily_goal_is_met(&settings, &daily_stats(0, 0.0, 0.0)));
-        assert!(!daily_goal_is_met(
-            &settings,
-            &daily_stats(60_000, 0.0, 0.0)
-        ));
-        settings.daily_goal_minutes = -1;
-        assert!(!daily_goal_is_met(
-            &settings,
-            &daily_stats(60_000, 0.0, 0.0)
-        ));
-        settings.daily_goal_minutes = 1;
-        assert!(!daily_goal_is_met(
-            &settings,
-            &daily_stats(59_999, 0.0, 0.0)
-        ));
-        assert!(daily_goal_is_met(&settings, &daily_stats(60_000, 0.0, 0.0)));
-        assert!(daily_goal_is_met(&settings, &daily_stats(60_001, 0.0, 0.0)));
-
-        // Switching time → wpm must use the WPM field, not the minutes field.
-        settings.daily_goal_minutes = 100;
-        settings.daily_goal_type = "wpm".to_owned();
-        settings.daily_goal_wpm = 60.0;
-        assert!(daily_goal_is_met(
-            &settings,
-            &daily_stats(1_000, 60.0, 0.98)
-        ));
-        settings.daily_goal_wpm = 0.0;
-        assert!(!daily_goal_is_met(
-            &settings,
-            &daily_stats(1_000, 60.0, 0.98)
-        ));
-    }
-
-    #[test]
-    fn daily_goal_rule_preserves_wpm_and_accuracy_zero_rules() {
-        let mut settings = AppSettings {
-            daily_goal_type: "wpm".to_owned(),
-            daily_goal_wpm: 0.0,
-            ..AppSettings::default()
-        };
-        assert!(!daily_goal_is_met(
-            &settings,
-            &daily_stats(1_000, 60.0, 0.98)
-        ));
-        settings.daily_goal_wpm = 60.0;
-        assert!(daily_goal_is_met(
-            &settings,
-            &daily_stats(1_000, 60.0, 0.98)
-        ));
-
-        settings.daily_goal_type = "accuracy".to_owned();
-        assert!(!daily_goal_is_met(
-            &settings,
-            &daily_stats(1_000, 60.0, 0.98)
-        ));
-        settings.daily_goal_accuracy = 0.98;
-        assert!(daily_goal_is_met(
-            &settings,
-            &daily_stats(1_000, 60.0, 0.98)
-        ));
-    }
-
-    // The persistence day must follow the user's local calendar day. A test
-    // finished at 2026-08-12 01:00 Europe/Moscow (2026-08-11 22:00 UTC) must be
-    // recorded under 2026-08-12, and one finished at 2026-08-12 23:30
-    // Europe/Moscow (20:30 UTC) must not bleed into the next local day.
-    // These tests assert the local-day invariant directly; they are
-    // timezone-agnostic because the expected day is derived the same way the
-    // production code derives it.
-    #[test]
-    fn local_midnight_crossing_counts_toward_local_day() {
-        let database = racoon_data::Database::open_in_memory().unwrap();
-        // 2026-08-12 01:00 Europe/Moscow == 2026-08-11 22:00 UTC. For any UTC
-        // offset in [-11, +14] this still lands on a local day that can be
-        // derived; we assert the recorded day equals the local projection.
-        let completed = completed_session_at(None, "2026-08-11T22:00:00Z");
-        let settings = AppSettings::default();
-        let expected_day = local_day_of(&completed);
-
-        database
-            .with_transaction(|conn| persist_completed_session(conn, &completed, &settings))
-            .unwrap();
-
-        database
-            .with_connection(|conn| {
-                let daily = SqliteDailyStatsRepository::new(conn)
-                    .get_day(&expected_day)?
-                    .expect("daily statistics should exist for the local day");
-                assert_eq!(daily.total_tests, 1);
-                Ok(())
-            })
-            .unwrap();
-    }
-
-    #[test]
-    fn local_late_evening_does_not_bleed_into_next_day() {
-        let database = racoon_data::Database::open_in_memory().unwrap();
-        // 2026-08-12 23:30 Europe/Moscow == 2026-08-12 20:30 UTC. The local day
-        // is still 2026-08-12 for UTC+3; the invariant is that the recorded day
-        // matches the local projection of the timestamp.
-        let completed = completed_session_at(None, "2026-08-12T20:30:00Z");
-        let settings = AppSettings::default();
-        let expected_day = local_day_of(&completed);
-
-        database
-            .with_transaction(|conn| persist_completed_session(conn, &completed, &settings))
-            .unwrap();
-
-        database
-            .with_connection(|conn| {
-                let daily = SqliteDailyStatsRepository::new(conn)
-                    .get_day(&expected_day)?
-                    .expect("daily statistics should exist for the local day");
-                assert_eq!(daily.total_tests, 1);
-                Ok(())
-            })
-            .unwrap();
-    }
-
-    #[test]
-    fn utc_day_and_local_day_differ_when_timezone_is_east_of_utc() {
-        // 2026-08-11T22:00:00Z is 2026-08-11 in UTC but 2026-08-12 in
-        // Europe/Moscow. The recorded day must be the local one: assert the
-        // UTC date is NOT used when the local date differs.
-        let completed = completed_session_at(None, "2026-08-11T22:00:00Z");
-        let utc_day = completed.completed_at.format("%Y-%m-%d").to_string();
-        let local_day = local_day_of(&completed);
-        // This is only meaningful when the offsets actually differ; the test
-        // below still validates the core invariant regardless.
-        if local_day != utc_day {
-            let database = racoon_data::Database::open_in_memory().unwrap();
-            let settings = AppSettings::default();
-            database
-                .with_transaction(|conn| persist_completed_session(conn, &completed, &settings))
-                .unwrap();
-            database
-                .with_connection(|conn| {
-                    assert!(SqliteDailyStatsRepository::new(conn)
-                        .get_day(&local_day)?
-                        .is_some());
-                    assert!(SqliteDailyStatsRepository::new(conn)
-                        .get_day(&utc_day)?
-                        .is_none());
-                    Ok(())
-                })
-                .unwrap();
-        }
+            .expect("start");
+        let app_state = test_app_state();
+        let result = process_key(
+            &Mutex::new(engine),
+            &app_state,
+            SessionId::parse("018f0c2e-7b8d-7abc-8def-0123456789af").expect("fixture UUIDv7"),
+            "a".to_string(),
+            "KeyA".to_string(),
+        );
+        assert!(matches!(result, Err(AppError::SessionNotFound(_))));
     }
 }

@@ -244,8 +244,8 @@ fn completion_with_policy(
             final_stats: FinalStats {
                 wpm: 60.0,
                 raw_wpm: 61.0,
-                accuracy: 0.98,
-                raw_accuracy: 0.99,
+                accuracy: 98.0,
+                raw_accuracy: 99.0,
                 consistency: Some(0.9),
                 correct_chars: 5,
                 incorrect_chars: 0,
@@ -651,8 +651,8 @@ fn snapshot(path: &Path) -> DurableEffectSnapshot {
                     == i64::try_from(FIXTURE_DURATION_MS).expect("fixture duration fits i64")
                 && wpm.to_bits() == 60.0_f64.to_bits()
                 && raw_wpm.to_bits() == 61.0_f64.to_bits()
-                && accuracy.to_bits() == 0.98_f64.to_bits()
-                && raw_accuracy.to_bits() == 0.99_f64.to_bits()
+                && accuracy.to_bits() == 98.0_f64.to_bits()
+                && raw_accuracy.to_bits() == 99.0_f64.to_bits()
                 && consistency.is_some_and(|value| value.to_bits() == 0.9_f64.to_bits())
                 && correct_chars == 5
                 && incorrect_chars == 0

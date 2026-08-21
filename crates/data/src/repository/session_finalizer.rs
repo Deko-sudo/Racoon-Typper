@@ -538,11 +538,12 @@ fn inject(configured: Option<FailurePoint>, current: FailurePoint) -> Result<(),
 }
 
 /// Uses elapsed minutes rather than truncating the configured minute target.
-/// The comparison preserves the established zero-target behavior (`0 >= 0`),
-/// retains negative finite targets if one is present in legacy data, and keeps
-/// fractional targets precise without overflowing a millisecond conversion.
+/// A zero or negative target means the goal is unset and is never reported as
+/// met — matching the live-completion path and the WPM/accuracy zero rules.
+/// Fractional targets stay precise without overflowing a millisecond
+/// conversion.
 fn time_goal_is_met(target_minutes: f64, total_time_ms: i64) -> bool {
-    (total_time_ms as f64 / 60_000.0) >= target_minutes
+    target_minutes > 0.0 && (total_time_ms as f64 / 60_000.0) >= target_minutes
 }
 
 fn update_daily_streak(connection: &Connection, today: &str) -> Result<(), DbError> {

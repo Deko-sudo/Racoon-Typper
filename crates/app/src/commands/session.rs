@@ -33,7 +33,7 @@ pub(crate) fn start_test(
         language,
     };
     let mut engine = state.lock()?;
-    let info = session_service::start_test(&mut engine, request)?;
+    let info = session_service::start_test(&mut engine, &app_state, request)?;
     Ok(TestSessionResponse::from_session_info(info))
 }
 
@@ -57,7 +57,7 @@ pub(crate) fn abort_session(
     session_id: SessionId,
 ) -> Result<(), AppError> {
     app_state.require_startup_recovery_ready()?;
-    session_service::abort_session(&state, session_id)
+    session_service::abort_session(&state, &app_state, session_id)
 }
 
 /// Abandons whatever session is currently running, without needing its id.
@@ -75,7 +75,14 @@ pub(crate) fn abandon_active_session(
 ) -> Result<bool, AppError> {
     app_state.require_startup_recovery_ready()?;
     let mut engine = state.lock()?;
-    Ok(engine.abort())
+    let session_id = engine.current_session_id().cloned();
+    let abandoned = engine.abort();
+    if abandoned {
+        if let Some(session_id) = session_id {
+            session_service::record_session_abandoned(&app_state, &session_id);
+        }
+    }
+    Ok(abandoned)
 }
 
 #[tauri::command]
