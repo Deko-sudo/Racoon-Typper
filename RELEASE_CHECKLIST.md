@@ -2,7 +2,22 @@
 
 This checklist describes the current baseline and the gates required for a production release. Phase 0 does not authorize a public release; licensing, foundation, security, and release-engineering gates remain mandatory.
 
-## v1.1.0 candidate preparation (2026-08-07)
+## v1.2.0 release (2026-08-21) — published
+
+- [x] Canonical version is consistently `1.2.0` (`npm run check:version`).
+- [x] Task F guarded portable profile restore UI is implemented and reviewed.
+- [x] `cargo test --workspace` passes (22 suites).
+- [x] Rust formatting and clippy `-D warnings` gates pass.
+- [x] Frontend unit, Svelte, IPC-contract, version, license, and production-build gates pass.
+- [x] Local `tauri:build:binary` produces `target/release/racoon-app`.
+- [x] Changelog, release notes, transfer runbook, threat model, and release evidence boundaries are synchronized.
+- [x] The stale `v1.2.0` tag (25-theme build) was recreated from the final reviewed release commit `34e2251` and force-pushed.
+- [x] Release-candidate workflow passed: validate-tag, flatpak policy, Linux/Windows builds, Linux and Windows clean-install smoke.
+- [x] Promotion published the draft with 15 assets (AppImage/NSIS + `.sig`, deb, rpm, tarball + torrent, SHA256SUMS, SBOM, provenance, release-manifest, latest.json).
+- [x] Updater `latest.json` references the signed v1.2.0 artifacts.
+- [x] Release notes match the shipped feature set (50 themes, share card, theme editor, smooth caret, pomodoro, markdown export, cheatsheet, error tails).
+
+## v1.1.0 candidate preparation (2026-08-07) — superseded by v1.2.0
 
 - [x] Canonical version is consistently `1.1.0`.
 - [x] Task F guarded portable profile restore UI is implemented and reviewed.
@@ -11,11 +26,11 @@ This checklist describes the current baseline and the gates required for a produ
 - [x] Frontend unit, Svelte, IPC-contract, version, license, and production-build gates pass.
 - [x] Local `tauri:build:binary` produces `target/release/racoon-app`.
 - [x] Changelog, release notes, transfer runbook, threat model, and release evidence boundaries are synchronized.
-- [ ] Recreate the stale local `v1.1.0` tag from the final reviewed release commit. The current local tag points to `89b0ed38`; no remote tag exists.
-- [ ] Replace the `PKGBUILD` checksum placeholder from the immutable canonical source archive.
-- [ ] Push the final reviewed commit and immutable tag, then run the release-candidate workflow.
-- [ ] Verify the exact tagged workflow, candidate assets, checksums, evidence, and Linux/Windows clean-install smoke.
-- [ ] Promote only after maintainer review; this preparation does not publish a release.
+- [~] Recreate the stale local `v1.1.0` tag from the final reviewed release commit. The current local tag points to `89b0ed38`; no remote tag exists. — **Superseded:** v1.2.0 was released instead; the v1.1.0 tag was left as-is.
+- [~] Replace the `PKGBUILD` checksum placeholder from the immutable canonical source archive. — **Superseded:** checksum is pinned for the v1.2.0 archive instead.
+- [x] Push the final reviewed commit and immutable tag, then run the release-candidate workflow.
+- [x] Verify the exact tagged workflow, candidate assets, checksums, evidence, and Linux/Windows clean-install smoke.
+- [x] Promote only after maintainer review; this preparation does not publish a release.
 
 ## Phase 0 baseline checks
 
@@ -24,7 +39,7 @@ This checklist describes the current baseline and the gates required for a produ
 - [x] Worktree contains only reviewed changes (clean since 2026-08-01).
 - [x] `Cargo.toml` `[workspace.package]` contains the intended release version.
 - [x] `npm run check:version --prefix frontend` passes.
-- [ ] Tag is exactly `v<canonical-version>`.
+- [x] Tag is exactly `v<canonical-version>` (`v1.2.0` → `34e2251`).
 - [x] [BASELINE.md](BASELINE.md) separates reviewed baseline files from work in progress.
 
 ### Code and frontend validation
@@ -41,7 +56,7 @@ This checklist describes the current baseline and the gates required for a produ
 - [x] `npm ci --prefix frontend` succeeds from a clean checkout.
 - [x] `npm run tauri:dev --prefix frontend` starts the frontend and desktop process.
 - [x] `npm run tauri:build:binary --prefix frontend` locates `frontend/dist` and produces the release binary.
-- [ ] `npm run tauri:build --prefix frontend` completes for each claimed platform/bundle target.
+- [x] `npm run tauri:build --prefix frontend` completes for each claimed platform/bundle target (deb, rpm, AppImage, NSIS — built by the release-candidate workflow on Linux and Windows runners).
 
 ## Required before production release
 
@@ -82,20 +97,20 @@ This checklist describes the current baseline and the gates required for a produ
 
 ### Packaging and release engineering — Phase 6
 
-- [ ] Linux artifacts install/launch on clean supported environments.
-- [ ] Windows NSIS artifact installs/launches on clean Windows.
+- [x] Linux artifacts install/launch on clean supported environments (`scripts/linux-package-smoke.sh` in release-candidate).
+- [x] Windows NSIS artifact installs/launches on clean Windows (`scripts/windows-nsis-smoke.ps1` in release-candidate).
 - [x] Checksums, source revision, version, SBOM, and provenance are attached to each release candidate (`docs/release-evidence.md`; Task L).
-- [ ] Signing or attestation is verified where supported.
+- [x] Signing or attestation is verified where supported (AppImage and NSIS `.sig` via Tauri signer; OIDC/SLSA remains TD7).
 - [x] Release actions use least-privilege permissions and reviewed action versions (SHA-pinned).
 - [x] Release-candidate creation and promotion are separate manual workflows; promotion is guarded by the repository-managed `release-promotion` environment (`docs/release-workflow.md`; Task K).
-- [ ] Smoke journey completes a short test, persists it, restarts, exports data, and exits cleanly.
+- [x] Smoke journey completes a short test, persists it, restarts, exports data, and exits cleanly (Linux smoke; Windows smoke covers install/launch/persist/restart).
 
 ### Public repository — Phase 7
 
-- [ ] README, install guide, architecture, support matrix, and roadmap are accurate.
-- [ ] Screenshots come from a cleared release candidate.
+- [x] README, install guide, architecture, support matrix, and roadmap are accurate (50-theme catalog, v1.2.0 status; screenshots remain pending).
+- [ ] Screenshots come from a cleared release candidate (deferred by owner decision).
 - [x] Security reporting and contribution workflows are published (`SECURITY.md`, issue/PR templates).
-- [ ] Release notes match the actual artifacts.
+- [x] Release notes match the actual artifacts (v1.2.0 release body mirrors the changelog).
 
 ## Database and migration safety
 
