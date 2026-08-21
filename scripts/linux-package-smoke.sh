@@ -18,7 +18,7 @@ package=$(realpath "$1")
 
 workspace=$(mktemp -d)
 cleanup() {
-  pkill -u "$(id -u)" -f '/usr/bin/racoon-typper' 2>/dev/null || true
+  pkill -u "$(id -u)" -f '/usr/bin/racoon-app' 2>/dev/null || true
   # Give GTK/WebKit children a moment to release files before removing the
   # workspace; otherwise rm -rf can fail with "Directory not empty".
   sleep 1
@@ -35,20 +35,20 @@ export XDG_CONFIG_HOME="$workspace/config"
 mkdir -p "$HOME" "$XDG_DATA_HOME" "$XDG_CONFIG_HOME"
 
 launch_and_stop() {
-  dbus-run-session -- xvfb-run -a /usr/bin/racoon-typper >"$workspace/app.log" 2>&1 &
+  dbus-run-session -- xvfb-run -a /usr/bin/racoon-app >"$workspace/app.log" 2>&1 &
   local pid=$!
   for _ in $(seq 1 30); do
-    [[ -f "$XDG_DATA_HOME/racoon-typper/data.db" ]] && break
+    [[ -f "$XDG_DATA_HOME/com.racoon.typper/data.db" ]] && break
     sleep 1
   done
-  [[ -f "$XDG_DATA_HOME/racoon-typper/data.db" ]] || { cat "$workspace/app.log" >&2; return 1; }
+  [[ -f "$XDG_DATA_HOME/com.racoon.typper/data.db" ]] || { cat "$workspace/app.log" >&2; return 1; }
   kill -TERM "$pid"
   wait "$pid" || true
 }
 
 launch_and_stop
-first_database_checksum=$(sha256sum "$XDG_DATA_HOME/racoon-typper/data.db" | cut -d ' ' -f1)
+first_database_checksum=$(sha256sum "$XDG_DATA_HOME/com.racoon.typper/data.db" | cut -d ' ' -f1)
 launch_and_stop
-second_database_checksum=$(sha256sum "$XDG_DATA_HOME/racoon-typper/data.db" | cut -d ' ' -f1)
+second_database_checksum=$(sha256sum "$XDG_DATA_HOME/com.racoon.typper/data.db" | cut -d ' ' -f1)
 [[ -n "$first_database_checksum" && -n "$second_database_checksum" ]]
 printf 'Linux package smoke passed: installed, launched twice, and persisted SQLite state.\n'

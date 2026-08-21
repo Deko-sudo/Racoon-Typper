@@ -1,0 +1,20 @@
+{
+  "name": "light",
+  "display_name": "Light",
+  "description": "Minimal neutral light theme.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#f0f0f0",
+    "surface": "#ffffff",
+    "text": "#1a1a1a",
+    "accent": "#3a7ca5",
+    "correct": "#5a8a5a",
+    "incorrect": "#cc4444",
+    "caret": "#2a5a7a"
+  }
+}

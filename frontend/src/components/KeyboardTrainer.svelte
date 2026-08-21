@@ -149,7 +149,7 @@
   .nav-row, .arrows { display: grid; grid-template-columns: repeat(3, var(--u)); gap: var(--gap); min-height: 44px; }
   .arrows { margin-top: 44px; }
   .numpad { display: grid; grid-template-columns: repeat(4, var(--u)); grid-template-rows: repeat(5, 44px); gap: var(--gap); }
-  .key { min-width: 0; height: 44px; display: grid; place-items: center; background: var(--bg-sub); color: var(--text); border: 1px solid var(--sub); border-radius: 5px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease; }
+  .key { min-width: 0; height: 44px; display: grid; place-items: center; background: var(--color-key-background); color: var(--text); border: 1px solid var(--color-key-border); border-radius: 5px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease; }
   .function-key { width: var(--u); height: 32px; font-size: 0.62rem; }
   .special { color: var(--sub); font-size: 0.62rem; }
   /* Let the final special key fill only its row's remaining physical space.
@@ -159,7 +159,7 @@
   .next-key { background: var(--main); border-color: var(--main); color: var(--color-accent-text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--main) 25%, transparent); transform: translateY(-3px) scale(1.04); z-index: 1; }
   .error-key { background: color-mix(in srgb, var(--error) 22%, var(--bg-sub)); border-color: var(--error); }
   .weak-critical { background: color-mix(in srgb, var(--error) 26%, var(--bg-sub)); border-color: var(--error); color: var(--text); }
-  .weak-warning { background: color-mix(in srgb, #ff8c42 22%, var(--bg-sub)); border-color: #ff8c42; color: var(--text); }
+  .weak-warning { background: color-mix(in srgb, var(--color-warning) 22%, var(--bg-sub)); border-color: var(--color-warning); color: var(--text); }
   .measured-key { border-color: color-mix(in srgb, var(--main) 45%, var(--sub)); }
   .key.next-key { background: var(--main); border-color: var(--main); color: var(--color-accent-text); }
   .num-key { width: var(--u); }

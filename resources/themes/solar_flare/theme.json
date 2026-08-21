@@ -1,0 +1,20 @@
+{
+  "name": "solar_flare",
+  "display_name": "Solar Flare",
+  "description": "Warm dark with golden-amber radiance.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Warm",
+  "is_dark": true,
+  "preview": {
+    "background": "#120e08",
+    "surface": "#1c160e",
+    "text": "#f0e6d6",
+    "accent": "#e8a83b",
+    "correct": "#b5cc94",
+    "incorrect": "#e87878",
+    "caret": "#f0c060"
+  }
+}

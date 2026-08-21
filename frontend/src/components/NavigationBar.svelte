@@ -13,6 +13,7 @@
 <nav aria-label="Primary navigation">
   <button aria-label={t(uiLang, 'nav.dashboard')} aria-current={view === 'dashboard' ? 'page' : undefined} class:active={view === 'dashboard'} onclick={() => onNavigate('dashboard')}>{t(uiLang, 'nav.dashboard')}</button>
   <button aria-label={t(uiLang, 'nav.test')} aria-current={view === 'test' ? 'page' : undefined} class:active={view === 'test'} onclick={() => onNavigate('test')}>{t(uiLang, 'nav.test')}</button>
+  <button aria-label={t(uiLang, 'nav.pomodoro')} aria-current={view === 'pomodoro' ? 'page' : undefined} class:active={view === 'pomodoro'} onclick={() => onNavigate('pomodoro')}>{t(uiLang, 'nav.pomodoro')}</button>
   <button aria-label={t(uiLang, 'nav.lessons')} aria-current={view === 'lessons' ? 'page' : undefined} class:active={view === 'lessons'} onclick={() => onNavigate('lessons')}>{t(uiLang, 'nav.lessons')}</button>
   <button aria-label={t(uiLang, 'nav.weakkeys')} aria-current={view === 'weakkeys' ? 'page' : undefined} class:active={view === 'weakkeys'} onclick={() => onNavigate('weakkeys')}>{t(uiLang, 'nav.weakkeys')}</button>
   <button aria-label={t(uiLang, 'nav.analytics')} aria-current={view === 'analytics' ? 'page' : undefined} class:active={view === 'analytics'} onclick={() => onNavigate('analytics')}>{t(uiLang, 'nav.analytics')}</button>

@@ -1,0 +1,20 @@
+{
+  "name": "chestnut",
+  "display_name": "Chestnut",
+  "description": "Warm brown surfaces with a soft golden accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Warm",
+  "is_dark": true,
+  "preview": {
+    "background": "#100c08",
+    "surface": "#1a1410",
+    "text": "#ede0d0",
+    "accent": "#c89858",
+    "correct": "#a0b888",
+    "incorrect": "#dc8c6a",
+    "caret": "#d8a868"
+  }
+}

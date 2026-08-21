@@ -4,7 +4,25 @@
   import type { ReplayFrame, TestSummary } from '../lib/types/index';
   import ReplayView from './ReplayView.svelte';
 
-  let { history, total, uiLang = 'en' }: { history: TestSummary[]; total: number; uiLang?: string } = $props();
+  let {
+  history,
+  total,
+  page = 0,
+  pageSize = 20,
+  onPrevPage,
+  onNextPage,
+  uiLang = 'en',
+}: {
+  history: TestSummary[];
+  total: number;
+  page?: number;
+  pageSize?: number;
+  onPrevPage: () => void;
+  onNextPage: () => void;
+  uiLang?: string;
+} = $props();
+
+const totalPages = $derived(Math.max(1, Math.ceil(total / pageSize)));
   let replayLoadingId = $state<number | null>(null);
   let selectedReplay = $state<{ testId: number; frames: ReplayFrame[] } | null>(null);
   let replayError = $state('');
@@ -20,7 +38,7 @@
       const frames = await ipc.getReplay(testId);
       selectedReplay = { testId, frames };
     } catch (error) {
-      replayError = `${t(uiLang, 'history.replay_error')}: ${error}`;
+      replayError = `${t(uiLang, 'history.replay_error')}: ${ipc.ipcErrorMessage(error)}`;
     } finally {
       replayLoadingId = null;
     }
@@ -63,6 +81,13 @@
       </tbody>
     </table>
   {/if}
+  {#if total > pageSize}
+    <div class="pagination">
+      <button type="button" disabled={page === 0} onclick={onPrevPage}>◀</button>
+      <span class="page-indicator">{page + 1} / {totalPages}</span>
+      <button type="button" disabled={(page + 1) * pageSize >= total} onclick={onNextPage}>▶</button>
+    </div>
+  {/if}
   {#if replayError}<p class="replay-error" role="alert">{replayError}</p>{/if}
 </div>
 
@@ -87,6 +112,14 @@
     background: var(--bg-sub); color: var(--text); cursor: pointer; font: inherit; font-size: 0.65rem;
   }
   td button:hover:not(:disabled) { border-color: var(--main); color: var(--main); }
-  td button:disabled { cursor: not-allowed; opacity: 0.45; }
+  td button:disabled { cursor: not-allowed; color: var(--color-text-disabled); opacity: 0.72; border-style: dashed; }
   .replay-error { margin-top: 0.75rem; color: var(--error); font-size: 0.75rem; }
+  .pagination { display: flex; align-items: center; justify-content: center; gap: 0.75rem; margin-top: 1rem; }
+  .pagination button {
+    border: 1px solid var(--sub); border-radius: 4px; padding: 0.25rem 0.75rem;
+    background: var(--bg-sub); color: var(--text); cursor: pointer; font: inherit;
+  }
+  .pagination button:hover:not(:disabled) { border-color: var(--main); color: var(--main); }
+  .pagination button:disabled { cursor: not-allowed; opacity: 0.5; }
+  .page-indicator { color: var(--sub); font-size: 0.8rem; }
 </style>

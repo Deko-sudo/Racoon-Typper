@@ -1,24 +1,29 @@
 # Maintainer: Racoon Typper Contributors
 pkgname=racoon-typper
-pkgver=1.1.0
+pkgver=1.2.0
 pkgrel=1
 pkgdesc="Local desktop touch-typing trainer for Linux"
 arch=('x86_64')
-url="https://github.com/racoon-typper/racoon-typper"
+url="https://github.com/Deko-sudo/Racoon-Typper"
 license=('Apache-2.0')
 depends=('webkit2gtk-4.1')
 makedepends=('rust' 'npm' 'base-devel')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/racoon-typper/racoon-typper/archive/v$pkgver.tar.gz")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/Deko-sudo/Racoon-Typper/archive/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 build() {
-    cd "$srcdir/$pkgname-$pkgver"
+    cd "$srcdir/Racoon-Typper-$pkgver"
+    # makepkg's default CFLAGS include -flto=auto, which breaks linking of the
+    # bundled SQLite/ring C code (undefined sqlite3_* / ring_core_* symbols).
+    # Strip the LTO flag for the C compiler; Rust's own thin LTO still applies.
+    export CFLAGS="${CFLAGS//-flto=auto/}"
+    export CXXFLAGS="${CXXFLAGS//-flto=auto/}"
     npm ci --prefix frontend
     npm run tauri:build:binary --prefix frontend
 }
 
 package() {
-    cd "$srcdir/$pkgname-$pkgver"
+    cd "$srcdir/Racoon-Typper-$pkgver"
 
     # Binary
     install -Dm755 "target/release/racoon-app" "$pkgdir/usr/bin/racoon-typper"

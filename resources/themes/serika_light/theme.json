@@ -1,0 +1,20 @@
+{
+  "name": "serika_light",
+  "display_name": "Serika Light",
+  "description": "Bright daylight variant of serika.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#eceef0",
+    "surface": "#f4f6f8",
+    "text": "#2c2e31",
+    "accent": "#e2b714",
+    "correct": "#506e3a",
+    "incorrect": "#ca3e3e",
+    "caret": "#323437"
+  }
+}

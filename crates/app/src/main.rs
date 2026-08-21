@@ -1,6 +1,11 @@
 //! Tauri application entry point.
 //! Sprint 5: Settings + Themes + Custom Texts
 
+// On Windows, hide the console window in release builds. In debug builds
+// the console remains visible so panic messages and eprintln! output are
+// accessible during development.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 use chrono::{DateTime, Utc};
 use racoon_application::{
     SessionWallClock, StartupRecoveryCoordinator, StartupRecoveryGate, StartupRecoveryRetryPolicy,
@@ -16,9 +21,11 @@ use tauri::Manager;
 
 mod commands;
 mod error;
+mod export;
 mod logging;
 mod paths;
 mod session_service;
+mod share_card;
 mod state;
 mod validation;
 
@@ -44,6 +51,10 @@ impl StartupRecoverySleeper for ThreadStartupRecoverySleeper {
 
 fn main() {
     let application = tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let paths = paths::resolve(app)?;
             let data_dir = paths.data_dir.clone();
@@ -105,6 +116,7 @@ fn main() {
             commands::session::start_test,
             commands::session::process_key,
             commands::session::abort_session,
+            commands::session::abandon_active_session,
             // Stats
             commands::reporting::get_stats_history,
             commands::reporting::get_personal_bests,
@@ -128,6 +140,8 @@ fn main() {
             // Weak Keys
             commands::content::analyze_weak_keys,
             commands::content::generate_weak_keys_training,
+            // Custom text import
+            commands::content::import_text_from_url,
             // Dashboard
             commands::reporting::get_dashboard_stats,
             commands::reporting::get_progress_history,
@@ -136,12 +150,18 @@ fn main() {
             commands::reporting::get_insights,
             commands::reporting::get_consistency,
             commands::reporting::export_data,
+            commands::reporting::export_report,
+            commands::reporting::export_heatmap_png,
+            commands::reporting::export_result_png,
             // Versioned portable profile transfer
             commands::profile_transfer::export_profile,
             commands::profile_transfer::preview_profile_import,
             commands::profile_transfer::import_profile,
             // Replay
             commands::reporting::get_replay,
+            // Aggregated heatmap (training-of-the-day)
+            commands::reporting::get_aggregated_heatmap,
+            commands::reporting::clear_statistics,
             // Sound
             commands::preferences::get_sound_event,
         ]);

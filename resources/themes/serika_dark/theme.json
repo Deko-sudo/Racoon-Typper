@@ -1,0 +1,20 @@
+{
+  "name": "serika_dark",
+  "display_name": "Serika Dark",
+  "description": "Dark variant of serika with golden accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#323437",
+    "surface": "#2c2e31",
+    "text": "#e1e1e3",
+    "accent": "#e2b714",
+    "correct": "#85a55f",
+    "incorrect": "#ca4754",
+    "caret": "#e2b714"
+  }
+}

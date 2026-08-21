@@ -50,6 +50,10 @@ pub struct KeyHeatData {
     pub total_attempts: usize,
     pub correct: usize,
     pub incorrect: usize,
+    /// DEPRECATED: не заполняется продакшн-кодом (HeatmapBuilder пишет 0.0;
+    /// ненулевые значения встречаются только в тест-фикстурах). Поле оставлено
+    /// для совместимости схемы БД/wire-формата; merge_heatmaps корректно
+    /// усредняет его, если источник когда-нибудь начнёт поставлять данные.
     pub avg_wpm_at_key: f64,
 }
 

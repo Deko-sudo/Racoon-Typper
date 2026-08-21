@@ -1,0 +1,20 @@
+{
+  "name": "mint_frost",
+  "display_name": "Mint Frost",
+  "description": "Light mint-green with cool refreshing tones.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#e6f2ee",
+    "surface": "#f0f8f4",
+    "text": "#1a2e26",
+    "accent": "#4a9a7a",
+    "correct": "#4a8a5a",
+    "incorrect": "#aa5050",
+    "caret": "#3a8060"
+  }
+}

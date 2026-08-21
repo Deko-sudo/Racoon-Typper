@@ -1,6 +1,6 @@
 //! Tauri adapters for persisted history, dashboards, analytics, exports, and replay.
 
-use chrono::{Duration, Utc};
+use chrono::Duration;
 use racoon_core::analytics::{Achievement, Insight};
 use racoon_core::consistency::ConsistencyReport;
 use racoon_data::repository::{
@@ -15,6 +15,7 @@ use tauri::State;
 use crate::commands::contracts::{DashboardStatsResponse, ProgressPoint, StatsHistoryResponse};
 use crate::commands::with_db;
 use crate::error::AppError;
+use crate::export::{build_markdown_report, render_heatmap_png, MarkdownTestRow};
 use crate::state::AppState;
 use crate::validation::{
     validate_export_format, validate_mode_filter, validate_page_limit, validate_page_offset,
@@ -61,7 +62,7 @@ pub(crate) fn get_personal_bests(
 pub(crate) fn get_dashboard_stats(
     state: State<'_, AppState>,
 ) -> Result<DashboardStatsResponse, AppError> {
-    let (week_ago, today) = utc_date_range(7);
+    let (week_ago, today) = local_date_range(7);
     with_db(&state, |conn| {
         let test_repository = SqliteTestRepository::new(conn);
         let daily_repository = SqliteDailyStatsRepository::new(conn);
@@ -101,7 +102,7 @@ pub(crate) fn get_progress_history(
     days: Option<u32>,
 ) -> Result<Vec<ProgressPoint>, AppError> {
     let days = validate_progress_days(days.unwrap_or(30))?;
-    let (from, to) = utc_date_range(i64::from(days));
+    let (from, to) = local_date_range(i64::from(days));
     with_db(&state, |conn| {
         Ok(SqliteDailyStatsRepository::new(conn)
             .get_range(&from, &to)?
@@ -111,6 +112,8 @@ pub(crate) fn get_progress_history(
                 wpm: stats.avg_wpm,
                 accuracy: stats.avg_accuracy,
                 tests: stats.total_tests,
+                time_ms: stats.total_time_ms,
+                lessons: stats.lessons_completed,
             })
             .collect())
     })
@@ -144,19 +147,22 @@ pub(crate) fn get_achievements(
         let longest_streak = streak_repository
             .get("daily_test")?
             .map_or(0, |row| row.longest_streak);
-        let lessons_completed = ["en", "ru"]
-            .into_iter()
-            .map(|language| {
-                lesson_repository.get_progress(language).map(|progress| {
-                    progress
-                        .iter()
-                        .filter(|lesson| lesson.status == "completed")
-                        .count() as i64
-                })
+        let lessons_completed = [
+            "cs", "de", "en", "es", "fr", "it", "ja", "ko", "pl", "pt", "ro", "ru", "uk", "zh-hk",
+            "zh-tw",
+        ]
+        .into_iter()
+        .map(|language| {
+            lesson_repository.get_progress(language).map(|progress| {
+                progress
+                    .iter()
+                    .filter(|lesson| lesson.status == "completed")
+                    .count() as i64
             })
-            .collect::<Result<Vec<_>, _>>()?
-            .into_iter()
-            .sum();
+        })
+        .collect::<Result<Vec<_>, _>>()?
+        .into_iter()
+        .sum();
 
         Ok(vec![racoon_core::analytics::check_achievements(
             total_tests,
@@ -165,6 +171,7 @@ pub(crate) fn get_achievements(
             0,
             longest_streak,
             lessons_completed,
+            chrono::Utc::now().to_rfc3339(),
         )])
     })
 }
@@ -184,7 +191,7 @@ const RECENT_CONSISTENCY_SAMPLE_LIMIT: usize = 100;
 
 #[tauri::command]
 pub(crate) fn get_insights(state: State<'_, AppState>) -> Result<Vec<Vec<Insight>>, AppError> {
-    let (week_ago, today) = utc_date_range(7);
+    let (week_ago, today) = local_date_range(7);
     with_db(&state, |conn| {
         let daily_repository = SqliteDailyStatsRepository::new(conn);
         let test_repository = SqliteTestRepository::new(conn);
@@ -258,6 +265,50 @@ pub(crate) fn export_data(state: State<'_, AppState>, format: String) -> Result<
             }
             Ok(racoon_core::analytics::export_csv(&rows))
         }
+        "markdown" => {
+            let mut rows = vec![vec![
+                "Session_id".to_string(),
+                "Date".to_string(),
+                "Mode".to_string(),
+                "WPM".to_string(),
+                "Accuracy".to_string(),
+                "Duration_ms".to_string(),
+            ]];
+            for test in &history {
+                rows.push(vec![
+                    test.session_id.to_string(),
+                    test.created_at.clone(),
+                    test.mode_type.clone(),
+                    format!("{:.1}", test.wpm),
+                    format!("{:.1}", test.accuracy),
+                    test.duration_ms.to_string(),
+                ]);
+            }
+            let total = history.len();
+            let avg_wpm = if total > 0 {
+                history.iter().map(|test| test.wpm).sum::<f64>() / total as f64
+            } else {
+                0.0
+            };
+            let best_wpm = history.iter().map(|test| test.wpm).fold(0.0_f64, f64::max);
+            let avg_accuracy = if total > 0 {
+                history.iter().map(|test| test.accuracy).sum::<f64>() / total as f64
+            } else {
+                0.0
+            };
+            let best_accuracy = history
+                .iter()
+                .map(|test| test.accuracy)
+                .fold(0.0_f64, f64::max);
+            let summary: Vec<(&str, String)> = vec![
+                ("Total tests", total.to_string()),
+                ("Avg WPM", format!("{avg_wpm:.1}")),
+                ("Best WPM", format!("{best_wpm:.1}")),
+                ("Avg accuracy", format!("{avg_accuracy:.1}%")),
+                ("Best accuracy", format!("{best_accuracy:.1}%")),
+            ];
+            Ok(racoon_core::analytics::export_markdown(&rows, &summary))
+        }
         _ => Err(AppError::InvalidConfig(format!(
             "Unknown export format: {format}"
         ))),
@@ -275,12 +326,139 @@ pub(crate) fn get_replay(
     })
 }
 
-fn utc_date_range(days: i64) -> (String, String) {
-    let now = Utc::now();
+/// Возвращает агрегированный heatmap за последние N тестов (без фильтра по языку).
+///
+/// Объединяет per-test heatmap_data через `merge_heatmaps`. Используется для
+/// дашборд-виджета «Тренировка дня» и для weak-keys анализа при пустой
+/// текущей сессии (например, сразу после перезапуска приложения).
+#[tauri::command]
+pub(crate) fn get_aggregated_heatmap(
+    state: State<'_, AppState>,
+    recent_count: Option<usize>,
+) -> Result<std::collections::HashMap<String, racoon_domain::keyboard::KeyHeatData>, AppError> {
+    let count = recent_count.unwrap_or(50).clamp(1, 200);
+    with_db(&state, |conn| {
+        let repo = SqliteTestRepository::new(conn);
+        let rows = repo.get_recent_heatmaps(count, None)?;
+        Ok(racoon_core::merge_heatmaps(&rows))
+    })
+}
+
+#[tauri::command]
+pub(crate) fn export_report(state: State<'_, AppState>) -> Result<String, AppError> {
+    let (week_ago, today) = local_date_range(7);
+    let (history, dashboard, bests) = with_db(&state, |conn| {
+        let test_repository = SqliteTestRepository::new(conn);
+        let daily_repository = SqliteDailyStatsRepository::new(conn);
+        let bests_repository = SqlitePersonalBestsRepository::new(conn);
+        let history = test_repository.get_history(MAX_PAGE_LIMIT, 0, None)?;
+        let week_stats = daily_repository.get_range(&week_ago, &today)?;
+        let total_tests = test_repository.get_count(None)?;
+        let bests = bests_repository.get_bests(None)?;
+        Ok((history, (week_stats, total_tests), bests))
+    })?;
+
+    let (week_stats, total_tests) = dashboard;
+    let best_wpm = bests.iter().map(|pb| pb.best_wpm).fold(0.0_f64, f64::max);
+    let best_accuracy = bests
+        .iter()
+        .map(|pb| pb.best_accuracy)
+        .fold(0.0_f64, f64::max);
+    let avg_wpm = weighted_daily_average(&week_stats, |stats| stats.avg_wpm);
+    let avg_accuracy = weighted_daily_average(&week_stats, |stats| stats.avg_accuracy);
+
+    let summary: Vec<(&str, String)> = vec![
+        ("Total tests", total_tests.to_string()),
+        ("Best WPM", format!("{best_wpm:.1}")),
+        ("Best accuracy", format!("{best_accuracy:.1}%")),
+        ("Avg WPM (7d)", format!("{avg_wpm:.1}")),
+        ("Avg accuracy (7d)", format!("{avg_accuracy:.1}%")),
+    ];
+
+    let rows: Vec<MarkdownTestRow> = history
+        .iter()
+        .map(|test| MarkdownTestRow {
+            date: test.created_at.clone(),
+            mode: test.mode_type.clone(),
+            language: test.language.clone(),
+            wpm: test.wpm,
+            accuracy: test.accuracy,
+            duration_ms: test.duration_ms,
+        })
+        .collect();
+
+    Ok(build_markdown_report(
+        "Racoon Typper report",
+        &chrono::Utc::now().to_rfc3339(),
+        &summary,
+        &rows,
+    ))
+}
+
+#[tauri::command]
+pub(crate) fn export_heatmap_png(
+    state: State<'_, AppState>,
+    recent_count: Option<usize>,
+) -> Result<Vec<u8>, AppError> {
+    let count = recent_count.unwrap_or(50).clamp(1, 200);
+    let heatmap = with_db(&state, |conn| {
+        let repo = SqliteTestRepository::new(conn);
+        let rows = repo.get_recent_heatmaps(count, None)?;
+        Ok(racoon_core::merge_heatmaps(&rows))
+    })?;
+    let ordered: std::collections::BTreeMap<String, racoon_domain::keyboard::KeyHeatData> =
+        heatmap.into_iter().collect();
+    Ok(render_heatmap_png(&ordered))
+}
+
+/// Рендерит PNG share-карточку результата теста в цветах активной темы.
+///
+/// Статистика приходит с фронтенда (только что завершённый тест из
+/// ResultOverlay), цвета — из getComputedStyle CSS-переменных. Возвращает
+/// PNG-байты; фронтенд скачивает их через Blob-download.
+#[tauri::command]
+pub(crate) fn export_result_png(
+    stats: crate::share_card::ShareStats,
+    colors: crate::share_card::ThemeColors,
+) -> Result<Vec<u8>, AppError> {
+    crate::share_card::render_share_card(&stats, &colors)
+        .map_err(|e| AppError::Internal(format!("share card render: {e}")))
+}
+
+fn local_date_range(days: i64) -> (String, String) {
+    // Boundaries must be expressed in the user's local calendar day to match
+    // the local dates written by daily_stats/streaks persistence.
+    let now = chrono::Local::now();
     (
         (now - Duration::days(days)).format("%Y-%m-%d").to_string(),
         now.format("%Y-%m-%d").to_string(),
     )
+}
+
+/// Permanently deletes all typing statistics: test history, personal bests,
+/// daily aggregates, streaks, lesson progress, replays, and the session ledger.
+/// Custom texts and settings are preserved. Achievements are derived from these
+/// aggregates, so they reset to locked as well.
+#[tauri::command]
+pub(crate) fn clear_statistics(state: State<'_, AppState>) -> Result<(), AppError> {
+    state.require_startup_recovery_ready()?;
+    state.db.with_transaction(|conn| {
+        for table in [
+            "test_replays",
+            "session_ledger",
+            "session_completion_intents",
+            "session_finalizations",
+            "tests",
+            "personal_bests",
+            "daily_stats",
+            "streaks",
+            "lesson_progress",
+        ] {
+            conn.execute(&format!("DELETE FROM {table}"), [])?;
+        }
+        Ok(())
+    })?;
+    Ok(())
 }
 
 fn weighted_daily_average(stats: &[DailyStats], metric: impl Fn(&DailyStats) -> f64) -> f64 {

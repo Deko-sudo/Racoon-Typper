@@ -2,6 +2,9 @@
   import type { AppSettings, ThemeInfo } from '../lib/types/index';
   import { t, UI_LANGUAGES } from '../lib/i18n';
   import ProfileTransferPanel from './ProfileTransferPanel.svelte';
+  import ThemeEditor from './ThemeEditor.svelte';
+  import { checkForUpdate, installUpdate } from '../lib/updater';
+  import * as ipc from '../lib/api/ipc';
 
   let {
     settings,
@@ -18,6 +21,49 @@
     onSelectTheme: (name: string) => void;
     onUpdateSetting: (key: string, value: unknown) => void;
   } = $props();
+
+  let updateStatus = $state<string>('');
+  let updateVersion = $state<string | null>(null);
+  let checkingUpdate = $state(false);
+
+  async function handleCheckUpdate() {
+    checkingUpdate = true;
+    updateStatus = '';
+    updateVersion = null;
+    const result = await checkForUpdate();
+    checkingUpdate = false;
+    if (result.error) {
+      updateStatus = `Update check failed: ${result.error}`;
+    } else if (result.available) {
+      updateVersion = result.version ?? null;
+      updateStatus = `Update available: v${result.version}`;
+    } else {
+      updateStatus = 'You are up to date.';
+    }
+  }
+
+  async function handleInstallUpdate() {
+    const ok = await installUpdate();
+    if (!ok) updateStatus = 'Update install failed.';
+  }
+
+  let clearConfirm = $state(false);
+  let clearStatus = $state('');
+
+  async function handleClearStatistics() {
+    if (!clearConfirm) {
+      clearConfirm = true;
+      clearStatus = 'This permanently deletes all typing statistics and resets achievements. Click again to confirm.';
+      return;
+    }
+    try {
+      await ipc.clearStatistics();
+      clearConfirm = false;
+      clearStatus = 'All statistics cleared.';
+    } catch (error) {
+      clearStatus = `Clear failed: ${ipc.ipcErrorMessage(error)}`;
+    }
+  }
 
   const themeDescriptions: Record<string, string> = {
     racoon_graphite: 'Calm graphite surfaces with soft silver contrast.',
@@ -56,6 +102,35 @@
       || theme.display_name.toLowerCase().includes(query),
     );
   });
+
+  // Превью-цвета карточки «Custom» из сохранённого JSON (fallback — graphite).
+  let customPreviewBg = $derived(customThemeColor('--color-app-background', '#0d0f12'));
+  let customPreviewMain = $derived(customThemeColor('--color-accent', '#c5cbd4'));
+  let customPreviewText = $derived(customThemeColor('--color-text-primary', '#e7e9ed'));
+  let customPreviewError = $derived(customThemeColor('--color-error', '#dc8d8d'));
+
+  function customThemeColor(variable: string, fallback: string): string {
+    const raw = settings?.custom_theme_colors ?? '';
+    if (!raw) return fallback;
+    try {
+      const parsed = JSON.parse(raw) as Record<string, unknown>;
+      const value = parsed[variable];
+      return typeof value === 'string' ? value : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  // Нормализация стиля каретки для live-превью (legacy → актуальные рендеры).
+  let normalizedPreviewCaretStyle = $derived.by(() => {
+    switch (settings?.caret_style) {
+      case 'thick': return 'thick';
+      case 'bubble': return 'bubble';
+      case 'solid': return 'thick';
+      case 'block': return 'bubble';
+      default: return 'thin';
+    }
+  });
 </script>
 
 <div class="list-view">
@@ -80,36 +155,71 @@
       </div>
       <div class="setting-row">
         <label for="setting-font-size">{t(uiLang, 'settings.font_size')}</label>
-        <input id="setting-font-size" type="number" value={settings.font_size} onchange={(e) => onUpdateSetting('font_size', parseInt(e.currentTarget.value))} />
+        <input id="setting-font-size" type="number" min="12" max="72" value={settings.font_size} onchange={(e) => {
+          // NaN-guard: пустое поле даёт NaN → JSON null → backend-ошибка.
+          // Clamp к допустимому диапазону вместо отправки мусора.
+          const n = Number(e.currentTarget.value);
+          if (Number.isFinite(n)) onUpdateSetting('font_size', Math.min(72, Math.max(12, Math.round(n))));
+        }} />
       </div>
       <div class="setting-row">
         <label for="setting-caret">{t(uiLang, 'settings.caret_style')}</label>
         <select id="setting-caret" value={settings.caret_style} onchange={(e) => onUpdateSetting('caret_style', e.currentTarget.value)}>
-          <option value="underline">Underline</option>
-          <option value="block">Block</option>
-          <option value="solid">Solid</option>
+          <option value="thin">Thin</option>
+          <option value="thick">Thick</option>
+          <option value="bubble">Bubble</option>
           <option value="off">Off</option>
         </select>
       </div>
       <div class="setting-row">
+        <label for="setting-caret-pos">{t(uiLang, 'settings.caret_position')}</label>
+        <select id="setting-caret-pos" value={settings.caret_position || 'before'} onchange={(e) => onUpdateSetting('caret_position', e.currentTarget.value)}>
+          <option value="before">{t(uiLang, 'settings.caret_position_before')}</option>
+          <option value="after">{t(uiLang, 'settings.caret_position_after')}</option>
+        </select>
+      </div>
+      <div class="setting-row">
+        <label for="setting-caret-anim">{t(uiLang, 'settings.caret_animation')}</label>
+        <select id="setting-caret-anim" value={settings.caret_animation || 'blink'} onchange={(e) => onUpdateSetting('caret_animation', e.currentTarget.value)}>
+          <option value="blink">{t(uiLang, 'settings.caret_animation_blink')}</option>
+          <option value="pulse">{t(uiLang, 'settings.caret_animation_pulse')}</option>
+        </select>
+      </div>
+      <div class="setting-row caret-preview-row">
+        <span class="caret-preview-label">{t(uiLang, 'settings.caret_preview')}</span>
+        <span class="caret-preview" class:caret-preview-after={settings.caret_position === 'after'}>
+          <span class="caret-preview-text">Hello world</span>
+          {#if (settings.caret_style ?? 'thin') !== 'off'}
+            <span
+              class="caret-preview-caret caret-{normalizedPreviewCaretStyle} anim-{settings.caret_animation === 'pulse' ? 'pulse' : 'blink'}"
+              aria-hidden="true"
+            ></span>
+          {/if}
+        </span>
+      </div>
+      <div class="setting-row">
         <label for="setting-live-wpm">{t(uiLang, 'settings.show_live_wpm')}</label>
-        <input id="setting-live-wpm" type="checkbox" checked={settings.show_live_wpm} onchange={(e) => onUpdateSetting('show_live_wpm', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-live-wpm" type="checkbox" checked={settings.show_live_wpm} onchange={(e) => onUpdateSetting('show_live_wpm', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-accuracy">{t(uiLang, 'settings.show_accuracy')}</label>
-        <input id="setting-accuracy" type="checkbox" checked={settings.show_accuracy} onchange={(e) => onUpdateSetting('show_accuracy', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-accuracy" type="checkbox" checked={settings.show_accuracy} onchange={(e) => onUpdateSetting('show_accuracy', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-hand-guide">{t(uiLang, 'settings.hand_guide')}</label>
-        <input id="setting-hand-guide" type="checkbox" checked={settings.show_hand_guide} onchange={(e) => onUpdateSetting('show_hand_guide', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-hand-guide" type="checkbox" checked={settings.show_hand_guide} onchange={(e) => onUpdateSetting('show_hand_guide', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-capslock">{t(uiLang, 'settings.capslock_warnings')}</label>
-        <input id="setting-capslock" type="checkbox" checked={settings.show_capslock_warnings} onchange={(e) => onUpdateSetting('show_capslock_warnings', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-capslock" type="checkbox" checked={settings.show_capslock_warnings} onchange={(e) => onUpdateSetting('show_capslock_warnings', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <label for="setting-layout">{t(uiLang, 'settings.layout_warnings')}</label>
+        <label class="toggle"><input id="setting-layout" type="checkbox" checked={settings.show_layout_warnings} onchange={(e) => onUpdateSetting('show_layout_warnings', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-sound">{t(uiLang, 'settings.sound_enabled')}</label>
-        <input id="setting-sound" type="checkbox" checked={settings.sound_enabled} onchange={(e) => onUpdateSetting('sound_enabled', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-sound" type="checkbox" checked={settings.sound_enabled} onchange={(e) => onUpdateSetting('sound_enabled', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-volume">{t(uiLang, 'settings.sound_volume')}</label>
@@ -117,12 +227,27 @@
       </div>
       <div class="setting-row">
         <label for="setting-zen">{t(uiLang, 'settings.zen_mode')}</label>
-        <input id="setting-zen" type="checkbox" checked={settings.zen_mode_enabled} onchange={(e) => onUpdateSetting('zen_mode_enabled', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-zen" type="checkbox" checked={settings.zen_mode_enabled} onchange={(e) => onUpdateSetting('zen_mode_enabled', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
+      </div>
+      <div class="setting-row">
+        <label for="setting-blind">{t(uiLang, 'settings.blind_mode')}</label>
+        <label class="toggle"><input id="setting-blind" type="checkbox" checked={settings.blind_mode_enabled} onchange={(e) => onUpdateSetting('blind_mode_enabled', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
         <label for="setting-vim">{t(uiLang, 'settings.vim_mode')}</label>
-        <input id="setting-vim" type="checkbox" checked={settings.vim_mode} onchange={(e) => onUpdateSetting('vim_mode', e.currentTarget.checked)} />
+        <label class="toggle"><input id="setting-vim" type="checkbox" checked={settings.vim_mode} onchange={(e) => onUpdateSetting('vim_mode', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
+      {#if settings.vim_mode}
+        <div class="vim-hint">
+          <span class="vim-key">h</span> <span class="vim-desc">{t(uiLang, 'vim.hint_prev')}</span>
+          <span class="vim-key">l</span> <span class="vim-desc">{t(uiLang, 'vim.hint_next')}</span>
+          <span class="vim-key">k</span> <span class="vim-desc">{t(uiLang, 'vim.hint_up')}</span>
+          <span class="vim-key">j</span> <span class="vim-desc">{t(uiLang, 'vim.hint_down')}</span>
+          <span class="vim-key">gg</span> <span class="vim-desc">{t(uiLang, 'vim.hint_top')}</span>
+          <span class="vim-key">G</span> <span class="vim-desc">{t(uiLang, 'vim.hint_bottom')}</span>
+          <span class="vim-key">r</span> <span class="vim-desc">{t(uiLang, 'vim.hint_restart')}</span>
+        </div>
+      {/if}
       <div class="setting-row">
         <label for="setting-goal-type">{t(uiLang, 'settings.daily_goal_type')}</label>
         <select id="setting-goal-type" value={settings.daily_goal_type || 'time'} onchange={(e) => onUpdateSetting('daily_goal_type', e.currentTarget.value)}>
@@ -134,17 +259,44 @@
       {#if settings.daily_goal_type === 'wpm'}
         <div class="setting-row">
           <label for="setting-goal-wpm">{t(uiLang, 'settings.daily_goal_wpm')}</label>
-          <input id="setting-goal-wpm" type="number" min="0" max="300" value={settings.daily_goal_wpm || 0} onchange={(e) => onUpdateSetting('daily_goal_wpm', parseFloat(e.currentTarget.value))} />
+          <input id="setting-goal-wpm" type="number" min="0" max="300" value={settings.daily_goal_wpm || 0} onchange={(e) => {
+            const n = Number(e.currentTarget.value);
+            if (Number.isFinite(n)) onUpdateSetting('daily_goal_wpm', Math.min(300, Math.max(0, n)));
+          }} />
         </div>
       {/if}
       {#if settings.daily_goal_type === 'accuracy'}
         <div class="setting-row">
           <label for="setting-goal-acc">{t(uiLang, 'settings.daily_goal_accuracy')}</label>
-          <input id="setting-goal-acc" type="number" min="0" max="100" step="0.1" value={settings.daily_goal_accuracy || 0} onchange={(e) => onUpdateSetting('daily_goal_accuracy', parseFloat(e.currentTarget.value))} />
+          <input id="setting-goal-acc" type="number" min="0" max="100" step="0.1" value={settings.daily_goal_accuracy || 0} onchange={(e) => {
+            const n = Number(e.currentTarget.value);
+            if (Number.isFinite(n)) onUpdateSetting('daily_goal_accuracy', Math.min(100, Math.max(0, n)));
+          }} />
         </div>
       {/if}
     </div>
     <ProfileTransferPanel {uiLang} />
+    <h3>Data</h3>
+    <div class="update-panel">
+      <button class="update-btn danger" onclick={handleClearStatistics}>
+        {clearConfirm ? 'Confirm clear' : 'Clear all statistics'}
+      </button>
+      {#if clearStatus}
+        <span class="update-status">{clearStatus}</span>
+      {/if}
+    </div>
+    <h3>Updates</h3>
+    <div class="update-panel">
+      <button class="update-btn" onclick={handleCheckUpdate} disabled={checkingUpdate}>
+        {checkingUpdate ? 'Checking...' : 'Check for updates'}
+      </button>
+      {#if updateVersion}
+        <button class="update-btn primary" onclick={handleInstallUpdate}>Install v{updateVersion}</button>
+      {/if}
+      {#if updateStatus}
+        <span class="update-status">{updateStatus}</span>
+      {/if}
+    </div>
     <h3>{t(uiLang, 'settings.theme_preview')}</h3>
     <div class="theme-toolbar">
       <input
@@ -157,6 +309,22 @@
       <span>{filteredThemes.length}/{themes.length}</span>
     </div>
     <div class="theme-cards">
+      <button
+        type="button"
+        class="theme-card {activeTheme === 'custom' ? 'active' : ''}"
+        aria-pressed={activeTheme === 'custom'}
+        style="background: {customPreviewBg}; border-color: {customPreviewMain};"
+        onclick={() => onSelectTheme('custom')}
+      >
+        <span style="color: {customPreviewMain}">{t(uiLang, 'theme_editor.title')}</span>
+        <span class="theme-description" style="color: {customPreviewText}">{t(uiLang, 'theme_editor.hint')}</span>
+        <span class="theme-state-preview">
+          <span style="color: {customPreviewText}">Aa</span>
+          <span style="color: {customPreviewMain}; border-left-color: {customPreviewMain}">caret</span>
+          <span style="color: {customPreviewError}; text-decoration-color: {customPreviewError}">error</span>
+        </span>
+        {#if activeTheme === 'custom'}<span class="selected-label" style="color: {customPreviewMain}">✓ Selected</span>{/if}
+      </button>
       {#each filteredThemes as t2}
         <button
           type="button"
@@ -176,6 +344,7 @@
         </button>
       {/each}
     </div>
+    <ThemeEditor {settings} {uiLang} onUpdateSetting={onUpdateSetting} />
   {/if}
 </div>
 
@@ -185,14 +354,34 @@
   h3 { color: var(--main); font-size: 1.1rem; margin: 1rem 0 0.5rem; }
   .settings-form { display: flex; flex-direction: column; gap: 1rem; }
   .setting-row { display: flex; align-items: center; gap: 1rem; }
-  .setting-row label { min-width: 180px; color: var(--sub); font-size: 0.875rem; }
+  .setting-row > label:first-of-type { min-width: 180px; color: var(--sub); font-size: 0.875rem; }
+  .setting-row label.toggle { min-width: auto; }
   .setting-row input, .setting-row select {
     background-color: var(--bg-sub) !important; border: 1px solid var(--sub); color: var(--text) !important;
     padding: 0.5rem; font-family: inherit; border-radius: 4px; font-size: 0.875rem;
   }
   .setting-row select { min-width: 155px; padding-right: 0.5rem; }
   .setting-row select option { background-color: var(--bg-sub); color: var(--text); }
-  .setting-row input[type='checkbox'] { accent-color: var(--main); }
+  /* Custom toggle switch (iOS/macOS style). The real checkbox is visually
+     hidden but remains focusable for keyboard access. */
+  .toggle { position: relative; display: inline-block; width: 36px; height: 20px; flex-shrink: 0; cursor: pointer; }
+  .toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-slider {
+    position: absolute; inset: 0; background: var(--sub); border-radius: 20px;
+    transition: background 0.2s ease;
+  }
+  .toggle-slider::before {
+    content: ''; position: absolute; width: 14px; height: 14px; left: 3px; top: 3px;
+    background: #fff; border-radius: 50%; transition: transform 0.2s ease;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  .toggle input:checked + .toggle-slider { background: var(--main); }
+  .toggle input:checked + .toggle-slider::before { transform: translateX(16px); }
+  .toggle input:focus-visible + .toggle-slider { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+  .toggle input:disabled + .toggle-slider { opacity: 0.5; cursor: default; }
+  .vim-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; margin-left: 180px; padding: 0.5rem 0.75rem; background: var(--bg-sub); border: 1px solid var(--sub); border-radius: 6px; font-size: 0.8rem; }
+  .vim-key { display: inline-block; min-width: 1.4em; text-align: center; padding: 0.1rem 0.35rem; background: var(--main); color: var(--bg); border-radius: 4px; font-family: monospace; font-weight: 700; }
+  .vim-desc { color: var(--sub); }
   .setting-row input[type='range'] { accent-color: var(--main); background: transparent !important; }
   .setting-row input:focus-visible, .setting-row select:focus-visible, .theme-search:focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; border-color: var(--color-focus-ring); }
   .theme-toolbar { display: flex; align-items: center; gap: 1rem; margin-bottom: 0.75rem; }
@@ -212,4 +401,49 @@
   .theme-state-preview span:nth-child(2) { border-left: 2px solid; padding-left: 0.25rem; }
   .theme-state-preview span:last-child { text-decoration: underline 2px; text-underline-offset: 0.16em; }
   .selected-label { font-size: 0.62rem; font-weight: 700; }
+  .update-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .update-btn {
+    background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main);
+    padding: 0.5rem 1.25rem; font-family: inherit; font-size: 0.875rem; cursor: pointer; border-radius: 4px;
+  }
+  .update-btn.primary { background-color: var(--main); color: var(--bg); }
+  .update-btn.danger { border-color: var(--error); color: var(--error); }
+  .update-btn.danger:hover:not(:disabled) { background-color: var(--error); color: var(--bg); }
+  .update-btn:hover:not(:disabled) { opacity: 0.85; }
+  .update-btn:disabled { opacity: 0.5; cursor: default; }
+  .update-status { color: var(--sub); font-size: 0.8rem; }
+  /* Live-preview каретки: мини-строка «Hello world|» с теми же классами
+     каретки, что и в TestView. Реагирует мгновенно на настройки. */
+  .caret-preview-row { align-items: center; }
+  .caret-preview-label { min-width: 180px; color: var(--sub); font-size: 0.875rem; }
+  .caret-preview {
+    position: relative; display: inline-block;
+    font-size: 1.1rem; line-height: 1.65; color: var(--color-typing-correct);
+    background: var(--color-surface-primary); border: 1px solid var(--color-border);
+    border-radius: 6px; padding: 0.35rem 0.75rem;
+  }
+  .caret-preview-text { font-family: inherit; }
+  .caret-preview-caret {
+    position: absolute; top: 0.35rem; bottom: 0.35rem; width: 0.12em;
+    border-radius: 999px; background: var(--color-caret);
+    animation: caret-preview-blink 0.9s ease-in-out infinite;
+    left: 0.45rem;
+  }
+  .caret-preview.caret-preview-after .caret-preview-caret { left: auto; right: 0.45rem; }
+  .caret-preview-caret.caret-thick { width: 0.24em; border-radius: 0.05em; }
+  .caret-preview-caret.caret-bubble {
+    width: 0.34em;
+    background: color-mix(in srgb, var(--color-caret) 30%, transparent);
+    border: 0.09em solid var(--color-caret);
+    box-shadow: 0 0 0.35em color-mix(in srgb, var(--color-caret) 55%, transparent);
+  }
+  .caret-preview-caret.anim-pulse { animation: caret-preview-pulse 1.1s ease-in-out infinite; }
+  @keyframes caret-preview-blink { 0%,45%{opacity:1} 55%,100%{opacity:.18} }
+  @keyframes caret-preview-pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:.55; transform:scale(1.25); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .caret-preview-caret { animation: none; }
+  }
 </style>

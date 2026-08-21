@@ -98,6 +98,8 @@ export interface AppSettings {
   theme: string;
   font_size: number;
   caret_style: string;
+  caret_position: string;
+  caret_animation: string;
   show_live_wpm: boolean;
   show_accuracy: boolean;
   show_keyboard_trainer: boolean;
@@ -107,11 +109,16 @@ export interface AppSettings {
   sound_enabled: boolean;
   sound_volume: number;
   zen_mode_enabled: boolean;
+  blind_mode_enabled: boolean;
   ui_language: string;
   vim_mode: boolean;
   daily_goal_type: string;
   daily_goal_wpm: number;
   daily_goal_accuracy: number;
+  daily_goal_minutes: number;
+  pomodoro_work_min: number;
+  pomodoro_break_min: number;
+  custom_theme_colors: string;
 }
 
 export interface ThemeInfo {
@@ -126,7 +133,7 @@ export interface ThemeInfo {
   };
 }
 
-export type ViewName = 'dashboard' | 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys' | 'analytics' | 'achievements';
+export type ViewName = 'dashboard' | 'test' | 'pomodoro' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys' | 'analytics' | 'achievements';
 export type ModeName = 'time' | 'words' | 'quote' | 'custom';
 export type LanguageCode = 'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko';
 
@@ -223,6 +230,8 @@ export interface ProgressPoint {
   wpm: number;
   accuracy: number;
   tests: number;
+  time_ms: number;
+  lessons: number;
 }
 
 export type ProfileImportPolicy = 'merge' | 'replace';

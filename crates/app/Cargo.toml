@@ -15,11 +15,18 @@ racoon-data = { workspace = true }
 racoon-resources = { workspace = true }
 racoon-application = { workspace = true }
 tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-clipboard-manager = "2"
+tauri-plugin-updater = "2"
+reqwest = { version = "0.12", features = ["blocking", "json", "rustls-tls"], default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
 chrono = "0.4"
 rusqlite = { version = "0.31", features = ["bundled"] }
+image = { version = "0.25", default-features = false, features = ["png"] }
+ab_glyph = "0.2"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

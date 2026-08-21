@@ -1,0 +1,20 @@
+{
+  "name": "terra",
+  "display_name": "Terra",
+  "description": "Earthen clay and ochre with warm stone surfaces.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Warm",
+  "is_dark": true,
+  "preview": {
+    "background": "#1c1814",
+    "surface": "#241e18",
+    "text": "#e8dcc8",
+    "accent": "#c68855",
+    "correct": "#a0a060",
+    "incorrect": "#c85544",
+    "caret": "#e8c8a0"
+  }
+}

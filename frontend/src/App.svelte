@@ -2,8 +2,10 @@
   import { onMount } from 'svelte';
   import * as ipc from './lib/api/ipc';
   import { t } from './lib/i18n';
+  import { lessonResultNavigation } from './lib/lessonNavigation';
   import { createNavigationStore } from './lib/stores/navigation.svelte';
   import { createNotificationStore } from './lib/stores/notifications.svelte';
+  import { vimActionForKey, VIM_VIEWS } from './lib/vimNavigation';
   import type {
     CharStatus, EngineOutput, TestSessionResponse, FinalStats, TestSummary,
     PersonalBest, CustomText, AppSettings,
@@ -24,6 +26,8 @@
   import DashboardView from './components/DashboardView.svelte';
   import AnalyticsView from './components/AnalyticsView.svelte';
   import AchievementGallery from './components/AchievementGallery.svelte';
+  import PomodoroView from './components/PomodoroView.svelte';
+  import CheatsheetOverlay from './components/CheatsheetOverlay.svelte';
 
   // Navigation
   const navigation = createNavigationStore('test');
@@ -35,12 +39,25 @@
   let charStatuses = $state<CharStatus[]>([]);
   let isRunning = $state(false);
   let isComplete = $state(false);
+  // Guards against a race where two startTest() calls both observe isRunning
+  // === false while the first is still awaiting the backend, causing a second
+  // IPC start that the backend rejects with TEST_ALREADY_ACTIVE.
+  let startingTest = $state(false);
   let sessionState = $state<SessionState>('idle');
   let errorMsg = $state('');
+  // Tracks a pending single 'g' press for the 'gg' Vim scroll-to-top command.
+  let vimPendingG = $state(false);
+  // When the pending 'g' was pressed (for the 1s 'gg' expiry).
+  let vimPendingGAt = 0;
+  // Timestamp of the last "accuracy above 95%" toast — debounce (30s).
+  let lastHighAccToastAt = 0;
   let liveWpm = $state(0);
   let liveAccuracy = $state(100);
   let elapsedMs = $state(0);
   let finalStats = $state<FinalStats | null>(null);
+  // Позиции, где была допущена ошибка — хвост ошибки остаётся видимым
+  // после backspace/ретайпа до конца теста.
+  let erroredPositions = $state(new Set<number>());
 
   // Test config
   let selectedMode = $state<ModeName>('time');
@@ -58,6 +75,7 @@
   // History
   let history = $state<TestSummary[]>([]);
   let historyTotal = $state(0);
+  let historyPage = $state(0);
 
   // Bests
   let bests = $state<PersonalBest[]>([]);
@@ -86,6 +104,7 @@
   let lessonProgress = $state<Record<string, { status: string; best_wpm: number; best_accuracy: number }>>({});
   let lessonLang = $state<'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko'>('en');
   let currentLessonId = $state<string | null>(null);
+  const lessonNavigation = $derived(lessonResultNavigation(courseModules, currentLessonId));
 
   // Weak Keys
   let weakKeysData = $state<Array<{ ch: string; error_count: number; accuracy: number; rank: number }>>([]);
@@ -96,6 +115,9 @@
 
   // Zen mode — hide everything except text
   let zenActive = $state(false);
+
+  // Cheatsheet overlay
+  let cheatsheetOpen = $state(false);
 
   // Achievement tracking — snapshot before test for auto-toast
   let preTestAchievements = $state<Array<{ id: string; unlocked: boolean }>>([]);
@@ -145,7 +167,7 @@
       const after = (await ipc.getAchievements()).flat();
       for (const a of after) {
         if (a.unlocked && !preTestAchievements.find(p => p.id === a.id && p.unlocked)) {
-          notificationStore.add('SUCCESS', `🏆 ${a.name} — ${a.description}`);
+          notificationStore.add('SUCCESS', `${a.name} — ${a.description}`);
         }
       }
     } catch {
@@ -172,6 +194,11 @@
     liveWpm = 0;
     liveAccuracy = 100;
     elapsedMs = 0;
+    // Сброс layout/caps-детекции: иначе после RU-теста новый EN-тест
+    // показывает карточку «неверная раскладка» до первого нажатия.
+    lastTypedChar = '';
+    capsLockOn = false;
+    erroredPositions = new Set();
     charStatuses = Array.from(resp.text, (ch) => ({
       expected: ch,
       typed: null,
@@ -190,6 +217,7 @@
     elapsedMs = 0;
     caretPos = 0;
     charStatuses = [];
+    erroredPositions = new Set();
   }
 
   // Replacing a running test is an explicit user action. The backend must
@@ -213,13 +241,23 @@
   }
 
   async function startTest() {
+    // Guard against a double start (e.g. a racing onMount + user click). The
+    // backend rejects a second start with TEST_ALREADY_ACTIVE; surface a
+    // clear message instead of a raw IPC error. `startingTest` closes the gap
+    // where isRunning is still false while the first start is in flight.
+    if (isRunning && !isComplete) {
+      errorMsg = 'Start test error: A test is already running.';
+      return;
+    }
+    if (startingTest) return;
+    startingTest = true;
     errorMsg = '';
     finalStats = null;
     if (settings?.zen_mode_enabled) zenActive = true;
     try {
       await snapshotAchievements();
       const params: {
-        mode: string;
+        mode: ModeName;
         language: string;
         duration?: number;
         wordCount?: number;
@@ -235,6 +273,8 @@
     } catch (error) {
       zenActive = false;
       errorMsg = `Start test error: ${ipc.ipcErrorMessage(error)}`;
+    } finally {
+      startingTest = false;
     }
   }
 
@@ -270,24 +310,29 @@
     elapsedMs = stats.duration_ms;
 
     if (stats.accuracy >= 95) {
-      notificationStore.add('SUCCESS', 'Отличный результат!');
+      notificationStore.add('SUCCESS', t(uiLang, 'notification.great_result'));
     }
 
     const lessonId = currentLessonId;
     if (sessionModeType === 'lesson' && lessonId) {
       // The backend persisted lesson completion in the same transaction as the
-      // completed test. This local update only renders that confirmed state.
+      // completed test, applying the pass gate (accuracy ≥90% AND wpm ≥20).
+      // Mirror that gate locally so the UI matches the persisted status.
+      const passed = stats.accuracy >= 90 && stats.wpm >= 20;
       lessonProgress = {
         ...lessonProgress,
         [lessonId]: {
-          status: 'completed',
+          status: passed
+            ? 'completed'
+            : (lessonProgress[lessonId]?.status === 'completed' ? 'completed' : 'in_progress'),
           best_wpm: Math.max(lessonProgress[lessonId]?.best_wpm ?? 0, stats.wpm),
           best_accuracy: Math.max(lessonProgress[lessonId]?.best_accuracy ?? 0, stats.accuracy),
         },
       };
       void playSound('lesson_complete');
     }
-    currentLessonId = null;
+    // Держим счётчик истории актуальным для бейджа в навигации.
+    void loadHistoryTotal();
     await checkNewAchievements();
   }
 
@@ -300,8 +345,14 @@
       elapsedMs = output.live_stats.elapsed_ms;
       testStartedAt = Date.now() - output.live_stats.elapsed_ms;
 
-      if (liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05) {
-        notificationStore.add('SUCCESS', 'Точность выше 95%');
+      // Toast не чаще раза в 30 секунд — иначе спам на каждый 20-й keystroke.
+      const now = Date.now();
+      if (
+        liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05
+        && now - lastHighAccToastAt > 30_000
+      ) {
+        lastHighAccToastAt = now;
+        notificationStore.add('SUCCESS', t(uiLang, 'notification.high_accuracy'));
       }
     }
 
@@ -313,6 +364,7 @@
       };
     } else if (output.key_result === 'incorrect' && caretPos < charStatuses.length) {
       charStatuses[caretPos] = { ...charStatuses[caretPos], typed: key, status: 'incorrect' };
+      erroredPositions.add(caretPos);
     } else if (output.key_result === 'undone_correct' && caretPos < charStatuses.length) {
       charStatuses[caretPos] = { ...charStatuses[caretPos], typed: null, status: 'backspaced' };
     } else if (output.key_result === 'undone_incorrect' && caretPos < charStatuses.length) {
@@ -371,28 +423,77 @@
       return;
     }
 
+    // Cheatsheet overlay: '?' toggles, Esc closes. Handled before vim-mode so
+    // the overlay never leaks keys into navigation or a running test.
+    if (cheatsheetOpen) {
+      if (e.key === 'Escape' || e.key === '?') {
+        e.preventDefault();
+        cheatsheetOpen = false;
+      }
+      return;
+    }
+    if (e.key === '?' && !isRunning) {
+      e.preventDefault();
+      cheatsheetOpen = true;
+      return;
+    }
+
     // Vim mode navigation (only when not actively typing a test)
     if (settings?.vim_mode && !isRunning) {
-      const views: ViewName[] = ['dashboard', 'test', 'lessons', 'weakkeys', 'analytics', 'achievements', 'history', 'bests', 'custom', 'settings'];
-      const currentIdx = views.indexOf(view);
-      if (e.key === 'h' && currentIdx > 0) { e.preventDefault(); switchView(views[currentIdx - 1]); return; }
-      if (e.key === 'l' && currentIdx < views.length - 1) { e.preventDefault(); switchView(views[currentIdx + 1]); return; }
-      if (e.key === 'k') { e.preventDefault(); window.scrollBy(0, -100); return; }
-      if (e.key === 'j') { e.preventDefault(); window.scrollBy(0, 100); return; }
+      // 'gg' — это двойное нажатие: одиночный 'g' истекает через 1 секунду,
+      // иначе залипший pending-g срабатывает на первом 'g' следующего теста.
+      if (vimPendingG && Date.now() - vimPendingGAt > 1000) vimPendingG = false;
+      const { action, nextPendingG } = vimActionForKey(e.key, view, vimPendingG);
+      vimPendingG = nextPendingG;
+      if (vimPendingG) vimPendingGAt = Date.now();
+      switch (action.type) {
+        case 'prev_tab': {
+          const idx = VIM_VIEWS.indexOf(view as (typeof VIM_VIEWS)[number]);
+          if (idx > 0) { e.preventDefault(); switchView(VIM_VIEWS[idx - 1]); }
+          return;
+        }
+        case 'next_tab': {
+          const idx = VIM_VIEWS.indexOf(view as (typeof VIM_VIEWS)[number]);
+          if (idx >= 0 && idx < VIM_VIEWS.length - 1) { e.preventDefault(); switchView(VIM_VIEWS[idx + 1]); }
+          return;
+        }
+        case 'scroll_up': e.preventDefault(); window.scrollBy(0, -100); return;
+        case 'scroll_down': e.preventDefault(); window.scrollBy(0, 100); return;
+        case 'scroll_top': e.preventDefault(); window.scrollTo(0, 0); return;
+        case 'scroll_bottom': e.preventDefault(); window.scrollTo(0, document.body.scrollHeight); return;
+        case 'restart': e.preventDefault(); void restartTest(); return;
+        case 'none': return;
+      }
     }
 
     if (!isRunning || isComplete) return;
+
+    // View-gating: клавиши попадают в тест только на тестовых вью.
+    // WeakKeys нужна для inline-training, остальные вью не трогают сессию.
+    if (view !== 'test' && view !== 'weakkeys') return;
+
+    // IME-фильтр (ja/zh/ko): во время composition keydown приходит с
+    // isComposing/keyCode 229 — пропускать, иначе мусор попадает в тест.
+    if (e.isComposing || e.keyCode === 229) return;
 
     // Caps Lock detection
     if (e.getModifierState && e.getModifierState('CapsLock') !== capsLockOn) {
       capsLockOn = e.getModifierState('CapsLock');
       if (capsLockOn && settings?.show_capslock_warnings) {
-        notificationStore.add('WARNING', 'Caps Lock включён');
+        notificationStore.add('WARNING', t(uiLang, 'warning.caps_title'));
       }
     }
 
+    // Модификатор-комбо (Ctrl+C/V, Alt+...) — не печатные символы.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
-    if (e.key === 'Backspace' || e.key === 'Tab' || e.key === ' ' || e.key.length === 1) e.preventDefault();
+
+    // Whitelist: только печатные символы (key.length === 1) и Backspace.
+    // Раньше сюда просачивались Arrow/Delete/Home/F-клавиши, и бэкенд
+    // превращал первую букву имени клавиши в фантомный символ ('A', 'D', 'H').
+    if (e.key.length !== 1 && e.key !== 'Backspace') return;
+
+    e.preventDefault();
 
     // Track last typed char for layout detection
     if (e.key.length === 1) {
@@ -436,10 +537,36 @@
     await abandonActiveSessionForReplacement();
   }
 
-  async function loadHistory() {
-    const r = await ipc.getStatsHistory(20);
+  // Restart the current test: abort the active session (if any) then start a
+  // fresh one. Used by the in-test "Restart" button.
+  async function restartTest() {
+    if (!(await abandonActiveSessionForReplacement())) return;
+    await startTest();
+  }
+
+  async function loadHistory(page = 0) {
+    const r = await ipc.getStatsHistory(20, page * 20);
     history = r.tests;
     historyTotal = r.total;
+    historyPage = page;
+  }
+
+  // Лёгкое обновление только счётчика (бейдж навигации) без перезагрузки списка.
+  async function loadHistoryTotal() {
+    try {
+      const r = await ipc.getStatsHistory(1, 0);
+      historyTotal = r.total;
+    } catch {
+      // Best-effort: бейдж обновится при следующем визите History.
+    }
+  }
+
+  function historyPrevPage() {
+    if (historyPage > 0) void loadHistory(historyPage - 1);
+  }
+
+  function historyNextPage() {
+    if ((historyPage + 1) * 20 < historyTotal) void loadHistory(historyPage + 1);
   }
 
   async function loadBests() {
@@ -462,7 +589,6 @@
   }
 
   async function applyTheme(name: string) {
-    const css = await ipc.getThemeCss(name);
     const styleEl = document.getElementById('theme-style') || (() => {
       const el = document.createElement('style');
       el.id = 'theme-style';
@@ -470,17 +596,33 @@
       return el;
     })();
     styleEl.setAttribute('data-theme', name);
-    styleEl.textContent = css;
 
-    // Apply variables inline as well as through the stylesheet. This keeps
-    // theme switching reliable when component-scoped CSS is present and lets
-    // semantic aliases such as --bg resolve to the active theme tokens.
     const root = document.documentElement;
     for (const variable of appliedThemeVariables) {
       root.style.removeProperty(variable);
     }
     appliedThemeVariables.clear();
 
+    if (name === 'custom') {
+      // Кастомная тема живёт целиком на фронтенде: синтезируем CSS-переменные
+      // из сохранённого JSON (включая производные legacy-алиасы).
+      const css = buildCustomThemeCss(settings?.custom_theme_colors ?? '');
+      styleEl.textContent = css;
+      for (const match of css.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;{}]+)\s*;/g)) {
+        root.style.setProperty(match[1], match[2].trim(), 'important');
+        appliedThemeVariables.add(match[1]);
+      }
+      root.dataset.theme = name;
+      root.style.colorScheme = 'dark';
+      return;
+    }
+
+    const css = await ipc.getThemeCss(name);
+    styleEl.textContent = css;
+
+    // Apply variables inline as well as through the stylesheet. This keeps
+    // theme switching reliable when component-scoped CSS is present and lets
+    // semantic aliases such as --bg resolve to the active theme tokens.
     const variables = /(--[a-z0-9-]+)\s*:\s*([^;{}]+)\s*;/g;
     for (const match of css.matchAll(variables)) {
       const variable = match[1];
@@ -490,6 +632,84 @@
     root.dataset.theme = name;
     const themeInfo = themes.find((theme) => theme.name === name);
     root.style.colorScheme = themeInfo?.is_dark ? 'dark' : 'light';
+  }
+
+  /// Синтезирует CSS кастомной темы из JSON-объекта { "--color-*": "#rrggbb" }.
+  /// Недостающие переменные наследуются от дефолтной темы (racoon_graphite),
+  /// legacy-алиасы (--bg/--main/…) выводятся из семантических токенов.
+  function buildCustomThemeCss(json: string): string {
+    let colors: Record<string, string> = {};
+    try {
+      const parsed = JSON.parse(json) as Record<string, unknown>;
+      for (const [key, value] of Object.entries(parsed)) {
+        if (typeof value === 'string' && key.startsWith('--')) colors[key] = value;
+      }
+    } catch {
+      colors = {};
+    }
+    const fallback = (key: string, defaultHex: string) => colors[key] ?? defaultHex;
+    const lines: string[] = [];
+    lines.push(':root {');
+    lines.push(`  --color-app-background: ${fallback('--color-app-background', '#0d0f12')};`);
+    lines.push(`  --color-surface-primary: ${fallback('--color-surface-primary', '#15181d')};`);
+    lines.push(`  --color-surface-raised: ${fallback('--color-surface-raised', '#1c2027')};`);
+    lines.push(`  --color-surface-hover: ${fallback('--color-surface-hover', '#252a32')};`);
+    lines.push(`  --color-surface-active: ${fallback('--color-surface-active', '#2e343e')};`);
+    lines.push(`  --color-text-primary: ${fallback('--color-text-primary', '#e7e9ed')};`);
+    lines.push(`  --color-text-secondary: ${fallback('--color-text-secondary', '#adb3bd')};`);
+    lines.push(`  --color-text-muted: ${fallback('--color-text-muted', '#8a919c')};`);
+    lines.push(`  --color-text-disabled: ${fallback('--color-text-disabled', '#707885')};`);
+    lines.push(`  --color-border: ${fallback('--color-border', '#3b424e')};`);
+    lines.push(`  --color-border-strong: ${fallback('--color-border-strong', '#596270')};`);
+    lines.push(`  --color-accent: ${fallback('--color-accent', '#c5cbd4')};`);
+    lines.push(`  --color-accent-hover: ${fallback('--color-accent-hover', '#e0e4ea')};`);
+    lines.push(`  --color-accent-active: ${fallback('--color-accent-active', '#ffffff')};`);
+    lines.push(`  --color-accent-text: ${fallback('--color-accent-text', '#15181d')};`);
+    lines.push(`  --color-focus-ring: ${fallback('--color-focus-ring', '#dde2e9')};`);
+    lines.push(`  --color-selection: ${fallback('--color-selection', '#3a4655')};`);
+    lines.push(`  --color-caret: ${fallback('--color-caret', '#f1f3f6')};`);
+    lines.push(`  --color-typing-pending: ${fallback('--color-typing-pending', '#a7aeb9')};`);
+    lines.push(`  --color-typing-current: ${fallback('--color-typing-current', '#ffffff')};`);
+    lines.push(`  --color-typing-correct: ${fallback('--color-typing-correct', '#a9b8ae')};`);
+    lines.push(`  --color-typing-incorrect: ${fallback('--color-typing-incorrect', '#e39a9a')};`);
+    lines.push(`  --color-typing-corrected: ${fallback('--color-typing-corrected', '#d3a477')};`);
+    lines.push(`  --color-key-background: ${fallback('--color-key-background', '#1b1f25')};`);
+    lines.push(`  --color-key-border: ${fallback('--color-key-border', '#444b57')};`);
+    lines.push(`  --color-key-active: ${fallback('--color-key-active', '#d9dee5')};`);
+    lines.push(`  --color-key-pressed: ${fallback('--color-key-pressed', '#ffffff')};`);
+    lines.push(`  --color-success: ${fallback('--color-success', '#9fbba7')};`);
+    lines.push(`  --color-warning: ${fallback('--color-warning', '#d1af77')};`);
+    lines.push(`  --color-error: ${fallback('--color-error', '#dc8d8d')};`);
+    lines.push(`  --color-information: ${fallback('--color-information', '#c5cbd4')};`);
+    lines.push(`  --color-chart-primary: ${fallback('--color-chart-primary', '#d7dce3')};`);
+    lines.push(`  --color-chart-secondary: ${fallback('--color-chart-secondary', '#9aa4b1')};`);
+    lines.push(`  --color-chart-positive: ${fallback('--color-chart-positive', '#9fbba7')};`);
+    lines.push(`  --color-chart-negative: ${fallback('--color-chart-negative', '#dc8d8d')};`);
+    lines.push(`  --color-chart-grid: ${fallback('--color-chart-grid', '#454c57')};`);
+    lines.push(`  --color-chart-axis: ${fallback('--color-chart-axis', '#737c89')};`);
+    lines.push(`  --color-chart-label: ${fallback('--color-chart-label', '#b9bec7')};`);
+    lines.push(`  --color-chart-tooltip-background: ${fallback('--color-chart-tooltip-background', '#20242b')};`);
+    lines.push(`  --color-chart-tooltip-border: ${fallback('--color-chart-tooltip-border', '#5c6572')};`);
+    lines.push(`  --color-chart-selected: ${fallback('--color-chart-selected', '#ffffff')};`);
+    lines.push(`  --color-progress-track: ${fallback('--color-progress-track', '#303641')};`);
+    lines.push(`  --color-progress-fill: ${fallback('--color-progress-fill', '#c5cbd4')};`);
+    lines.push(`  --color-overlay: ${fallback('--color-overlay', '#111419')};`);
+    lines.push(`  --color-modal-surface: ${fallback('--color-modal-surface', '#1c2027')};`);
+    lines.push(`  --color-tooltip-surface: ${fallback('--color-tooltip-surface', '#1c2027')};`);
+    lines.push(`  --color-scrollbar: ${fallback('--color-scrollbar', '#3b424e')};`);
+    lines.push(`  --color-scrollbar-hover: ${fallback('--color-scrollbar-hover', '#c5cbd4')};`);
+    lines.push('  --shadow-surface: 0 1px 2px rgba(0, 0, 0, 0.28);');
+    lines.push('  --shadow-elevated: 0 12px 28px rgba(0, 0, 0, 0.24);');
+    lines.push('');
+    lines.push('  --bg: var(--color-app-background);');
+    lines.push('  --bg-sub: var(--color-surface-primary);');
+    lines.push('  --main: var(--color-accent);');
+    lines.push('  --sub: var(--color-text-secondary);');
+    lines.push('  --text: var(--color-text-primary);');
+    lines.push('  --error: var(--color-error);');
+    lines.push('  --caret: var(--color-caret);');
+    lines.push('}');
+    return lines.join('\n');
   }
 
   async function selectTheme(name: string) {
@@ -551,6 +771,8 @@
   }
 
   async function startCustomTest(id: number) {
+    if (startingTest) return;
+    startingTest = true;
     try {
       if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
@@ -559,6 +781,8 @@
       switchView('test');
     } catch (error) {
       errorMsg = `Start custom text error: ${error}`;
+    } finally {
+      startingTest = false;
     }
   }
 
@@ -573,6 +797,12 @@
 
   function switchView(v: ViewName) {
     navigation.navigate(v);
+    // Уход с тестовых вью на любой другой — абандоним бегущую сессию,
+    // иначе таймер доедет в фоне и запишет брошенный тест в историю
+    // (и пометит урок выполненным).
+    if (v !== 'test' && v !== 'weakkeys' && isRunning && !isComplete) {
+      void abandonActiveSessionForReplacement();
+    }
     if (v === 'history') loadHistory();
     if (v === 'bests') loadBests();
     if (v === 'custom') loadCustomTexts();
@@ -584,6 +814,15 @@
   async function loadDashboard() {
     try {
       dashboardStats = await ipc.getDashboardStats();
+      // Weak-keys для виджета «Тренировка дня» — грузим и здесь, иначе
+      // при первом визите на дашборд виджет никогда не появляется
+      // (раньше weakKeysData заполнялся только на weakkeys-вью).
+      try {
+        const data = await ipc.analyzeWeakKeys();
+        weakKeysData = data.weak_keys || [];
+      } catch {
+        // Best-effort: без weak-keys дашборд просто без виджета.
+      }
     } catch (e) {
       errorMsg = `Dashboard error: ${e}`;
     }
@@ -593,12 +832,28 @@
     try {
       const data = await ipc.analyzeWeakKeys();
       weakKeysData = data.weak_keys || [];
+      // Populate per-key stats from aggregated heatmap so KeyboardTrainer
+      // coloring (weak-critical / weak-warning) activates in WeakKeysPanel.
+      try {
+        const heatmap = await ipc.getAggregatedHeatmap(50);
+        // Convert KeyHeatData → CharStat shape expected by KeyboardTrainer.
+        weakKeysCharStats = Object.fromEntries(
+          Object.entries(heatmap).map(([k, v]) => [
+            k,
+            { correct: v.correct, incorrect: v.incorrect, total: v.total_attempts },
+          ]),
+        );
+      } catch {
+        // Aggregated heatmap is best-effort; ignore if unavailable.
+      }
     } catch (e) {
       errorMsg = `Weak keys error: ${e}`;
     }
   }
 
   async function onGenerateTraining() {
+    if (startingTest) return;
+    startingTest = true;
     try {
       if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
@@ -611,6 +866,8 @@
       startTestFromResponse(resp);
     } catch (e) {
       errorMsg = `Training error: ${e}`;
+    } finally {
+      startingTest = false;
     }
   }
 
@@ -632,6 +889,8 @@
   }
 
   async function onSelectLesson(lessonId: string, language: string) {
+    if (startingTest) return;
+    startingTest = true;
     try {
       if (!(await abandonActiveSessionForReplacement())) return;
       await snapshotAchievements();
@@ -640,7 +899,25 @@
       switchView('test');
     } catch (e) {
       errorMsg = `Start lesson error: ${e}`;
+    } finally {
+      startingTest = false;
     }
+  }
+
+  async function onRepeatLesson() {
+    if (!currentLessonId) return;
+    await onSelectLesson(currentLessonId, lessonLang);
+  }
+
+  async function onNextLesson() {
+    const next = lessonNavigation?.nextLessonId;
+    if (!next) return;
+    await onSelectLesson(next, lessonLang);
+  }
+
+  function onReturnToLessons() {
+    currentLessonId = null;
+    switchView('lessons');
   }
 
   async function updateTestConfigurationAndRestart(update: () => void) {
@@ -676,6 +953,14 @@
     } catch (error) {
       errorMsg = `Settings load error: ${ipc.ipcErrorMessage(error)}`;
     }
+    // A window/hot reload restarts the renderer but the in-memory backend
+    // engine keeps any prior session, so abandon it before starting fresh.
+    // Safe: engine.abort() only discards a Running session.
+    try {
+      await ipc.abandonActiveSession();
+    } catch {
+      // Non-fatal — startTest below will surface a real lifecycle error.
+    }
     await startTest();
   });
 </script>
@@ -687,19 +972,29 @@
     <NavigationBar {view} {historyTotal} {uiLang} onNavigate={switchView} />
   {/if}
 
+  {#if settings?.vim_mode && !isRunning}
+    <div class="vim-indicator" aria-label="Vim mode active">VIM</div>
+  {/if}
+
   {#if errorMsg}
     <p class="error">{errorMsg}</p>
   {/if}
 
   {#if view === 'dashboard'}
-    <DashboardView stats={dashboardStats} onNavigate={(v) => switchView(v as ViewName)} uiLang={uiLang} />
+    <DashboardView
+      stats={dashboardStats}
+      onNavigate={(v) => switchView(v as ViewName)}
+      weakKeys={weakKeysData}
+      onStartTraining={onGenerateTraining}
+      uiLang={uiLang}
+    />
   {:else if view === 'test'}
     {#if isRunning}
       <TypingWarnings
         expectedLanguage={sessionLanguage}
         {lastTypedChar}
         {capsLockOn}
-        showLayoutWarnings={true}
+        showLayoutWarnings={settings?.show_layout_warnings ?? true}
         showCapsLockWarnings={settings?.show_capslock_warnings ?? true}
         {uiLang}
       />
@@ -708,6 +1003,7 @@
       {text}
       {caretPos}
       {charStatuses}
+      {erroredPositions}
       {isRunning}
       {isComplete}
       {liveWpm}
@@ -726,11 +1022,30 @@
       onWordCountChange={onWordCountChange}
       onLanguageChange={onLanguageChange}
       onAbort={abortTest}
-      onRestart={startTest}
+      onRestart={restartTest}
+      {lessonNavigation}
+      {onRepeatLesson}
+      {onNextLesson}
+      {onReturnToLessons}
       uiLang={uiLang}
     />
+  {:else if view === 'pomodoro'}
+    <PomodoroView
+      {settings}
+      {uiLang}
+      onUpdateSetting={updateSetting}
+      onPhaseComplete={() => void playSound('lesson_complete')}
+    />
   {:else if view === 'history'}
-    <HistoryView {history} total={historyTotal} uiLang={uiLang} />
+    <HistoryView
+      {history}
+      total={historyTotal}
+      page={historyPage}
+      pageSize={20}
+      onPrevPage={historyPrevPage}
+      onNextPage={historyNextPage}
+      uiLang={uiLang}
+    />
   {:else if view === 'bests'}
     <BestsView {bests} uiLang={uiLang} />
   {:else if view === 'custom'}
@@ -795,6 +1110,10 @@
 
 <NotificationStack notifications={notificationStore.notifications} />
 
+{#if cheatsheetOpen}
+  <CheatsheetOverlay {uiLang} onClose={() => { cheatsheetOpen = false; }} />
+{/if}
+
 <style>
   :root {
     --color-app-background: #0d0f12;
@@ -820,6 +1139,11 @@
     font-family: 'JetBrains Mono', monospace;
   }
   .error { color: var(--error); font-size: 0.875rem; }
+  .vim-indicator {
+    position: fixed; bottom: 0.75rem; right: 0.75rem; z-index: 50;
+    padding: 0.2rem 0.6rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--bg); background: var(--main); border-radius: 4px; opacity: 0.85;
+  }
   .lesson-lang-selector { display: flex; gap: 0.25rem; }
   .lesson-lang-selector button { background: var(--bg-sub); color: var(--sub); border: 1px solid var(--sub); padding: 0.25rem 0.75rem; font-family: inherit; font-size: 0.75rem; cursor: pointer; border-radius: 4px; }
   .lesson-lang-selector button.active { color: var(--main); border-color: var(--main); }
