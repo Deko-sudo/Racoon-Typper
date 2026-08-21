@@ -33,6 +33,7 @@ const APP_COMMANDS: &[&str] = &[
     "export_profile",
     "preview_profile_import",
     "import_profile",
+    "restore_database",
     "get_replay",
     "get_aggregated_heatmap",
     "clear_statistics",

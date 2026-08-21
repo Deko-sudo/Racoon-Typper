@@ -211,6 +211,11 @@ const en: Dict = {
   'settings.goal_accuracy': 'Accuracy Target',
   'settings.daily_goal_wpm': 'Target WPM',
   'settings.daily_goal_accuracy': 'Target Accuracy %',
+  'settings.restore_database': 'Restore database from backup',
+  'settings.restore_confirm': 'This replaces the entire local database with the selected backup. The application will reload. Click again to choose a backup file.',
+  'settings.restore_confirm_short': 'Confirm restore',
+  'settings.restoring': 'Restoring...',
+  'settings.restore_failed': 'Restore failed:',
   // Pomodoro
   'pomodoro.title': 'Pomodoro Timer',
   'pomodoro.work': 'Work',
@@ -443,6 +448,11 @@ const ru: Dict = {
   'settings.goal_accuracy': 'Цель по точности',
   'settings.daily_goal_wpm': 'Целевой WPM',
   'settings.daily_goal_accuracy': 'Целевая точность %',
+  'settings.restore_database': 'Восстановить базу из резервной копии',
+  'settings.restore_confirm': 'Это заменит всю локальную базу данных выбранной копией. Приложение перезагрузится. Нажмите ещё раз, чтобы выбрать файл.',
+  'settings.restore_confirm_short': 'Подтвердить восстановление',
+  'settings.restoring': 'Восстановление...',
+  'settings.restore_failed': 'Восстановление не удалось:',
   // Pomodoro
   'pomodoro.title': 'Таймер Помодоро',
   'pomodoro.work': 'Работа',

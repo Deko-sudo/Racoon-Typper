@@ -497,6 +497,7 @@ mod tests {
         AppState::new(
             Database::open_in_memory().expect("database"),
             settings_path,
+            PathBuf::from("unused-db.db"),
             gate,
         )
     }

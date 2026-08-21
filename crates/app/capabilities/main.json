@@ -34,6 +34,7 @@
     "allow-get-themes",
     "allow-import-profile",
     "allow-preview-profile-import",
+    "allow-restore-database",
     "allow-process-key",
     "allow-save-custom-text",
     "allow-search-custom-texts",

@@ -511,6 +511,7 @@ mod tests {
         AppState::new(
             racoon_data::Database::open_in_memory().expect("database"),
             settings_path,
+            std::path::PathBuf::from("unused-db.db"),
             racoon_application::StartupRecoveryGate::new(),
         )
     }

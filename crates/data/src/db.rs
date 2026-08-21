@@ -38,9 +38,13 @@ fn configure_connection(conn: &Connection) -> Result<(), DbError> {
     Ok(())
 }
 
-/// Database — обёртка над Mutex<Connection>.
+/// Database — обёртка над Mutex<Option<Connection>>.
+///
+/// The connection is optional so a whole-file restore can close the live
+/// database, replace the file, and reopen it. While closed, every accessor
+/// fails with `DbError::Connection("database is closed")`.
 pub struct Database {
-    conn: Mutex<Connection>,
+    conn: Mutex<Option<Connection>>,
 }
 
 impl Database {
@@ -69,7 +73,7 @@ impl Database {
         run_migrations(&mut conn)?;
 
         Ok(Self {
-            conn: Mutex::new(conn),
+            conn: Mutex::new(Some(conn)),
         })
     }
 
@@ -81,11 +85,36 @@ impl Database {
         run_migrations(&mut conn)?;
 
         Ok(Self {
-            conn: Mutex::new(conn),
+            conn: Mutex::new(Some(conn)),
         })
     }
 
-    fn lock(&self) -> Result<MutexGuard<'_, Connection>, DbError> {
+    /// Closes the live connection, releasing the database file. Subsequent
+    /// accessors fail until `reopen` succeeds. Idempotent.
+    pub fn close(&self) -> Result<(), DbError> {
+        let mut conn = self.conn.lock().map_err(|_| DbError::LockPoisoned)?;
+        *conn = None;
+        Ok(())
+    }
+
+    /// Reopens the database at `path` (migrations re-run, no-op on an
+    /// up-to-date schema). Fails if a connection is already open.
+    pub fn reopen(&self, path: &Path) -> Result<(), DbError> {
+        let mut conn = self.conn.lock().map_err(|_| DbError::LockPoisoned)?;
+        if conn.is_some() {
+            return Err(DbError::Connection(
+                "database is already open; close it before reopening".to_string(),
+            ));
+        }
+        let mut reopened = Connection::open(path)
+            .map_err(|error| DbError::from_sqlite("reopen database", error))?;
+        configure_connection(&reopened)?;
+        run_migrations(&mut reopened)?;
+        *conn = Some(reopened);
+        Ok(())
+    }
+
+    fn lock(&self) -> Result<MutexGuard<'_, Option<Connection>>, DbError> {
         self.conn.lock().map_err(|_| DbError::LockPoisoned)
     }
 
@@ -96,7 +125,10 @@ impl Database {
         operation: impl FnOnce(&Connection) -> Result<T, DbError>,
     ) -> Result<T, DbError> {
         let conn = self.lock()?;
-        operation(&conn)
+        let conn = conn
+            .as_ref()
+            .ok_or_else(|| DbError::Connection("database is closed".to_string()))?;
+        operation(conn)
     }
 
     /// Executes a logical unit of work atomically.
@@ -109,6 +141,9 @@ impl Database {
         operation: impl FnOnce(&Transaction<'_>) -> Result<T, DbError>,
     ) -> Result<T, DbError> {
         let mut conn = self.lock()?;
+        let conn = conn
+            .as_mut()
+            .ok_or_else(|| DbError::Connection("database is closed".to_string()))?;
         let transaction = conn
             .transaction_with_behavior(TransactionBehavior::Immediate)
             .map_err(|error| DbError::from_sqlite("begin immediate transaction", error))?;
@@ -121,8 +156,37 @@ impl Database {
 
     /// Legacy diagnostic/test accessor. Production code must use `with_connection`
     /// or `with_transaction` so lock failures are surfaced as `DbError`.
-    pub fn conn(&self) -> std::sync::MutexGuard<'_, Connection> {
-        self.conn.lock().expect("DB mutex poisoned")
+    ///
+    /// Panics if the database is closed; test/diagnostic callers always hold
+    /// an open database.
+    pub fn conn(&self) -> ConnGuard<'_> {
+        ConnGuard {
+            guard: self.conn.lock().expect("DB mutex poisoned"),
+        }
+    }
+}
+
+/// Deref-transparent guard for the legacy `Database::conn()` accessor.
+/// Panics on deref when the database is closed.
+pub struct ConnGuard<'a> {
+    guard: MutexGuard<'a, Option<Connection>>,
+}
+
+impl std::ops::Deref for ConnGuard<'_> {
+    type Target = Connection;
+
+    fn deref(&self) -> &Connection {
+        self.guard
+            .as_ref()
+            .expect("database is closed; legacy conn() accessor requires an open database")
+    }
+}
+
+impl std::ops::DerefMut for ConnGuard<'_> {
+    fn deref_mut(&mut self) -> &mut Connection {
+        self.guard
+            .as_mut()
+            .expect("database is closed; legacy conn() accessor requires an open database")
     }
 }
 
@@ -247,5 +311,81 @@ mod tests {
             )
             .expect("Failed to count daily statistics");
         assert_eq!(rows, 0);
+    }
+}
+
+#[cfg(test)]
+mod close_reopen_tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    fn temp_db_path() -> PathBuf {
+        let dir = std::env::temp_dir();
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        dir.join(format!(
+            "racoon_close_reopen_{}_{}.db",
+            std::process::id(),
+            ts
+        ))
+    }
+
+    #[test]
+    fn close_rejects_access_and_reopen_restores_it() {
+        let path = temp_db_path();
+        let _ = std::fs::remove_file(&path);
+        let db = Database::open(&path).expect("open");
+
+        db.with_connection(|conn| {
+            conn.execute(
+                "INSERT INTO custom_texts (name, text, created_at) VALUES ('a', 'b', '2026-07-16T12:00:00Z')",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("write before close");
+
+        db.close().expect("close");
+        assert!(matches!(
+            db.with_connection(|_| Ok(())),
+            Err(DbError::Connection(_))
+        ));
+        assert!(matches!(
+            db.with_transaction(|_| Ok(())),
+            Err(DbError::Connection(_))
+        ));
+
+        db.reopen(&path).expect("reopen");
+        let count: i64 = db
+            .with_connection(|conn| {
+                conn.query_row("SELECT COUNT(*) FROM custom_texts", [], |row| row.get(0))
+                    .map_err(|error| DbError::Query(error.to_string()))
+            })
+            .expect("read after reopen");
+        assert_eq!(count, 1);
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn reopen_without_close_fails() {
+        let path = temp_db_path();
+        let _ = std::fs::remove_file(&path);
+        let db = Database::open(&path).expect("open");
+        assert!(matches!(db.reopen(&path), Err(DbError::Connection(_))));
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[test]
+    fn close_is_idempotent() {
+        let path = temp_db_path();
+        let _ = std::fs::remove_file(&path);
+        let db = Database::open(&path).expect("open");
+        db.close().expect("first close");
+        db.close().expect("second close");
+        db.reopen(&path).expect("reopen after double close");
+        let _ = std::fs::remove_file(&path);
     }
 }

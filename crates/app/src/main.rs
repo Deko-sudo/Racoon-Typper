@@ -107,6 +107,7 @@ fn main() {
             app.manage(AppState::new(
                 database,
                 paths.settings_path,
+                paths.db_path,
                 startup_recovery,
             ));
             Ok(())
@@ -157,6 +158,7 @@ fn main() {
             commands::profile_transfer::export_profile,
             commands::profile_transfer::preview_profile_import,
             commands::profile_transfer::import_profile,
+            commands::profile_transfer::restore_database,
             // Replay
             commands::reporting::get_replay,
             // Aggregated heatmap (training-of-the-day)

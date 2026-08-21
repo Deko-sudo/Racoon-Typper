@@ -4,6 +4,7 @@
   import ProfileTransferPanel from './ProfileTransferPanel.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
   import { checkForUpdate, installUpdate } from '../lib/updater';
+  import { open } from '@tauri-apps/plugin-dialog';
   import * as ipc from '../lib/api/ipc';
 
   let {
@@ -62,6 +63,38 @@
       clearStatus = 'All statistics cleared.';
     } catch (error) {
       clearStatus = `Clear failed: ${ipc.ipcErrorMessage(error)}`;
+    }
+  }
+
+  // Whole-file database restore: pick a backup, confirm, restore, reload.
+  let restoreConfirm = $state(false);
+  let restoreStatus = $state('');
+  let restoring = $state(false);
+
+  async function handleRestoreDatabase() {
+    if (restoring) return;
+    if (!restoreConfirm) {
+      restoreConfirm = true;
+      restoreStatus = t(uiLang, 'settings.restore_confirm');
+      return;
+    }
+    try {
+      const selected = await open({
+        multiple: false,
+        filters: [{ name: 'SQLite database', extensions: ['db', 'sqlite', 'sqlite3'] }],
+      });
+      if (typeof selected !== 'string' || !selected) {
+        restoreConfirm = false;
+        restoreStatus = '';
+        return;
+      }
+      restoring = true;
+      await ipc.restoreDatabase(selected);
+      window.location.reload();
+    } catch (error) {
+      restoring = false;
+      restoreConfirm = false;
+      restoreStatus = `${t(uiLang, 'settings.restore_failed')} ${ipc.ipcErrorMessage(error)}`;
     }
   }
 
@@ -283,6 +316,14 @@
       </button>
       {#if clearStatus}
         <span class="update-status">{clearStatus}</span>
+      {/if}
+    </div>
+    <div class="update-panel">
+      <button class="update-btn danger" onclick={handleRestoreDatabase} disabled={restoring}>
+        {restoring ? t(uiLang, 'settings.restoring') : (restoreConfirm ? t(uiLang, 'settings.restore_confirm_short') : t(uiLang, 'settings.restore_database'))}
+      </button>
+      {#if restoreStatus}
+        <span class="update-status">{restoreStatus}</span>
       {/if}
     </div>
     <h3>Updates</h3>

@@ -228,6 +228,12 @@ export async function importProfile(
   return invoke<ProfileImportPlan>('import_profile', { document, policy });
 }
 
+// Whole-file database restore: closes the live database, replaces the file
+// from a validated backup, and reopens it. The frontend reloads after success.
+export async function restoreDatabase(backupPath: string): Promise<void> {
+  return invoke('restore_database', { backupPath });
+}
+
 // Replay
 export async function getReplay(testId: number): Promise<ReplayFrame[]> {
   return invoke<ReplayFrame[]>('get_replay', { testId });
