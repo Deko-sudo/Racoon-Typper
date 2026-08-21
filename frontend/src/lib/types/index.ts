@@ -6,12 +6,22 @@ export interface CharStatus {
   status: 'pending' | 'correct' | 'incorrect' | 'backspaced';
 }
 
+/// Typed mode configuration. The backend emits one of these shapes per
+/// mode_type; the contract test in scripts/mode-config-contract.test.mjs
+/// pins the exact field sets.
+export type ModeConfig =
+  | { type: 'time'; duration: number; language: string }
+  | { type: 'words'; word_count: number; language: string }
+  | { type: 'quote'; quote_id: number | null; language: string }
+  | { type: 'custom'; language: string }
+  | { type: 'lesson'; lesson_id: string; module_id: string };
+
 export interface TestSessionResponse {
   session_id: string;
   text: string;
   text_length: number;
   mode_type: string;
-  mode_config: Record<string, unknown>;
+  mode_config: ModeConfig;
   language: string;
 }
 

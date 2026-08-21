@@ -108,8 +108,8 @@ export function createTestSessionStore(deps: TestSessionDeps) {
     finalStats = null;
     sessionModeType = resp.mode_type;
     sessionLanguage = resp.language;
-    sessionDurationMs = resp.mode_type === 'time'
-      ? Math.max(0, Number(resp.mode_config.duration ?? 0) * 1000)
+    sessionDurationMs = resp.mode_type === 'time' && resp.mode_config.type === 'time'
+      ? Math.max(0, resp.mode_config.duration * 1000)
       : 0;
     deps.setCurrentLessonId(lessonId);
     testStartedAt = null;
