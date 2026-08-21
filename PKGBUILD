@@ -9,7 +9,7 @@ license=('Apache-2.0')
 depends=('webkit2gtk-4.1')
 makedepends=('rust' 'npm' 'base-devel')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/Deko-sudo/Racoon-Typper/archive/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('93e132a63752b3ffcd16521e35aa5ec6e314dccf841f6fba17456960f25c9ec7')
 
 build() {
     cd "$srcdir/Racoon-Typper-$pkgver"
