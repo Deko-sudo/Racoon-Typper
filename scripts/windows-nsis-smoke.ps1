@@ -32,21 +32,37 @@ try {
   }
 
   function Start-And-Stop-App {
+    param([bool]$WaitForDatabase = $false)
     $logPath = Join-Path $workspace 'app.log'
     $process = Start-Process -FilePath $executable -PassThru -RedirectStandardOutput $logPath -RedirectStandardError "$logPath.err"
-    # First launch on a clean runner initializes WebView2, which can take well
-    # over the previous 8s window before the app's setup() creates data.db.
-    Start-Sleep -Seconds 30
-    if ($process.HasExited) {
-      $out = if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
-      $err = if (Test-Path -LiteralPath "$logPath.err") { Get-Content -LiteralPath "$logPath.err" -Raw } else { '' }
-      throw "Application exited during startup with $($process.ExitCode). stdout=[$out] stderr=[$err]"
+    if ($WaitForDatabase) {
+      # First launch on a clean runner initializes WebView2 before the app's
+      # setup() creates data.db. Poll for the database instead of a fixed
+      # sleep: Evergreen runtime initialization can exceed 30s on fresh
+      # runner images.
+      $deadline = (Get-Date).AddSeconds(120)
+      while (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
+        if ($process.HasExited) {
+          $out = if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
+          $err = if (Test-Path -LiteralPath "$logPath.err") { Get-Content -LiteralPath "$logPath.err" -Raw } else { '' }
+          throw "Application exited during startup with $($process.ExitCode). stdout=[$out] stderr=[$err]"
+        }
+        if ((Get-Date) -gt $deadline) { break }
+        Start-Sleep -Seconds 5
+      }
+    } else {
+      Start-Sleep -Seconds 10
+      if ($process.HasExited) {
+        $out = if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
+        $err = if (Test-Path -LiteralPath "$logPath.err") { Get-Content -LiteralPath "$logPath.err" -Raw } else { '' }
+        throw "Application exited during startup with $($process.ExitCode). stdout=[$out] stderr=[$err]"
+      }
     }
     Stop-Process -Id $process.Id -ErrorAction Stop
     $process.WaitForExit()
   }
 
-  Start-And-Stop-App
+  Start-And-Stop-App -WaitForDatabase $true
   if (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
     $out = if (Test-Path -LiteralPath (Join-Path $workspace 'app.log')) { Get-Content -LiteralPath (Join-Path $workspace 'app.log') -Raw } else { '' }
     $err = if (Test-Path -LiteralPath (Join-Path $workspace 'app.log.err')) { Get-Content -LiteralPath (Join-Path $workspace 'app.log.err') -Raw } else { '' }
