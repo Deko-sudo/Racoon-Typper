@@ -10,6 +10,7 @@ export interface CalendarCell {
   value: number;
   level: number;
   isFuture: boolean;
+  isToday: boolean;
 }
 
 export interface CalendarPoint {
@@ -45,6 +46,23 @@ export function level(value: number, maxValue: number): number {
   return 4;
 }
 
+/**
+ * Numeric legend ranges for the five intensity buckets, derived from the
+ * maximum daily value of the current metric. Returns [min, max] pairs
+ * (inclusive); the zero bucket is always [0, 0]. Buckets with no integer
+ * value (possible when maxValue < 4) are `null` and render as "—".
+ */
+export function legendRanges(maxValue: number): Array<[number, number] | null> {
+  if (maxValue <= 0) return [[0, 0], null, null, null, null];
+  const ranges: Array<[number, number] | null> = [[0, 0]];
+  for (let bucket = 1; bucket <= 4; bucket++) {
+    const lo = Math.floor(((bucket - 1) * maxValue) / 4) + 1;
+    const hi = Math.floor((bucket * maxValue) / 4);
+    ranges.push(lo <= hi ? [lo, hi] : null);
+  }
+  return ranges;
+}
+
 /** Format a Date as a local YYYY-MM-DD (avoids UTC shift from toISOString). */
 function toLocalISODate(d: Date): string {
   const y = d.getFullYear();
@@ -77,6 +95,7 @@ export function buildGrid(
 
   const cells: CalendarCell[] = [];
   const cursor = new Date(start);
+  const todayIso = toLocalISODate(end);
   while (cursor <= end) {
     const iso = toLocalISODate(cursor);
     const value = valuesByDate.get(iso) ?? 0;
@@ -85,28 +104,53 @@ export function buildGrid(
       value,
       level: level(value, maxValue),
       isFuture: cursor > end,
+      isToday: iso === todayIso,
     });
     cursor.setDate(cursor.getDate() + 1);
   }
   return cells;
 }
 
-/** Human-readable tooltip for a cell. */
+/** Plural category for a count in the given locale ('one'|'few'|'many'|'other'). */
+function pluralForm(lang: string, n: number): string {
+  try {
+    return new Intl.PluralRules(lang).select(n);
+  } catch {
+    return n === 1 ? 'one' : 'other';
+  }
+}
+
+export interface TooltipLabels {
+  noActivity: string;
+  minutes: string;
+  lesson: Record<string, string>;
+  test: Record<string, string>;
+}
+
+/** Human-readable tooltip for a cell, localized to the UI language. */
 export function formatTooltip(
   c: { date: string; value: number },
   metric: CalendarMetric,
+  lang = 'en',
+  labels?: TooltipLabels,
 ): string {
   const d = new Date(c.date + 'T00:00:00');
-  const label = d.toLocaleDateString('en', {
+  const label = d.toLocaleDateString(lang, {
     year: 'numeric',
     month: 'short',
     day: 'numeric',
   });
-  if (c.value <= 0) return `${label}: No activity`;
+  const noActivity = labels?.noActivity ?? 'No activity';
+  if (c.value <= 0) return `${label}: ${noActivity}`;
   if (metric === 'time') {
     const minutes = Math.round(c.value / 60000);
-    return `${label}: ${minutes} min`;
+    return `${label}: ${minutes} ${labels?.minutes ?? 'min'}`;
   }
-  const noun = metric === 'lessons' ? 'lesson' : 'test';
-  return `${label}: ${c.value} ${noun}${c.value === 1 ? '' : 's'}`;
+  const form = pluralForm(lang, c.value);
+  if (metric === 'lessons') {
+    const noun = labels?.lesson?.[form] ?? (form === 'one' ? 'lesson' : 'lessons');
+    return `${label}: ${c.value} ${noun}`;
+  }
+  const noun = labels?.test?.[form] ?? (form === 'one' ? 'test' : 'tests');
+  return `${label}: ${c.value} ${noun}`;
 }

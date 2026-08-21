@@ -95,7 +95,7 @@
       </div>
     {/if}
 
-    <ContributionCalendar />
+    <ContributionCalendar {uiLang} />
   {:else}
     <p class="empty">{t(uiLang, 'dash.loading')}</p>
   {/if}

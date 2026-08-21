@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {
   buildGrid,
   formatTooltip,
+  legendRanges,
   level,
   metricValue,
 } from '../frontend/src/lib/contributionCalendar.ts';
@@ -76,6 +77,57 @@ test('buildGrid marks empty days as level 0 and none future', () => {
     assert.equal(cell.level, 0);
     assert.equal(cell.isFuture, false);
   }
+});
+
+test('buildGrid marks exactly the last cell as today', () => {
+  const today = new Date('2026-08-10T12:00:00Z');
+  const grid = buildGrid([], today);
+
+  const todayCells = grid.filter((cell) => cell.isToday);
+  assert.equal(todayCells.length, 1);
+  assert.equal(todayCells[0].date, '2026-08-10');
+  assert.equal(grid[grid.length - 1].isToday, true);
+});
+
+test('legendRanges derives five numeric buckets from the max value', () => {
+  assert.deepEqual(legendRanges(0), [[0, 0], null, null, null, null]);
+  assert.deepEqual(legendRanges(100), [[0, 0], [1, 25], [26, 50], [51, 75], [76, 100]]);
+  assert.deepEqual(legendRanges(10), [[0, 0], [1, 2], [3, 5], [6, 7], [8, 10]]);
+  // Small max values: empty buckets are null, never overlapping or inverted.
+  assert.deepEqual(legendRanges(3), [[0, 0], null, [1, 1], [2, 2], [3, 3]]);
+});
+
+test('formatTooltip localizes dates and plural forms', () => {
+  const ru = {
+    noActivity: 'Нет активности',
+    minutes: 'мин',
+    lesson: { one: 'урок', few: 'урока', many: 'уроков', other: 'урока' },
+    test: { one: 'тест', few: 'теста', many: 'тестов', other: 'теста' },
+  };
+  assert.equal(
+    formatTooltip({ date: '2026-08-10', value: 0 }, 'tests', 'ru', ru),
+    '10 авг. 2026 г.: Нет активности',
+  );
+  assert.equal(
+    formatTooltip({ date: '2026-08-10', value: 1 }, 'tests', 'ru', ru),
+    '10 авг. 2026 г.: 1 тест',
+  );
+  assert.equal(
+    formatTooltip({ date: '2026-08-10', value: 3 }, 'tests', 'ru', ru),
+    '10 авг. 2026 г.: 3 теста',
+  );
+  assert.equal(
+    formatTooltip({ date: '2026-08-10', value: 5 }, 'tests', 'ru', ru),
+    '10 авг. 2026 г.: 5 тестов',
+  );
+  assert.equal(
+    formatTooltip({ date: '2026-08-10', value: 2 }, 'lessons', 'ru', ru),
+    '10 авг. 2026 г.: 2 урока',
+  );
+  assert.equal(
+    formatTooltip({ date: '2026-08-10', value: 120000 }, 'time', 'ru', ru),
+    '10 авг. 2026 г.: 2 мин',
+  );
 });
 
 test('formatTooltip renders activity and no-activity labels per metric', () => {

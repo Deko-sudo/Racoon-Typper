@@ -1,12 +1,21 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
+  import { t } from '../lib/i18n';
   import type { ProgressPoint } from '../lib/types/index';
   import {
     buildGrid,
     formatTooltip,
+    legendRanges,
     type CalendarMetric,
+    type TooltipLabels,
   } from '../lib/contributionCalendar';
+
+  let {
+    uiLang = 'en',
+  }: {
+    uiLang?: string;
+  } = $props();
 
   let points = $state<ProgressPoint[]>([]);
   let loading = $state(false);
@@ -46,7 +55,7 @@
     return LABEL_H + GAP + (i % DAYS) * (CELL + GAP);
   }
 
-  // Month labels along the top.
+  // Month labels along the top, localized to the UI language.
   let monthLabels = $derived.by(() => {
     const labels: { x: number; text: string }[] = [];
     let lastMonth = -1;
@@ -55,31 +64,64 @@
       const m = d.getMonth();
       if (m !== lastMonth) {
         lastMonth = m;
-        labels.push({ x: cellX(i), text: d.toLocaleString('en', { month: 'short' }) });
+        labels.push({ x: cellX(i), text: d.toLocaleString(uiLang, { month: 'short' }) });
       }
     }
     return labels;
   });
+
+  // Numeric legend ranges for the current metric's max daily value.
+  let legend = $derived.by(() => {
+    const maxValue = Math.max(...grid.map((c) => c.value), 0);
+    return legendRanges(maxValue);
+  });
+
+  let tooltipLabels = $derived<TooltipLabels>({
+    noActivity: t(uiLang, 'calendar.no_activity'),
+    minutes: t(uiLang, 'calendar.minutes'),
+    lesson: {
+      one: t(uiLang, 'calendar.lesson_one'),
+      few: t(uiLang, 'calendar.lesson_few'),
+      many: t(uiLang, 'calendar.lesson_many'),
+      other: t(uiLang, 'calendar.lesson_other'),
+    },
+    test: {
+      one: t(uiLang, 'calendar.test_one'),
+      few: t(uiLang, 'calendar.test_few'),
+      many: t(uiLang, 'calendar.test_many'),
+      other: t(uiLang, 'calendar.test_other'),
+    },
+  });
+
+  function tooltipFor(c: { date: string; value: number }): string {
+    return formatTooltip(c, metric, uiLang, tooltipLabels);
+  }
+
+  function legendLabel(range: [number, number] | null): string {
+    if (!range) return '—';
+    if (range[0] === range[1]) return String(range[0]);
+    return `${range[0]}–${range[1]}`;
+  }
 </script>
 
 <div class="contribution-calendar">
   <div class="cal-header">
-    <h3>Activity</h3>
-    <span class="cal-sub">Last 365 days</span>
-    <div class="metric-selector" role="group" aria-label="Calendar metric">
-      <button class:active={metric === 'tests'} onclick={() => (metric = 'tests')}>Tests</button>
-      <button class:active={metric === 'time'} onclick={() => (metric = 'time')}>Time</button>
-      <button class:active={metric === 'lessons'} onclick={() => (metric = 'lessons')}>Lessons</button>
+    <h3>{t(uiLang, 'calendar.title')}</h3>
+    <span class="cal-sub">{t(uiLang, 'calendar.subtitle')}</span>
+    <div class="metric-selector" role="group" aria-label={t(uiLang, 'calendar.metric_label')}>
+      <button class:active={metric === 'tests'} onclick={() => (metric = 'tests')}>{t(uiLang, 'calendar.metric_tests')}</button>
+      <button class:active={metric === 'time'} onclick={() => (metric = 'time')}>{t(uiLang, 'calendar.metric_time')}</button>
+      <button class:active={metric === 'lessons'} onclick={() => (metric = 'lessons')}>{t(uiLang, 'calendar.metric_lessons')}</button>
     </div>
   </div>
 
   {#if loading}
-    <p class="empty">Loading...</p>
+    <p class="empty">{t(uiLang, 'calendar.loading')}</p>
   {:else if grid.length === 0}
-    <p class="empty">No activity yet. Complete tests to fill the calendar.</p>
+    <p class="empty">{t(uiLang, 'calendar.empty')}</p>
   {:else}
     <div class="cal-scroll">
-      <svg viewBox="0 0 {W} {H}" class="cal-svg" role="img" aria-label="Contribution calendar">
+      <svg viewBox="0 0 {W} {H}" class="cal-svg" role="img" aria-label={t(uiLang, 'calendar.aria_label')}>
         {#each monthLabels as ml}
           <text x={ml.x} y="10" fill="var(--color-chart-label)" font-size="11">{ml.text}</text>
         {/each}
@@ -96,20 +138,22 @@
             class:lvl2={c.level === 2}
             class:lvl3={c.level === 3}
             class:lvl4={c.level === 4}
+            class:today={c.isToday}
           >
-            <title>{formatTooltip(c, metric)}</title>
+            <title>{tooltipFor(c)}</title>
           </rect>
         {/each}
       </svg>
     </div>
     <div class="cal-legend">
-      <span class="legend-label">Less</span>
-      <span class="legend-cell lvl0"></span>
-      <span class="legend-cell lvl1"></span>
-      <span class="legend-cell lvl2"></span>
-      <span class="legend-cell lvl3"></span>
-      <span class="legend-cell lvl4"></span>
-      <span class="legend-label">More</span>
+      <span class="legend-label">{t(uiLang, 'calendar.less')}</span>
+      {#each legend as range, i}
+        <span class="legend-item">
+          <span class="legend-cell lvl{i}"></span>
+          <span class="legend-range">{legendLabel(range)}</span>
+        </span>
+      {/each}
+      <span class="legend-label">{t(uiLang, 'calendar.more')}</span>
     </div>
   {/if}
 </div>
@@ -133,8 +177,11 @@
   .lvl2 { fill: var(--color-chart-primary); opacity: 0.5; }
   .lvl3 { fill: var(--color-chart-primary); opacity: 0.75; }
   .lvl4 { fill: var(--color-chart-primary); opacity: 1; }
+  .cal-cell.today { stroke: var(--color-caret); stroke-width: 1.5; }
   .empty { color: var(--sub); text-align: center; padding: 2rem; }
   .cal-legend { display: flex; align-items: center; gap: 0.25rem; margin-top: 0.5rem; font-size: 0.8rem; color: var(--sub); }
   .legend-cell { width: 18px; height: 18px; border-radius: 3px; }
   .legend-label { margin: 0 0.25rem; }
+  .legend-item { display: flex; align-items: center; gap: 0.2rem; }
+  .legend-range { font-size: 0.65rem; color: var(--sub); min-width: 1.6em; text-align: center; }
 </style>
