@@ -111,10 +111,12 @@ endpoint в `tauri.conf.json`); release-candidate подписывает AppImag
 
 **Критерий готовности:** приложение доступно минимум в одном дополнительном канале.
 
-**Статус (2026-08-21):** в работе — PKGBUILD (sha256sums + локальный
-`makepkg`) и Flatpak-манифест (GNOME 50 + SDK-расширения) закрываются
-отдельными волнами; публикация на Flathub и winget — действия владельца
-(аккаунты/ревью).
+**Статус (2026-08-21):** PKGBUILD — sha256sums закреплён за архивом v1.2.0,
+`makepkg --verifysource` и полный локальный `makepkg -f` пройдены
+(`docs/PKGBUILD_SOURCE_BLOCKER.md` — resolved). Flatpak-манифест переведён
+на GNOME 50 с rust-stable/node22 SDK-расширениями, policy-gate зелёный
+(`docs/flatpak-build.md`). Публикация на Flathub/AUR/winget — действия
+владельца (аккаунты/ревью).
 
 ---
 
