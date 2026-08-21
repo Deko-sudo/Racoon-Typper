@@ -4,7 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { vimActionForKey } from '../frontend/src/lib/vimNavigation.ts';
+import { findMatches, vimActionForKey } from '../frontend/src/lib/vimNavigation.ts';
 
 test('h/l navigate between tabs, bounded at the edges', () => {
   // From 'test' (index 1), h goes to dashboard, l goes to pomodoro.
@@ -73,4 +73,15 @@ test('unknown keys produce no action', () => {
     action: { type: 'none' },
     nextPendingG: false,
   });
+});
+
+test('findMatches highlights every case-insensitive occurrence', () => {
+  assert.deepEqual([...findMatches('hello world hello', 'hello')].sort((a, b) => a - b), [0, 1, 2, 3, 4, 12, 13, 14, 15, 16]);
+  assert.deepEqual([...findMatches('Hello World', 'hello')].sort((a, b) => a - b), [0, 1, 2, 3, 4]);
+  assert.deepEqual([...findMatches('abc', 'z')], []);
+});
+
+test('findMatches ignores empty and whitespace-only queries', () => {
+  assert.equal(findMatches('abc', '').size, 0);
+  assert.equal(findMatches('abc', '   ').size, 0);
 });

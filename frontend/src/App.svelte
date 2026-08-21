@@ -5,7 +5,7 @@
   import { lessonResultNavigation } from './lib/lessonNavigation';
   import { createNavigationStore } from './lib/stores/navigation.svelte';
   import { createNotificationStore } from './lib/stores/notifications.svelte';
-  import { vimActionForKey, VIM_VIEWS } from './lib/vimNavigation';
+  import { vimActionForKey, findMatches, VIM_VIEWS } from './lib/vimNavigation';
   import type {
     CharStatus, EngineOutput, TestSessionResponse, FinalStats, TestSummary,
     PersonalBest, CustomText, AppSettings,
@@ -28,6 +28,7 @@
   import AchievementGallery from './components/AchievementGallery.svelte';
   import PomodoroView from './components/PomodoroView.svelte';
   import CheatsheetOverlay from './components/CheatsheetOverlay.svelte';
+  import VimSearchOverlay from './components/VimSearchOverlay.svelte';
 
   // Navigation
   const navigation = createNavigationStore('test');
@@ -118,6 +119,11 @@
 
   // Cheatsheet overlay
   let cheatsheetOpen = $state(false);
+
+  // Vim '/' search: visual highlight only — the backend caret is never moved.
+  let vimSearchOpen = $state(false);
+  let searchMatches = $state(new Set<number>());
+  let searchMatchCount = $state(0);
 
   // Achievement tracking — snapshot before test for auto-toast
   let preTestAchievements = $state<Array<{ id: string; unlocked: boolean }>>([]);
@@ -435,6 +441,22 @@
     if (e.key === '?' && !isRunning) {
       e.preventDefault();
       cheatsheetOpen = true;
+      return;
+    }
+
+    // Vim '/' search: opens the search bar; Esc closes it. Visual only.
+    if (vimSearchOpen) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        vimSearchOpen = false;
+        searchMatches = new Set();
+        searchMatchCount = 0;
+      }
+      return;
+    }
+    if (e.key === '/' && settings?.vim_mode && !isRunning) {
+      e.preventDefault();
+      vimSearchOpen = true;
       return;
     }
 
@@ -811,6 +833,30 @@
     if (v === 'dashboard') loadDashboard();
   }
 
+  function applyVimSearch(query: string) {
+    const matches = findMatches(text, query);
+    searchMatches = matches;
+    searchMatchCount = matches.size > 0 ? countMatches(matches) : 0;
+  }
+
+  function countMatches(matches: Set<number>): number {
+    // Считаем непрерывные диапазоны позиций как отдельные совпадения.
+    const sorted = [...matches].sort((a, b) => a - b);
+    let count = 0;
+    let previous = -2;
+    for (const position of sorted) {
+      if (position !== previous + 1) count += 1;
+      previous = position;
+    }
+    return count;
+  }
+
+  function closeVimSearch() {
+    vimSearchOpen = false;
+    searchMatches = new Set();
+    searchMatchCount = 0;
+  }
+
   async function loadDashboard() {
     try {
       dashboardStats = await ipc.getDashboardStats();
@@ -1004,6 +1050,7 @@
       {caretPos}
       {charStatuses}
       {erroredPositions}
+      {searchMatches}
       {isRunning}
       {isComplete}
       {liveWpm}
@@ -1112,6 +1159,15 @@
 
 {#if cheatsheetOpen}
   <CheatsheetOverlay {uiLang} onClose={() => { cheatsheetOpen = false; }} />
+{/if}
+
+{#if vimSearchOpen}
+  <VimSearchOverlay
+    {uiLang}
+    matchCount={searchMatchCount}
+    onQuery={applyVimSearch}
+    onClose={closeVimSearch}
+  />
 {/if}
 
 <style>

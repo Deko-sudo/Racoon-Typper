@@ -103,6 +103,9 @@ const en: Dict = {
   'vim.hint_top': 'top of page',
   'vim.hint_bottom': 'bottom of page',
   'vim.hint_restart': 'restart test',
+  'vim.search_label': 'Search in test text',
+  'vim.search_placeholder': 'search text...',
+  'vim.search_close': 'Close search',
   // Mode selector
   'mode.time': 'Time', 'mode.words': 'Words', 'mode.quote': 'Quote',
   // Result overlay
@@ -332,6 +335,9 @@ const ru: Dict = {
   'vim.hint_top': 'в начало страницы',
   'vim.hint_bottom': 'в конец страницы',
   'vim.hint_restart': 'перезапустить тест',
+  'vim.search_label': 'Поиск по тексту теста',
+  'vim.search_placeholder': 'поиск по тексту...',
+  'vim.search_close': 'Закрыть поиск',
   // Mode selector
   'mode.time': 'Время', 'mode.words': 'Слова', 'mode.quote': 'Цитаты',
   // Result overlay

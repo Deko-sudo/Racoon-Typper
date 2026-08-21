@@ -31,6 +31,24 @@ export const VIM_VIEWS = [
 export type VimView = (typeof VIM_VIEWS)[number];
 
 /**
+ * Case-insensitive substring search over the test text. Returns the set of
+ * character positions covered by every match (visual highlight only — the
+ * backend caret is never moved by search).
+ */
+export function findMatches(text: string, query: string): Set<number> {
+  const matches = new Set<number>();
+  const needle = query.trim().toLowerCase();
+  if (!needle) return matches;
+  const haystack = text.toLowerCase();
+  let index = haystack.indexOf(needle);
+  while (index !== -1) {
+    for (let i = index; i < index + needle.length; i++) matches.add(i);
+    index = haystack.indexOf(needle, index + 1);
+  }
+  return matches;
+}
+
+/**
  * Map a keypress to a Vim action given the current view index.
  * `pendingG` tracks a single 'g' press so 'gg' becomes scroll_top.
  * Returns the action and the next pendingG state.
