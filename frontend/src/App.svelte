@@ -369,6 +369,7 @@
   {#if view === 'dashboard'}
     <DashboardView
       stats={contentStore.dashboardStats}
+      weekly={contentStore.weeklySummaries}
       onNavigate={(v) => switchView(v as ViewName)}
       weakKeys={contentStore.weakKeysData}
       onStartTraining={() => void testSession.startTraining()}

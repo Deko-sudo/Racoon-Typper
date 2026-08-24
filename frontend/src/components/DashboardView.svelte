@@ -1,17 +1,19 @@
 <script lang="ts">
-  import type { DashboardStatsResponse } from '../lib/types/index';
+  import type { DashboardStatsResponse, WeeklySummaryResponse } from '../lib/types/index';
   import ContributionCalendar from './ContributionCalendar.svelte';
   import Icon from './Icon.svelte';
   import { t } from '../lib/i18n';
 
   let {
     stats,
+    weekly = null,
     onNavigate,
     weakKeys = [],
     onStartTraining,
     uiLang = 'en',
   }: {
     stats: DashboardStatsResponse | null;
+    weekly?: WeeklySummaryResponse[] | null;
     onNavigate: (v: string) => void;
     weakKeys?: { ch: string; accuracy: number; error_count: number }[];
     onStartTraining?: () => void;
@@ -20,6 +22,18 @@
 
   // Top-3 weak keys for the training widget.
   let topWeakKeys = $derived(weakKeys.slice(0, 3));
+
+  let weeklyMax = $derived(
+    weekly && weekly.length > 0 ? Math.max(...weekly.map((w) => w.total_tests), 1) : 1,
+  );
+
+  function weekLabel(weekStartIso: string): string {
+    return weekStartIso.slice(5).replace('-', '.');
+  }
+
+  function weekTitle(week: WeeklySummaryResponse): string {
+    return `${week.week_start}: ${week.total_tests} ${t(uiLang, 'dash.weekly_tests')}`;
+  }
 
   function handleActionKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter' || event.key === ' ') {
@@ -75,6 +89,31 @@
       </div>
     </div>
 
+    {#if weekly && weekly.length > 0}
+      <div class="weekly-card">
+        <span class="weekly-title">{t(uiLang, 'dash.weekly_title')}</span>
+        <div class="weekly-strip">
+          {#each weekly as week, index}
+            <div class="week-col" class:current={index === weekly.length - 1} title={weekTitle(week)}>
+              <span class="week-tests">{week.total_tests}</span>
+              <div class="week-bar-track">
+                <div
+                  class="week-bar"
+                  class:active={week.total_tests > 0}
+                  style:height="{Math.round((week.total_tests / weeklyMax) * 100)}%"
+                ></div>
+              </div>
+              <span class="week-goal" class:met={week.goal_met_days > 0}>
+                {#if week.goal_met_days > 0}<Icon name="check" size="0.6rem" />{/if}
+                {week.goal_met_days}
+              </span>
+              <span class="week-label">{weekLabel(week.week_start)}</span>
+            </div>
+          {/each}
+        </div>
+      </div>
+    {/if}
+
     {#if topWeakKeys.length > 0 && onStartTraining}
       <div class="training-card">
         <div class="training-header">
@@ -124,6 +163,30 @@
   .action-card:hover { border-color: var(--main); background: var(--bg); }
   .card-action { color: var(--main); font-size: 0.875rem; }
   .empty { color: var(--sub); text-align: center; padding: 2rem; }
+  .weekly-card {
+    display: flex; flex-direction: column; gap: 0.75rem;
+    padding: 1.25rem; margin-bottom: 2rem; background: var(--bg-sub); border-radius: 8px;
+    border: 1px solid var(--sub);
+  }
+  .weekly-title { font-size: 0.875rem; font-weight: bold; color: var(--main); text-transform: uppercase; letter-spacing: 0.05em; }
+  .weekly-strip { display: grid; grid-template-columns: repeat(auto-fit, minmax(2.4rem, 1fr)); gap: 0.5rem; }
+  .week-col { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
+  .week-tests { font-size: 0.75rem; color: var(--text); }
+  .week-bar-track {
+    height: 3rem; width: 100%; max-width: 2rem;
+    display: flex; align-items: flex-end;
+    background: var(--bg); border-radius: 4px; overflow: hidden;
+  }
+  .week-bar { width: 100%; background: transparent; border-radius: 4px 4px 0 0; transition: height 0.2s; }
+  .week-bar.active { background: var(--main); opacity: 0.55; }
+  .week-col.current .week-bar.active { opacity: 1; }
+  .week-goal {
+    display: flex; align-items: center; gap: 0.15rem;
+    font-size: 0.65rem; min-height: 0.85rem; color: var(--sub);
+  }
+  .week-goal.met { color: #6c8; }
+  .week-label { font-size: 0.65rem; color: var(--sub); }
+  .week-col.current .week-label { color: var(--main); }
   .training-card {
     display: flex; flex-direction: column; align-items: center; gap: 0.75rem;
     padding: 1.25rem; margin-bottom: 2rem; background: var(--bg-sub); border-radius: 8px;

@@ -244,6 +244,17 @@ export interface ProgressPoint {
   lessons: number;
 }
 
+export interface WeeklySummaryResponse {
+  week_start: string;
+  total_tests: number;
+  total_time_ms: number;
+  avg_wpm: number;
+  best_wpm: number;
+  avg_accuracy: number;
+  days_practiced: number;
+  goal_met_days: number;
+}
+
 export type ProfileImportPolicy = 'merge' | 'replace';
 
 export interface CollectionImportPlan {

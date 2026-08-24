@@ -146,6 +146,7 @@ fn main() {
             // Dashboard
             commands::reporting::get_dashboard_stats,
             commands::reporting::get_progress_history,
+            commands::reporting::get_weekly_summaries,
             // Analytics
             commands::reporting::get_achievements,
             commands::reporting::get_insights,

@@ -14,6 +14,7 @@ import type {
   ModuleResponse,
   PersonalBest,
   TestSummary,
+  WeeklySummaryResponse,
 } from '../types/index';
 
 export type LessonLanguage = 'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko';
@@ -53,6 +54,7 @@ export function createContentStore(deps: ContentStoreDeps) {
 
   // Dashboard
   let dashboardStats = $state<DashboardStatsResponse | null>(null);
+  let weeklySummaries = $state<WeeklySummaryResponse[] | null>(null);
 
   async function loadHistory(page = 0) {
     const r = await ipc.getStatsHistory(20, page * 20);
@@ -179,6 +181,13 @@ export function createContentStore(deps: ContentStoreDeps) {
   async function loadDashboard() {
     try {
       dashboardStats = await ipc.getDashboardStats();
+      // Weekly summaries are best-effort: without them the dashboard
+      // simply renders without the weekly strip.
+      try {
+        weeklySummaries = await ipc.getWeeklySummaries();
+      } catch {
+        weeklySummaries = null;
+      }
       // Weak-keys для виджета «Тренировка дня» — грузим и здесь, иначе
       // при первом визите на дашборд виджет никогда не появляется
       // (раньше weakKeysData заполнялся только на weakkeys-вью).
@@ -213,6 +222,7 @@ export function createContentStore(deps: ContentStoreDeps) {
     get weakKeysData() { return weakKeysData; },
     get weakKeysCharStats() { return weakKeysCharStats; },
     get dashboardStats() { return dashboardStats; },
+    get weeklySummaries() { return weeklySummaries; },
     set newName(value: string) { newName = value; },
     set newTextContent(value: string) { newTextContent = value; },
     set customTextLanguage(value: LanguageCode) { customTextLanguage = value; },

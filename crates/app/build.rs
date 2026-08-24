@@ -23,6 +23,7 @@ const APP_COMMANDS: &[&str] = &[
     "import_text_from_url",
     "get_dashboard_stats",
     "get_progress_history",
+    "get_weekly_summaries",
     "get_achievements",
     "get_insights",
     "get_consistency",

@@ -2,7 +2,8 @@
 
 use chrono::{DateTime, Duration, Utc};
 use racoon_application::{
-    GetAnalyticsSnapshot, GetReportingSummary, ListDailyStatistics, ReportingDay, SessionWallClock,
+    GetAnalyticsSnapshot, GetReportingSummary, ListDailyStatistics, ListWeeklySummaries,
+    ReportingDay, SessionWallClock,
 };
 use racoon_core::analytics::{Achievement, Insight};
 use racoon_core::consistency::ConsistencyReport;
@@ -14,14 +15,16 @@ use racoon_data::repository::{
 use racoon_domain::PersonalBest;
 use tauri::State;
 
-use crate::commands::contracts::{DashboardStatsResponse, ProgressPoint, StatsHistoryResponse};
+use crate::commands::contracts::{
+    DashboardStatsResponse, ProgressPoint, StatsHistoryResponse, WeeklySummaryResponse,
+};
 use crate::commands::with_db;
 use crate::error::AppError;
 use crate::export::{build_markdown_report, render_heatmap_png, MarkdownTestRow};
 use crate::state::AppState;
 use crate::validation::{
     validate_export_format, validate_mode_filter, validate_page_limit, validate_page_offset,
-    validate_positive_id, validate_progress_days, MAX_PAGE_LIMIT,
+    validate_positive_id, validate_progress_days, validate_weekly_weeks, MAX_PAGE_LIMIT,
 };
 
 /// Application clock for reporting use cases.
@@ -137,6 +140,38 @@ pub(crate) fn get_progress_history_with_state(
             tests: point.total_tests() as i64,
             time_ms: point.total_duration_ms() as i64,
             lessons: point.lessons_completed() as i64,
+        })
+        .collect())
+}
+
+#[tauri::command]
+pub(crate) fn get_weekly_summaries(
+    state: State<'_, AppState>,
+    weeks: Option<usize>,
+) -> Result<Vec<WeeklySummaryResponse>, AppError> {
+    get_weekly_summaries_with_state(&state, weeks)
+}
+
+pub(crate) fn get_weekly_summaries_with_state(
+    state: &AppState,
+    weeks: Option<usize>,
+) -> Result<Vec<WeeklySummaryResponse>, AppError> {
+    let weeks = validate_weekly_weeks(weeks.unwrap_or(8))?;
+    let clock = LocalReportingClock;
+    let summaries = ListWeeklySummaries::new(&SqliteProgressReportingPort::new(&state.db), &clock)
+        .execute(weeks)?;
+
+    Ok(summaries
+        .iter()
+        .map(|week| WeeklySummaryResponse {
+            week_start: week.week_start().to_string(),
+            total_tests: week.total_tests() as i64,
+            total_time_ms: week.total_duration_ms() as i64,
+            avg_wpm: week.average_wpm(),
+            best_wpm: week.best_wpm(),
+            avg_accuracy: week.average_accuracy(),
+            days_practiced: week.days_practiced() as i64,
+            goal_met_days: week.goal_met_days() as i64,
         })
         .collect())
 }
@@ -563,5 +598,48 @@ mod tests {
 
         let points = get_progress_history_with_state(&state, Some(30)).expect("progress");
         assert!(points.iter().any(|point| point.wpm > 0.0));
+    }
+
+    #[test]
+    fn weekly_summaries_cover_previous_and_current_iso_weeks() {
+        use chrono::Datelike;
+
+        let state = app_state();
+        let today = ReportingDay::from_utc(LocalReportingClock.utc_now());
+        let current_week_start = today
+            .days_before(i64::from(
+                today.as_naive_date().weekday().num_days_from_monday(),
+            ))
+            .unwrap();
+        let previous_week_start = current_week_start.days_before(7).unwrap();
+        for date in [previous_week_start, today] {
+            state
+                .db
+                .with_transaction(|conn| {
+                    SqliteDailyStatsRepository::new(conn).update_after_test(
+                        &date.to_string(),
+                        30000,
+                        100,
+                        50.0,
+                        95.0,
+                    )
+                })
+                .unwrap();
+        }
+
+        let summaries = get_weekly_summaries_with_state(&state, Some(2)).expect("weekly");
+        assert_eq!(summaries.len(), 2);
+        assert_eq!(summaries[0].week_start, previous_week_start.to_string());
+        assert_eq!(summaries[1].week_start, current_week_start.to_string());
+        assert_eq!(summaries[0].total_tests, 1);
+        assert_eq!(summaries[1].total_tests, 1);
+        assert!((summaries[1].avg_wpm - 50.0).abs() < f64::EPSILON);
+
+        let four_weeks = get_weekly_summaries_with_state(&state, Some(4)).expect("weekly window");
+        assert_eq!(four_weeks.len(), 4);
+        assert_eq!(four_weeks[0].total_tests, 0);
+        assert_eq!(four_weeks[3].total_tests, 1);
+
+        assert!(get_weekly_summaries_with_state(&state, Some(0)).is_err());
     }
 }

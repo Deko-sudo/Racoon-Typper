@@ -4,9 +4,9 @@
 //! privacy-minimized projections only. Storage execution and transport
 //! conversion remain adapter responsibilities.
 
-use std::{fmt, str::FromStr};
+use std::{collections::BTreeMap, fmt, str::FromStr};
 
-use chrono::{DateTime, Duration, NaiveDate, Utc};
+use chrono::{DateTime, Datelike, Duration, NaiveDate, Utc};
 use racoon_core::{
     analytics::{check_achievements, generate_insights, Achievement, Insight},
     consistency::{calc_consistency, ConsistencyReport},
@@ -32,6 +32,9 @@ pub const DEFAULT_EXPORT_PAGE_LIMIT: usize = MAX_REPORTING_PAGE_LIMIT;
 
 /// Existing insight and consistency calculations inspect this many tests.
 pub const ANALYTICS_HISTORY_LIMIT: usize = 100;
+
+/// The largest weekly window returned by the weekly summaries use case.
+pub const MAX_WEEKLY_SUMMARY_WEEKS: usize = 52;
 
 /// Bounded application errors for reporting requests and reporting ports.
 ///
@@ -1778,6 +1781,173 @@ impl<'a, P: ProgressReportingPort + ?Sized> ListDailyStatistics<'a, P> {
         let points = self.port.load_daily_statistics(range)?;
         validate_daily_statistics(&points, range)?;
         Ok(DailyStatisticsRange::new(range, points))
+    }
+}
+
+/// One Monday-start ISO week aggregate of persisted daily statistics.
+///
+/// Weeks inside the requested window without persisted activity are reported
+/// as zeroed summaries instead of being omitted, so callers always receive a
+/// contiguous oldest-to-newest series ending with the current partial week.
+#[derive(Debug, Clone, PartialEq)]
+pub struct WeeklySummary {
+    week_start: ReportingDay,
+    total_tests: u64,
+    total_duration_ms: u64,
+    average_wpm: f64,
+    best_wpm: f64,
+    average_accuracy: f64,
+    days_practiced: u64,
+    goal_met_days: u64,
+}
+
+impl WeeklySummary {
+    fn empty(week_start: ReportingDay) -> Self {
+        Self {
+            week_start,
+            total_tests: 0,
+            total_duration_ms: 0,
+            average_wpm: 0.0,
+            best_wpm: 0.0,
+            average_accuracy: 0.0,
+            days_practiced: 0,
+            goal_met_days: 0,
+        }
+    }
+
+    fn build<'statistics>(
+        week_start: ReportingDay,
+        statistics: impl Iterator<Item = &'statistics DailyStatisticsPoint>,
+    ) -> Result<Self, ReportingError> {
+        let mut total_tests = 0_u64;
+        let mut total_duration_ms = 0_u64;
+        let mut weighted_wpm = 0_f64;
+        let mut weighted_accuracy = 0_f64;
+        let mut best_wpm = 0_f64;
+        let mut days_practiced = 0_u64;
+        let mut goal_met_days = 0_u64;
+        for point in statistics {
+            let tests = point.total_tests();
+            total_tests = total_tests
+                .checked_add(tests)
+                .ok_or(ReportingError::InvariantViolation)?;
+            total_duration_ms = total_duration_ms
+                .checked_add(point.total_duration_ms())
+                .ok_or(ReportingError::InvariantViolation)?;
+            weighted_wpm += point.average_wpm() * tests as f64;
+            weighted_accuracy += point.average_accuracy() * tests as f64;
+            best_wpm = best_wpm.max(point.best_wpm());
+            if tests > 0 {
+                days_practiced += 1;
+            }
+            if point.daily_goal_met() {
+                goal_met_days += 1;
+            }
+        }
+        let divisor = if total_tests == 0 {
+            1.0
+        } else {
+            total_tests as f64
+        };
+        Ok(Self {
+            week_start,
+            total_tests,
+            total_duration_ms,
+            average_wpm: weighted_wpm / divisor,
+            best_wpm,
+            average_accuracy: weighted_accuracy / divisor,
+            days_practiced,
+            goal_met_days,
+        })
+    }
+
+    pub const fn week_start(&self) -> ReportingDay {
+        self.week_start
+    }
+
+    pub const fn total_tests(&self) -> u64 {
+        self.total_tests
+    }
+
+    pub const fn total_duration_ms(&self) -> u64 {
+        self.total_duration_ms
+    }
+
+    pub const fn average_wpm(&self) -> f64 {
+        self.average_wpm
+    }
+
+    pub const fn best_wpm(&self) -> f64 {
+        self.best_wpm
+    }
+
+    pub const fn average_accuracy(&self) -> f64 {
+        self.average_accuracy
+    }
+
+    pub const fn days_practiced(&self) -> u64 {
+        self.days_practiced
+    }
+
+    pub const fn goal_met_days(&self) -> u64 {
+        self.goal_met_days
+    }
+}
+
+fn iso_week_start(day: ReportingDay) -> Result<ReportingDay, ReportingError> {
+    let offset = i64::from(day.as_naive_date().weekday().num_days_from_monday());
+    day.days_before(offset)
+}
+
+/// Aggregates the last N Monday-start ISO weeks (including the current
+/// partial week) from persisted daily statistics using an injected UTC clock.
+///
+/// Daily statistics are stored under local calendar dates; the caller supplies
+/// a clock whose UTC naive date already equals the local calendar date (see
+/// `LocalReportingClock` in `racoon-app`).
+pub struct ListWeeklySummaries<'a, P: ProgressReportingPort + ?Sized, C: SessionWallClock + ?Sized>
+{
+    port: &'a P,
+    clock: &'a C,
+}
+
+impl<'a, P: ProgressReportingPort + ?Sized, C: SessionWallClock + ?Sized>
+    ListWeeklySummaries<'a, P, C>
+{
+    pub const fn new(port: &'a P, clock: &'a C) -> Self {
+        Self { port, clock }
+    }
+
+    pub fn execute(&self, weeks: usize) -> Result<Vec<WeeklySummary>, ReportingError> {
+        if weeks == 0 || weeks > MAX_WEEKLY_SUMMARY_WEEKS {
+            return Err(ReportingError::InvalidPagination);
+        }
+        let today = ReportingDay::from_utc(self.clock.utc_now());
+        let current_week_start = iso_week_start(today)?;
+        let oldest_week_start = current_week_start.days_before(7 * (weeks - 1) as i64)?;
+        let range = InclusiveDateRange::new(oldest_week_start, today)?;
+        let points = self.port.load_daily_statistics(range)?;
+        validate_daily_statistics(&points, range)?;
+
+        let mut by_week: BTreeMap<ReportingDay, Vec<&DailyStatisticsPoint>> = BTreeMap::new();
+        for point in &points {
+            by_week
+                .entry(iso_week_start(point.day())?)
+                .or_default()
+                .push(point);
+        }
+
+        (0..weeks)
+            .map(|index| {
+                let week_start = current_week_start.days_before(7 * (weeks - 1 - index) as i64)?;
+                match by_week.get(&week_start) {
+                    Some(statistics) => {
+                        WeeklySummary::build(week_start, statistics.iter().copied())
+                    }
+                    None => Ok(WeeklySummary::empty(week_start)),
+                }
+            })
+            .collect()
     }
 }
 

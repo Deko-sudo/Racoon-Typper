@@ -133,6 +133,8 @@ const en: Dict = {
   'dash.loading': 'Loading dashboard...',
   'dash.training_day': 'Training of the Day',
   'dash.start_training': 'Start Training',
+  'dash.weekly_title': 'Last 8 Weeks',
+  'dash.weekly_tests': 'tests',
   // Contribution calendar
   'calendar.title': 'Activity',
   'calendar.subtitle': 'Last 365 days',
@@ -370,6 +372,8 @@ const ru: Dict = {
   'dash.loading': 'Загрузка панели...',
   'dash.training_day': 'Тренировка дня',
   'dash.start_training': 'Начать тренировку',
+  'dash.weekly_title': 'Последние 8 недель',
+  'dash.weekly_tests': 'тестов',
   // Contribution calendar
   'calendar.title': 'Активность',
   'calendar.subtitle': 'Последние 365 дней',

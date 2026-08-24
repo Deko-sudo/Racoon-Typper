@@ -100,6 +100,18 @@ pub struct ProgressPoint {
 }
 
 #[derive(Debug, serde::Serialize)]
+pub struct WeeklySummaryResponse {
+    pub week_start: String,
+    pub total_tests: i64,
+    pub total_time_ms: i64,
+    pub avg_wpm: f64,
+    pub best_wpm: f64,
+    pub avg_accuracy: f64,
+    pub days_practiced: i64,
+    pub goal_met_days: i64,
+}
+
+#[derive(Debug, serde::Serialize)]
 pub struct SoundOutputResponse {
     pub frequency: f64,
     pub duration_ms: u64,

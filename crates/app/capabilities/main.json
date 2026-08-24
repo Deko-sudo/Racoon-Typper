@@ -32,6 +32,7 @@
     "allow-get-stats-history",
     "allow-get-theme-css",
     "allow-get-themes",
+    "allow-get-weekly-summaries",
     "allow-import-profile",
     "allow-preview-profile-import",
     "allow-restore-database",

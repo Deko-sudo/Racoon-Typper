@@ -22,6 +22,7 @@ import type {
   ThemeInfo,
   SoundOutputResponse,
   WeakKeysReport,
+  WeeklySummaryResponse,
 } from '../types/index';
 
 export interface IpcError {
@@ -157,6 +158,10 @@ export async function getDashboardStats(): Promise<DashboardStatsResponse> {
 
 export async function getProgressHistory(days?: number): Promise<ProgressPoint[]> {
   return invoke<ProgressPoint[]>('get_progress_history', { days });
+}
+
+export async function getWeeklySummaries(weeks?: number): Promise<WeeklySummaryResponse[]> {
+  return invoke<WeeklySummaryResponse[]>('get_weekly_summaries', { weeks });
 }
 
 // Analytics
