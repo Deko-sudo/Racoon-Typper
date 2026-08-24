@@ -1,13 +1,15 @@
 //! Tauri adapters for persisted history, dashboards, analytics, exports, and replay.
 
-use chrono::Duration;
+use chrono::{DateTime, Duration, Utc};
+use racoon_application::{
+    GetAnalyticsSnapshot, GetReportingSummary, ListDailyStatistics, ReportingDay, SessionWallClock,
+};
 use racoon_core::analytics::{Achievement, Insight};
 use racoon_core::consistency::ConsistencyReport;
 use racoon_data::repository::{
-    DailyStats, DailyStatsRepository, LessonRepository, PersonalBestsRepository, ReplayRepository,
-    SqliteDailyStatsRepository, SqliteLessonRepository, SqlitePersonalBestsRepository,
-    SqliteReplayRepository, SqliteStreakRepository, SqliteTestRepository, StreakRepository,
-    TestRepository,
+    DailyStats, DailyStatsRepository, PersonalBestsRepository, ReplayRepository,
+    SqliteAnalyticsReportingPort, SqliteDailyStatsRepository, SqlitePersonalBestsRepository,
+    SqliteProgressReportingPort, SqliteReplayRepository, SqliteTestRepository, TestRepository,
 };
 use racoon_domain::PersonalBest;
 use tauri::State;
@@ -21,6 +23,27 @@ use crate::validation::{
     validate_export_format, validate_mode_filter, validate_page_limit, validate_page_offset,
     validate_positive_id, validate_progress_days, MAX_PAGE_LIMIT,
 };
+
+/// Application clock for reporting use cases.
+///
+/// Daily statistics and streaks are persisted under **local** calendar dates
+/// (see the recovery finalizer), so the reporting use cases are fed a UTC
+/// timestamp whose naive date equals the local calendar date. This keeps the
+/// UTC-based range arithmetic in `racoon-application` aligned with the stored
+/// local-day rows without changing the dashboard/progress "today" boundary.
+#[derive(Debug, Clone, Copy)]
+struct LocalReportingClock;
+
+impl SessionWallClock for LocalReportingClock {
+    fn utc_now(&self) -> DateTime<Utc> {
+        let local = chrono::Local::now();
+        let local_day = local.date_naive();
+        DateTime::from_naive_utc_and_offset(
+            local_day.and_hms_opt(0, 0, 0).expect("valid midnight"),
+            Utc,
+        )
+    }
+}
 
 #[tauri::command]
 pub(crate) fn get_stats_history(
@@ -62,37 +85,25 @@ pub(crate) fn get_personal_bests(
 pub(crate) fn get_dashboard_stats(
     state: State<'_, AppState>,
 ) -> Result<DashboardStatsResponse, AppError> {
-    let (week_ago, today) = local_date_range(7);
-    with_db(&state, |conn| {
-        let test_repository = SqliteTestRepository::new(conn);
-        let daily_repository = SqliteDailyStatsRepository::new(conn);
-        let total_tests = test_repository.get_count(None)?;
-        let today_stats = daily_repository.get_day(&today)?;
-        let tests_today = today_stats.as_ref().map_or(0, |stats| stats.total_tests);
-        let daily_goal_met = today_stats
-            .as_ref()
-            .is_some_and(|stats| stats.daily_goal_met);
-        let week_stats = daily_repository.get_range(&week_ago, &today)?;
-        // Streaks are read from the maintained `streaks` row instead of recomputed
-        // from a bounded slice of test history. The stored `current_streak` and
-        // `longest_streak` are authoritative and global; the previous bounded
-        // `streak_from_dates(get_history(MAX_PAGE_LIMIT))` path silently capped
-        // `longest` to whatever fit in the last 1 000 tests. See
-        // docs/adr/0002-long-history-metrics.md.
-        let streak = SqliteStreakRepository::new(conn).get("daily_test")?;
-        let current_streak = streak.as_ref().map_or(0, |row| row.current_streak);
-        let longest_streak = streak.as_ref().map_or(0, |row| row.longest_streak);
+    get_dashboard_stats_with_state(&state)
+}
 
-        Ok(DashboardStatsResponse {
-            current_streak,
-            longest_streak,
-            avg_wpm: weighted_daily_average(&week_stats, |stats| stats.avg_wpm),
-            avg_accuracy: weighted_daily_average(&week_stats, |stats| stats.avg_accuracy),
-            tests_today,
-            tests_this_week: week_stats.iter().map(|stats| stats.total_tests).sum(),
-            total_tests,
-            daily_goal_met,
-        })
+pub(crate) fn get_dashboard_stats_with_state(
+    state: &AppState,
+) -> Result<DashboardStatsResponse, AppError> {
+    let clock = LocalReportingClock;
+    let summary =
+        GetReportingSummary::new(&SqliteProgressReportingPort::new(&state.db), &clock).execute()?;
+
+    Ok(DashboardStatsResponse {
+        current_streak: summary.current_streak() as i64,
+        longest_streak: summary.longest_streak() as i64,
+        avg_wpm: summary.average_wpm(),
+        avg_accuracy: summary.average_accuracy(),
+        tests_today: summary.tests_today() as i64,
+        tests_this_week: summary.tests_in_period() as i64,
+        total_tests: summary.total_tests() as i64,
+        daily_goal_met: summary.daily_goal_met(),
     })
 }
 
@@ -101,22 +112,33 @@ pub(crate) fn get_progress_history(
     state: State<'_, AppState>,
     days: Option<u32>,
 ) -> Result<Vec<ProgressPoint>, AppError> {
+    get_progress_history_with_state(&state, days)
+}
+
+pub(crate) fn get_progress_history_with_state(
+    state: &AppState,
+    days: Option<u32>,
+) -> Result<Vec<ProgressPoint>, AppError> {
     let days = validate_progress_days(days.unwrap_or(30))?;
-    let (from, to) = local_date_range(i64::from(days));
-    with_db(&state, |conn| {
-        Ok(SqliteDailyStatsRepository::new(conn)
-            .get_range(&from, &to)?
-            .iter()
-            .map(|stats| ProgressPoint {
-                date: stats.date.clone(),
-                wpm: stats.avg_wpm,
-                accuracy: stats.avg_accuracy,
-                tests: stats.total_tests,
-                time_ms: stats.total_time_ms,
-                lessons: stats.lessons_completed,
-            })
-            .collect())
-    })
+    let end = ReportingDay::from_utc(LocalReportingClock.utc_now());
+    let start = end.days_before(i64::from(days))?;
+    let range = racoon_application::InclusiveDateRange::new(start, end)?;
+
+    let points =
+        ListDailyStatistics::new(&SqliteProgressReportingPort::new(&state.db)).execute(range)?;
+
+    Ok(points
+        .points()
+        .iter()
+        .map(|point| ProgressPoint {
+            date: point.day().to_string(),
+            wpm: point.average_wpm(),
+            accuracy: point.average_accuracy(),
+            tests: point.total_tests() as i64,
+            time_ms: point.total_duration_ms() as i64,
+            lessons: point.lessons_completed() as i64,
+        })
+        .collect())
 }
 
 /// The nested collection preserves the pre-existing `[[achievement...]]` wire
@@ -126,54 +148,16 @@ pub(crate) fn get_progress_history(
 pub(crate) fn get_achievements(
     state: State<'_, AppState>,
 ) -> Result<Vec<Vec<Achievement>>, AppError> {
-    with_db(&state, |conn| {
-        let test_repository = SqliteTestRepository::new(conn);
-        let lesson_repository = SqliteLessonRepository::new(conn);
-        let personal_bests = SqlitePersonalBestsRepository::new(conn);
-        let streak_repository = SqliteStreakRepository::new(conn);
-        let total_tests = test_repository.get_count(None)?;
-        // best_wpm / best_accuracy are read from the incrementally maintained
-        // `personal_bests` rows (one per mode) instead of folding over a bounded
-        // slice of test history. The previous `get_history(500)` fold silently
-        // ignored any personal best that lived more than 500 tests in the past.
-        let bests = personal_bests.get_bests(None)?;
-        let best_wpm = bests.iter().map(|pb| pb.best_wpm).fold(0.0_f64, f64::max);
-        let best_accuracy = bests
-            .iter()
-            .map(|pb| pb.best_accuracy)
-            .fold(0.0_f64, f64::max);
-        // longest_streak is the maintained global value from the streaks row,
-        // not a recomputed-from-bounded-history value.
-        let longest_streak = streak_repository
-            .get("daily_test")?
-            .map_or(0, |row| row.longest_streak);
-        let lessons_completed = [
-            "cs", "de", "en", "es", "fr", "it", "ja", "ko", "pl", "pt", "ro", "ru", "uk", "zh-hk",
-            "zh-tw",
-        ]
-        .into_iter()
-        .map(|language| {
-            lesson_repository.get_progress(language).map(|progress| {
-                progress
-                    .iter()
-                    .filter(|lesson| lesson.status == "completed")
-                    .count() as i64
-            })
-        })
-        .collect::<Result<Vec<_>, _>>()?
-        .into_iter()
-        .sum();
+    get_achievements_with_state(&state)
+}
 
-        Ok(vec![racoon_core::analytics::check_achievements(
-            total_tests,
-            best_wpm,
-            best_accuracy,
-            0,
-            longest_streak,
-            lessons_completed,
-            chrono::Utc::now().to_rfc3339(),
-        )])
-    })
+pub(crate) fn get_achievements_with_state(
+    state: &AppState,
+) -> Result<Vec<Vec<Achievement>>, AppError> {
+    let clock = LocalReportingClock;
+    let snapshot = GetAnalyticsSnapshot::new(&SqliteAnalyticsReportingPort::new(&state.db), &clock)
+        .execute()?;
+    Ok(vec![snapshot.achievements().to_vec()])
 }
 
 /// The nested collection preserves the pre-existing `[[insight...]]` wire
@@ -187,40 +171,28 @@ pub(crate) fn get_achievements(
 /// long-history bug; see docs/adr/0002-long-history-metrics.md. Global metrics
 /// that ARE all-time (best_wpm, longest_streak) are read from maintained
 /// aggregates in their respective commands.
-const RECENT_CONSISTENCY_SAMPLE_LIMIT: usize = 100;
-
 #[tauri::command]
 pub(crate) fn get_insights(state: State<'_, AppState>) -> Result<Vec<Vec<Insight>>, AppError> {
-    let (week_ago, today) = local_date_range(7);
-    with_db(&state, |conn| {
-        let daily_repository = SqliteDailyStatsRepository::new(conn);
-        let test_repository = SqliteTestRepository::new(conn);
-        let week_stats = daily_repository.get_range(&week_ago, &today)?;
-        let history = test_repository.get_history(RECENT_CONSISTENCY_SAMPLE_LIMIT, 0, None)?;
-        let wpm_samples: Vec<f64> = history.iter().map(|test| test.wpm).collect();
-        let consistency = racoon_core::consistency::calc_consistency(&wpm_samples);
+    get_insights_with_state(&state)
+}
 
-        Ok(vec![racoon_core::analytics::generate_insights(
-            weighted_daily_average(&week_stats, |stats| stats.avg_wpm),
-            weighted_daily_average(&week_stats, |stats| stats.avg_accuracy),
-            consistency.score,
-            0,
-            0,
-        )])
-    })
+pub(crate) fn get_insights_with_state(state: &AppState) -> Result<Vec<Vec<Insight>>, AppError> {
+    let clock = LocalReportingClock;
+    let snapshot = GetAnalyticsSnapshot::new(&SqliteAnalyticsReportingPort::new(&state.db), &clock)
+        .execute()?;
+    Ok(vec![snapshot.insights().to_vec()])
 }
 
 #[tauri::command]
 pub(crate) fn get_consistency(state: State<'_, AppState>) -> Result<ConsistencyReport, AppError> {
-    with_db(&state, |conn| {
-        let history = SqliteTestRepository::new(conn).get_history(
-            RECENT_CONSISTENCY_SAMPLE_LIMIT,
-            0,
-            None,
-        )?;
-        let samples: Vec<f64> = history.iter().map(|test| test.wpm).collect();
-        Ok(racoon_core::consistency::calc_consistency(&samples))
-    })
+    get_consistency_with_state(&state)
+}
+
+pub(crate) fn get_consistency_with_state(state: &AppState) -> Result<ConsistencyReport, AppError> {
+    let clock = LocalReportingClock;
+    let snapshot = GetAnalyticsSnapshot::new(&SqliteAnalyticsReportingPort::new(&state.db), &clock)
+        .execute()?;
+    Ok(snapshot.consistency().clone())
 }
 
 #[tauri::command]
@@ -471,4 +443,125 @@ fn weighted_daily_average(stats: &[DailyStats], metric: impl Fn(&DailyStats) -> 
         .map(|stat| metric(stat) * stat.total_tests as f64)
         .sum::<f64>()
         / total_tests as f64
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use racoon_application::StartupRecoveryGate;
+    use racoon_data::repository::{
+        SqliteDailyStatsRepository, SqliteTestRepository, TestRepository,
+    };
+    use racoon_data::Database;
+    use racoon_domain::{SessionId, TestRecord};
+    use std::path::PathBuf;
+
+    fn app_state() -> AppState {
+        AppState::new(
+            Database::open_in_memory().expect("database"),
+            std::env::temp_dir().join(format!(
+                "racoon-reporting-tests-{}-{}.toml",
+                std::process::id(),
+                std::thread::current().name().unwrap_or("test")
+            )),
+            PathBuf::from("unused.db"),
+            StartupRecoveryGate::new(),
+        )
+    }
+
+    fn seed_test(database: &Database, wpm: f64, mode: &str, created_at: &str) {
+        database
+            .with_transaction(|conn| {
+                SqliteTestRepository::new(conn)
+                    .save_test(TestRecord {
+                        session_id: SessionId::from(format!("legacy-test-{:016x}", wpm.to_bits())),
+                        created_at: created_at.to_string(),
+                        mode_type: mode.to_string(),
+                        mode_config: serde_json::json!({}),
+                        language: "en".to_string(),
+                        text_length: 100,
+                        duration_ms: 30000,
+                        wpm,
+                        raw_wpm: wpm + 2.0,
+                        accuracy: 95.0,
+                        raw_accuracy: 90.0,
+                        consistency: None,
+                        correct_chars: 95,
+                        incorrect_chars: 5,
+                        backspaces: 2,
+                        char_stats: serde_json::to_value(
+                            racoon_domain::keyboard::CharStatsMap::new(),
+                        )
+                        .unwrap(),
+                        heatmap_data: serde_json::json!({}),
+                        graph_data: None,
+                        is_pb: false,
+                        tags: String::new(),
+                    })
+                    .map(|_| ())
+            })
+            .expect("seed test");
+    }
+
+    #[test]
+    fn dashboard_routes_through_application_summary() {
+        let state = app_state();
+        seed_test(&state.db, 50.0, "time", "2026-07-16T12:00:00Z");
+        let today = ReportingDay::from_utc(LocalReportingClock.utc_now()).to_string();
+        state
+            .db
+            .with_transaction(|conn| {
+                SqliteDailyStatsRepository::new(conn)
+                    .update_after_test(&today, 30000, 100, 50.0, 95.0)
+            })
+            .unwrap();
+
+        let dashboard = get_dashboard_stats_with_state(&state).expect("dashboard");
+        assert_eq!(dashboard.total_tests, 1);
+        assert!(dashboard.avg_wpm > 0.0);
+        assert!(dashboard.avg_accuracy > 0.0);
+    }
+
+    #[test]
+    fn analytics_commands_route_through_application_snapshot() {
+        let state = app_state();
+        seed_test(&state.db, 50.0, "time", "2026-07-16T12:00:00Z");
+        let today = ReportingDay::from_utc(LocalReportingClock.utc_now()).to_string();
+        state
+            .db
+            .with_transaction(|conn| {
+                SqliteDailyStatsRepository::new(conn)
+                    .update_after_test(&today, 30000, 100, 50.0, 95.0)
+            })
+            .unwrap();
+
+        let achievements = get_achievements_with_state(&state).expect("achievements");
+        assert_eq!(achievements.len(), 1);
+        assert!(achievements[0]
+            .iter()
+            .any(|achievement| achievement.id == "first_test" && achievement.unlocked));
+
+        let insights = get_insights_with_state(&state).expect("insights");
+        assert_eq!(insights.len(), 1);
+
+        let consistency = get_consistency_with_state(&state).expect("consistency");
+        assert_eq!(consistency.samples, 1);
+    }
+
+    #[test]
+    fn progress_history_preserves_local_day_boundary() {
+        let state = app_state();
+        seed_test(&state.db, 50.0, "time", "2026-07-16T12:00:00Z");
+        let today = ReportingDay::from_utc(LocalReportingClock.utc_now()).to_string();
+        state
+            .db
+            .with_transaction(|conn| {
+                SqliteDailyStatsRepository::new(conn)
+                    .update_after_test(&today, 30000, 100, 50.0, 95.0)
+            })
+            .unwrap();
+
+        let points = get_progress_history_with_state(&state, Some(30)).expect("progress");
+        assert!(points.iter().any(|point| point.wpm > 0.0));
+    }
 }
