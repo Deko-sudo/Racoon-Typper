@@ -49,6 +49,14 @@ pub struct AppSettings {
     pub blind_mode_enabled: bool,
     #[serde(default = "default_ui_language")]
     pub ui_language: String,
+    /// Practice language for tests and lessons; lowercase resource code
+    /// (for example "en" or "zh-hk"). Membership against the bundled course
+    /// resources is enforced by the application layer.
+    #[serde(default = "default_practice_language")]
+    pub practice_language: String,
+    /// First-run onboarding has been completed or explicitly skipped.
+    #[serde(default)]
+    pub onboarding_completed: bool,
     #[serde(default)]
     pub vim_mode: bool,
     #[serde(default = "default_daily_goal_type")]
@@ -186,6 +194,10 @@ fn default_sound_volume() -> f64 {
 }
 
 fn default_ui_language() -> String {
+    "en".to_string()
+}
+
+fn default_practice_language() -> String {
     "en".to_string()
 }
 
@@ -335,6 +347,8 @@ impl Default for AppSettings {
             zen_mode_enabled: false,
             blind_mode_enabled: false,
             ui_language: "en".to_string(),
+            practice_language: "en".to_string(),
+            onboarding_completed: false,
             vim_mode: false,
             daily_goal_type: "time".to_string(),
             daily_goal_wpm: 0.0,
@@ -526,6 +540,18 @@ impl SettingsStore {
                     ));
                 }
                 settings.ui_language = value.to_string();
+            }
+            "practice_language" => {
+                let value = string_value(&value, key)?;
+                if !valid_language_code(value) {
+                    return Err(validation_error(
+                        "practice_language must be a supported language code",
+                    ));
+                }
+                settings.practice_language = value.to_string();
+            }
+            "onboarding_completed" => {
+                settings.onboarding_completed = boolean_value(&value, key)?;
             }
             "vim_mode" => {
                 settings.vim_mode = boolean_value(&value, key)?;
@@ -816,6 +842,54 @@ mod tests {
     }
 
     #[test]
+    fn practice_language_roundtrips_and_validates_format() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert_eq!(store.load().unwrap().practice_language, "en");
+        let settings = store
+            .set("practice_language", toml::Value::String("ru".to_string()))
+            .unwrap();
+        assert_eq!(settings.practice_language, "ru");
+        assert_eq!(store.load().unwrap().practice_language, "ru");
+
+        for invalid in ["", "RU", "ru_RU", "russian language!"] {
+            assert!(store
+                .set(
+                    "practice_language",
+                    toml::Value::String(invalid.to_string())
+                )
+                .is_err());
+        }
+        assert!(store
+            .set("practice_language", toml::Value::Boolean(true))
+            .is_err());
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn onboarding_completed_persists_and_defaults_to_false() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert!(!store.load().unwrap().onboarding_completed);
+        let settings = store
+            .set("onboarding_completed", toml::Value::Boolean(true))
+            .unwrap();
+        assert!(settings.onboarding_completed);
+        assert!(store.load().unwrap().onboarding_completed);
+        assert!(store
+            .set(
+                "onboarding_completed",
+                toml::Value::String("yes".to_string())
+            )
+            .is_err());
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
     fn set_unknown_key_fails() {
         let path = temp_settings_path();
         let store = SettingsStore::new(path.clone());
@@ -986,6 +1060,8 @@ mod tests {
             zen_mode_enabled: false,
             blind_mode_enabled: false,
             ui_language: "ru".to_string(),
+            practice_language: "de".to_string(),
+            onboarding_completed: true,
             vim_mode: true,
             daily_goal_type: "time".to_string(),
             daily_goal_wpm: 0.0,
@@ -1002,6 +1078,8 @@ mod tests {
         assert_eq!(deserialized.theme, "racoon_graphite");
         assert_eq!(deserialized.font_size, 30);
         assert_eq!(deserialized.caret_style, "solid");
+        assert_eq!(deserialized.practice_language, "de");
+        assert!(deserialized.onboarding_completed);
         assert!(!deserialized.show_live_wpm);
         assert!(deserialized.show_accuracy);
     }

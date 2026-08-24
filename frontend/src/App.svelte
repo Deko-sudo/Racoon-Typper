@@ -26,6 +26,8 @@
   import PomodoroView from './components/PomodoroView.svelte';
   import CheatsheetOverlay from './components/CheatsheetOverlay.svelte';
   import VimSearchOverlay from './components/VimSearchOverlay.svelte';
+  import OnboardingView from './components/OnboardingView.svelte';
+  import type { OnboardingResult } from './lib/onboarding';
 
   // Navigation
   const navigation = createNavigationStore('test');
@@ -51,6 +53,8 @@
   // Achievement tracking — snapshot before test for auto-toast
   let preTestAchievements = $state<Array<{ id: string; unlocked: boolean }>>([]);
   let audioContext: AudioContext | null = null;
+  // First-run onboarding gate: shown once until completed or skipped.
+  let showOnboarding = $state(false);
 
   // Feature stores
   const settingsStore = createSettingsStore({
@@ -347,8 +351,55 @@
     } catch {
       // Non-fatal — startTest below will surface a real lifecycle error.
     }
+    if (settingsStore.settings && !settingsStore.settings.onboarding_completed) {
+      showOnboarding = true;
+      return;
+    }
     await testSession.startTest();
   });
+
+  function applyOnboardingLanguage(result: OnboardingResult) {
+    testSession.selectedLanguage = result.practiceLanguage;
+    contentStore.lessonLang = result.practiceLanguage;
+  }
+
+  async function persistOnboardingResult(result: OnboardingResult) {
+    await settingsStore.updateSetting('practice_language', result.practiceLanguage);
+    await settingsStore.updateSetting('daily_goal_type', result.goalType);
+    if (result.goalType === 'time') {
+      await settingsStore.updateSetting('daily_goal_minutes', result.goalMinutes);
+    } else if (result.goalType === 'wpm') {
+      await settingsStore.updateSetting('daily_goal_wpm', result.goalWpm);
+    } else {
+      await settingsStore.updateSetting('daily_goal_accuracy', result.goalAccuracy);
+    }
+    await settingsStore.updateSetting('onboarding_completed', true);
+  }
+
+  async function handleOnboardingComplete(result: OnboardingResult) {
+    showOnboarding = false;
+    try {
+      await persistOnboardingResult(result);
+    } catch (error) {
+      errorMsg = `Onboarding save error: ${ipc.ipcErrorMessage(error)}`;
+    }
+    applyOnboardingLanguage(result);
+    await testSession.startTest();
+  }
+
+  async function handleOnboardingSkip() {
+    showOnboarding = false;
+    try {
+      await settingsStore.updateSetting('onboarding_completed', true);
+    } catch (error) {
+      errorMsg = `Onboarding save error: ${ipc.ipcErrorMessage(error)}`;
+    }
+    await testSession.startTest();
+  }
+
+  function handleOnboardingUiLang(lang: string) {
+    void settingsStore.updateSetting('ui_language', lang);
+  }
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
@@ -495,6 +546,15 @@
     <AchievementGallery uiLang={uiLang} />
   {/if}
 </main>
+
+{#if showOnboarding}
+  <OnboardingView
+    uiLang={uiLang}
+    onUiLangChange={handleOnboardingUiLang}
+    onComplete={(result) => void handleOnboardingComplete(result)}
+    onSkip={() => void handleOnboardingSkip()}
+  />
+{/if}
 
 <NotificationStack notifications={notificationStore.notifications} />
 

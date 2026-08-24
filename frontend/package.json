@@ -12,7 +12,7 @@
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test:profile-transfer-ui": "node --experimental-strip-types --test ../scripts/profile-transfer-ui.test.mjs",
-    "test:ui": "node --experimental-strip-types --test ../scripts/profile-transfer-ui.test.mjs ../scripts/lesson-navigation-ui.test.mjs ../scripts/theme-pack.test.mjs ../scripts/contribution-calendar.test.mjs ../scripts/vim-navigation.test.mjs ../scripts/mode-config-contract.test.mjs",
+    "test:ui": "node --experimental-strip-types --test ../scripts/profile-transfer-ui.test.mjs ../scripts/lesson-navigation-ui.test.mjs ../scripts/theme-pack.test.mjs ../scripts/contribution-calendar.test.mjs ../scripts/vim-navigation.test.mjs ../scripts/mode-config-contract.test.mjs ../scripts/onboarding-ui.test.mjs",
     "preview": "vite preview",
     "check:version": "node ../scripts/check-version.mjs",
     "check:ipc-contracts": "node ../scripts/check-ipc-contracts.mjs",

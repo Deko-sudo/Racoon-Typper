@@ -401,6 +401,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
     get selectedDuration() { return selectedDuration; },
     get selectedWordCount() { return selectedWordCount; },
     get selectedLanguage() { return selectedLanguage; },
+    set selectedLanguage(value: LanguageCode) { selectedLanguage = value; },
     get sessionModeType() { return sessionModeType; },
     get sessionLanguage() { return sessionLanguage; },
     get sessionDurationMs() { return sessionDurationMs; },

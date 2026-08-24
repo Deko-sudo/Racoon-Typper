@@ -121,6 +121,8 @@ export interface AppSettings {
   zen_mode_enabled: boolean;
   blind_mode_enabled: boolean;
   ui_language: string;
+  practice_language: string;
+  onboarding_completed: boolean;
   vim_mode: boolean;
   daily_goal_type: string;
   daily_goal_wpm: number;

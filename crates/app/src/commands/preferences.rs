@@ -31,10 +31,29 @@ fn set_setting_with_state(
 ) -> Result<AppSettings, AppError> {
     state.require_startup_recovery_ready()?;
     validate_setting_key(&key)?;
+    if key == "practice_language" {
+        validate_practice_language(&value)?;
+    }
     let toml_value = json_to_toml_value(&value)?;
     state
         .with_settings(|store| store.set(&key, toml_value))
         .map_err(AppError::from)
+}
+
+/// The data layer only checks the code format; membership against the bundled
+/// course resources is enforced here so onboarding cannot persist a language
+/// the application cannot serve.
+fn validate_practice_language(value: &serde_json::Value) -> Result<(), AppError> {
+    let language = value
+        .as_str()
+        .ok_or_else(|| AppError::InvalidConfig("practice_language must be a string".into()))?;
+    let loader = racoon_resources::CourseLoader::new();
+    if loader.load_course(language).is_none() {
+        return Err(AppError::InvalidConfig(format!(
+            "practice_language must be a supported course language, got '{language}'"
+        )));
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -502,9 +521,62 @@ mod tests {
         )
     }
 
+    fn mark_recovery_ready(state: &AppState) {
+        let database = &state.db;
+        let recovery = SqliteSessionRecoveryLedger::new(database);
+        let finalizations = SqliteFinalizationLedger::new(database);
+        let finalizer = SqliteSessionFinalizer::new(database);
+        let clock = FixedClock;
+        let sleeper = NoopSleeper;
+        StartupRecoveryCoordinator::new(
+            &recovery,
+            &finalizations,
+            &finalizer,
+            &clock,
+            &sleeper,
+            StartupRecoveryRetryPolicy::new(NonZeroUsize::new(1).expect("nonzero"), Duration::ZERO),
+        )
+        .run(state.startup_recovery())
+        .expect("startup recovery");
+    }
+
     #[test]
     fn rejects_non_scalar_settings_values() {
         assert!(json_to_toml_value(&serde_json::json!(["not", "a", "scalar"])).is_err());
+    }
+
+    #[test]
+    fn practice_language_setting_accepts_bundled_courses_and_rejects_unknown_codes() {
+        let settings_path = std::env::temp_dir().join(format!(
+            "racoon-settings-practice-lang-{}-{}.toml",
+            std::process::id(),
+            std::thread::current().name().unwrap_or("test")
+        ));
+        let _ = std::fs::remove_file(&settings_path);
+        let state = app_state(StartupRecoveryGate::new(), settings_path.clone());
+        mark_recovery_ready(&state);
+
+        let updated = set_setting_with_state(
+            &state,
+            "practice_language".to_string(),
+            serde_json::json!("de"),
+        )
+        .expect("supported course language");
+        assert_eq!(updated.practice_language, "de");
+
+        assert!(set_setting_with_state(
+            &state,
+            "practice_language".to_string(),
+            serde_json::json!("kk"),
+        )
+        .is_err());
+        assert!(set_setting_with_state(
+            &state,
+            "practice_language".to_string(),
+            serde_json::json!(42),
+        )
+        .is_err());
+        let _ = std::fs::remove_file(settings_path);
     }
 
     #[test]
