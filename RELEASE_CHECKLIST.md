@@ -9,6 +9,7 @@ This checklist describes the current baseline and the gates required for a produ
 - [x] `SHA256SUMS` regenerated to cover exactly the attached asset set (including updater signatures and `latest.json`) with flat basenames; all 15 entries verified against a plain release download.
 - [x] Promotion published the draft with 15 assets (AppImage/NSIS + `.sig`, deb, rpm, tarball + torrent, SHA256SUMS, SBOM, provenance, release-manifest, latest.json); updater `latest.json` references signed v1.3.0 artifacts.
 - [x] `release-promotion` environment now has a required-reviewer protection rule; promotion was approved through it.
+- [x] **Promotion incident (found and fixed same day):** the first real run of `promote-release.yml` created a second, asset-less published release for the tag because GitHub's release-by-tag lookup excludes drafts, so the action never saw the RC draft. Recovery moved the 15 verified artifacts onto the published object byte-for-byte (checksums re-verified against public downloads; updater URLs returned 200) and removed the orphaned draft. Root cause fixed in `promote-release.yml`: promotion now PATCHes the existing draft in place and hard-fails unless the published release carries at least `min_assets` artifacts.
 - [x] Known limitation recorded: typed-input persistence is not asserted on CI runners (TD-NEW23, future tauri-driver harness).
 
 ## v1.2.0 release (2026-08-21) — published
