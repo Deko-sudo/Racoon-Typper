@@ -84,6 +84,12 @@ function Wait-ScalarAtLeast([string]$Sql, [int]$Minimum, [int]$TimeoutSeconds, [
     Start-Sleep -Seconds 5
   }
   Write-Output "First raw sqlite output for '$Sql': [$firstRaw]"
+  # Stage counters across the durable pipeline pinpoint where a stuck session
+  # stopped: started (ledger) -> completed intent -> finalized -> persisted row.
+  foreach ($table in @('session_ledger', 'session_completion_intents', 'session_finalizations', 'tests', 'daily_stats')) {
+    $value = Invoke-SqlScalar "SELECT COUNT(*) FROM $table;"
+    Write-Output "stage $table = [$value]"
+  }
   throw "$What did not reach >= $Minimum within ${TimeoutSeconds}s. $(Get-LaunchDiagnostics)"
 }
 
