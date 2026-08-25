@@ -247,6 +247,20 @@ export interface ProgressPoint {
   lessons: number;
 }
 
+export type TextPackPolicy = 'merge' | 'replace';
+
+export interface TextPackImportPlan {
+  policy: TextPackPolicy;
+  source_format: string;
+  language: string;
+  incoming: number;
+  duplicates_in_pack: number;
+  existing_in_language: number;
+  to_insert: number;
+  to_skip: number;
+  removed_by_replace: number;
+}
+
 export interface WeeklySummaryResponse {
   week_start: string;
   total_tests: number;

@@ -21,6 +21,8 @@ import type {
   TestSessionResponse,
   ThemeInfo,
   SoundOutputResponse,
+  TextPackImportPlan,
+  TextPackPolicy,
   WeakKeysReport,
   WeeklySummaryResponse,
 } from '../types/index';
@@ -162,6 +164,28 @@ export async function getProgressHistory(days?: number): Promise<ProgressPoint[]
 
 export async function getWeeklySummaries(weeks?: number): Promise<WeeklySummaryResponse[]> {
   return invoke<WeeklySummaryResponse[]>('get_weekly_summaries', { weeks });
+}
+
+// Versioned text-pack interchange. `replace` deletes every custom text of the
+// pack language, so callers should always display the preview before applying.
+export async function exportTextPack(language?: string): Promise<string> {
+  return invoke<string>('export_text_pack', { language });
+}
+
+export async function previewTextPackImport(
+  document: string,
+  sourceFormat: string | null,
+  policy: TextPackPolicy,
+): Promise<TextPackImportPlan> {
+  return invoke<TextPackImportPlan>('preview_text_pack_import', { document, sourceFormat, policy });
+}
+
+export async function importTextPack(
+  document: string,
+  sourceFormat: string | null,
+  policy: TextPackPolicy,
+): Promise<TextPackImportPlan> {
+  return invoke<TextPackImportPlan>('import_text_pack', { document, sourceFormat, policy });
 }
 
 // Analytics

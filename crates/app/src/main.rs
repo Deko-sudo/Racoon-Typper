@@ -157,6 +157,10 @@ fn main() {
             commands::reporting::export_result_png,
             // Versioned portable profile transfer
             commands::profile_transfer::export_profile,
+            // Versioned text-pack interchange
+            commands::text_pack::export_text_pack,
+            commands::text_pack::preview_text_pack_import,
+            commands::text_pack::import_text_pack,
             commands::profile_transfer::preview_profile_import,
             commands::profile_transfer::import_profile,
             commands::profile_transfer::restore_database,

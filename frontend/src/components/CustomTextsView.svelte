@@ -5,6 +5,8 @@
   import { readTextFile } from '@tauri-apps/plugin-fs';
   import { readText } from '@tauri-apps/plugin-clipboard-manager';
   import * as ipc from '../lib/api/ipc';
+  import { formatForFile, summarizePlan } from '../lib/textPack';
+  import type { TextPackImportPlan, TextPackPolicy } from '../lib/types/index';
 
   let {
     customTexts,
@@ -43,6 +45,99 @@
   } = $props();
 
   let importError = $state('');
+  let packBusy = $state(false);
+  let packMessage = $state('');
+  let packError = $state('');
+  let packPolicy = $state<TextPackPolicy>('merge');
+  let packReplaceAck = $state(false);
+  let packPreview = $state<TextPackImportPlan | null>(null);
+  let packDocument = $state('');
+  let packSourceFormat = $state<string | null>(null);
+
+  const canApplyPack = $derived(
+    packPreview !== null && !packBusy && (packPolicy !== 'replace' || packReplaceAck),
+  );
+
+  function resetPackState() {
+    packMessage = '';
+    packError = '';
+    packPreview = null;
+    packDocument = '';
+    packSourceFormat = null;
+    packReplaceAck = false;
+  }
+
+  async function exportCurrentPack() {
+    packMessage = '';
+    packError = '';
+    try {
+      const language = customTexts[0]?.language ?? newLanguage;
+      const exported = await ipc.exportTextPack(language);
+      const blob = new Blob([exported], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `racoon-typper-texts-${language}-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+      packMessage = t(uiLang, 'textpack.exported');
+    } catch (e) {
+      packError = ipc.ipcErrorMessage(e);
+    }
+  }
+
+  async function choosePackFile(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    packMessage = '';
+    packError = '';
+    packPreview = null;
+    try {
+      packDocument = await file.text();
+      packSourceFormat = formatForFile(file.name);
+    } catch (e) {
+      packError = String(e);
+    } finally {
+      input.value = '';
+    }
+  }
+
+  async function previewPack() {
+    packMessage = '';
+    packError = '';
+    if (!packDocument) {
+      packError = t(uiLang, 'textpack.choose_file');
+      return;
+    }
+    try {
+      packPreview = await ipc.previewTextPackImport(packDocument, packSourceFormat, packPolicy);
+    } catch (e) {
+      packPreview = null;
+      packError = ipc.ipcErrorMessage(e);
+    }
+  }
+
+  async function applyPack() {
+    if (!canApplyPack || !packDocument) return;
+    packBusy = true;
+    packMessage = '';
+    packError = '';
+    try {
+      const applied = await ipc.importTextPack(packDocument, packSourceFormat, packPolicy);
+      packMessage = `${t(uiLang, 'textpack.applied')} ${summarizePlan(applied)}`;
+      packPreview = null;
+      packDocument = '';
+      packReplaceAck = false;
+      onSearch(searchText);
+    } catch (e) {
+      packError = ipc.ipcErrorMessage(e);
+    } finally {
+      packBusy = false;
+    }
+  }
 
   async function importFromFile() {
     importError = '';
@@ -135,10 +230,78 @@
       {/each}
     </div>
   {/if}
+
+  <section class="pack-panel">
+    <h3>{t(uiLang, 'textpack.title')}</h3>
+    <p class="pack-hint">{t(uiLang, 'textpack.hint')}</p>
+    <div class="pack-controls">
+      <button class="pack-btn" onclick={exportCurrentPack} disabled={packBusy}>
+        {t(uiLang, 'textpack.export')}
+      </button>
+      <label class="pack-file">
+        <input type="file" accept=".json,.csv,.tsv,.txt,.md" onchange={choosePackFile} />
+      </label>
+      <select
+        class="pack-select"
+        value={packPolicy}
+        onchange={(e) => { packPolicy = e.currentTarget.value as TextPackPolicy; packPreview = null; }}
+      >
+        <option value="merge">{t(uiLang, 'textpack.merge')}</option>
+        <option value="replace">{t(uiLang, 'textpack.replace')}</option>
+      </select>
+      <button class="pack-btn" onclick={previewPack} disabled={packBusy || !packDocument}>
+        {t(uiLang, 'textpack.preview')}
+      </button>
+      <button class="pack-btn primary" onclick={applyPack} disabled={!canApplyPack}>
+        {t(uiLang, 'textpack.apply')}
+      </button>
+    </div>
+    {#if packPolicy === 'replace'}
+      <label class="pack-ack">
+        <input type="checkbox" bind:checked={packReplaceAck} />
+        {t(uiLang, 'textpack.replace_ack')}
+      </label>
+    {/if}
+    {#if packPreview}
+      <p class="pack-plan">
+        {t(uiLang, 'textpack.plan_language')}: {packPreview.language}
+        · {t(uiLang, 'textpack.plan_incoming')}: {packPreview.incoming}
+        · +{packPreview.to_insert}
+        · ~{packPreview.to_skip}
+        · −{packPreview.removed_by_replace}
+      </p>
+    {/if}
+    {#if packMessage}<p class="pack-message">{packMessage}</p>{/if}
+    {#if packError}<p class="pack-error">{packError}</p>{/if}
+  </section>
 </div>
 
 <style>
   .list-view { max-width: 900px; width: 100%; }
+  .pack-panel {
+    margin-top: 2rem; padding: 1rem; background: var(--bg-sub);
+    border: 1px solid var(--sub); border-radius: 8px;
+    display: flex; flex-direction: column; gap: 0.5rem;
+  }
+  .pack-panel h3 { margin: 0; font-size: 1rem; color: var(--main); }
+  .pack-hint { margin: 0; font-size: 0.8rem; color: var(--sub); }
+  .pack-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+  .pack-btn {
+    background: var(--bg); color: var(--main); border: 1px solid var(--sub);
+    border-radius: 4px; padding: 0.45rem 0.9rem; cursor: pointer; font-family: inherit;
+  }
+  .pack-btn:hover:not(:disabled) { border-color: var(--main); }
+  .pack-btn.primary { background: var(--main); color: var(--color-accent-text); border-color: var(--main); }
+  .pack-btn:disabled { opacity: 0.4; cursor: default; }
+  .pack-file input { color: var(--text); font-family: inherit; max-width: 15rem; }
+  .pack-select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--sub);
+    border-radius: 4px; padding: 0.45rem; font-family: inherit;
+  }
+  .pack-ack { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; color: var(--text); }
+  .pack-plan { margin: 0; font-size: 0.85rem; color: var(--text); }
+  .pack-message { margin: 0; font-size: 0.85rem; color: #6c8; }
+  .pack-error { margin: 0; font-size: 0.85rem; color: var(--error); }
   h2 { color: var(--main); font-size: 1.5rem; margin-bottom: 1rem; }
   .empty { color: var(--sub); text-align: center; padding: 2rem; }
   .custom-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
