@@ -67,13 +67,11 @@ function Provision-MsEdgeDriver {
 
   $driverDir = Join-Path $workspace 'msedgedriver'
   New-Item -ItemType Directory -Force -Path $driverDir | Out-Null
-  $versionFile = "https://msedgedriver.azureedge.net/LATEST_RELEASE_${major}_WINDOWS"
-  $driverVersion = (Invoke-RestMethod -Uri $versionFile).Trim()
-  if (-not $driverVersion) { throw "No msedgedriver release advertised for major ${major}." }
-  Write-Host "WebView2 runtime $runtime -> msedgedriver $driverVersion (major $major)"
-
+  # Microsoft serves a driver build for every shipped WebView2 runtime version;
+  # requesting the exact runtime version eliminates major/minor skew entirely.
+  Write-Host "WebView2 runtime $runtime -> msedgedriver $runtime (exact match)"
   $zip = Join-Path $driverDir 'edgedriver_win64.zip'
-  Invoke-WebRequest -Uri "https://msedgedriver.azureedge.net/$driverVersion/edgedriver_win64.zip" -OutFile $zip
+  Invoke-WebRequest -Uri "https://msedgedriver.microsoft.com/$runtime/edgedriver_win64.zip" -OutFile $zip
   Expand-Archive -LiteralPath $zip -DestinationPath $driverDir -Force
   $exe = Join-Path $driverDir 'msedgedriver.exe'
   if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'msedgedriver.exe missing after extraction.' }
