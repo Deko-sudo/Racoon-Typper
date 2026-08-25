@@ -13,8 +13,6 @@ permissions:
 
 env:
   TAURI_DRIVER_VERSION: "2.0.6"
-
-env:
   CARGO_TERM_COLOR: always
 
 jobs:
