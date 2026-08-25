@@ -1,5 +1,21 @@
 # Changelog — Racoon Typper
 
+## v1.3.1
+
+### Release engineering
+
+- **Windows UI smoke hard gate restored** — the clean-install smoke now drives
+  the application through `tauri-driver` (pinned crate build) with a
+  selenium-webdriver client typing real input events into the WebView; the
+  "typed practice session persists a row in SQLite" assertion is mandatory
+  again, replacing the previous best-effort SendKeys attempt.
+- **msedgedriver runtime matching** — the smoke provisions the EdgeDriver that
+  matches the runner's installed WebView2 Runtime major and logs both versions,
+  turning silent driver/runtime skew into an explicit failure.
+- **Actions refreshed to Node 24** — `actions/setup-node` v6.5.0,
+  `actions/download-artifact` v8.0.1, and `softprops/action-gh-release` v2.6.2
+  replace their Node 20-targeting pins.
+
 ## v1.3.0
 
 ### Highlights

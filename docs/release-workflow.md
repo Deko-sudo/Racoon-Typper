@@ -12,10 +12,9 @@ A maintainer runs **Release candidate** manually and supplies an existing immuta
 
 The workflow checks that the tag exists and matches the project version, rebuilds Linux and Windows artifacts from that tag, generates `SHA256SUMS`, and creates a draft prerelease. Verify the checksums before installation. A draft release is not public and is not a promotion decision.
 
-The Linux job builds all Linux bundle targets through the Tauri bundler (`deb`, `rpm`, `appimage`). Draft creation is gated on three isolated runtime smokes: the Debian package, the AppImage (`scripts/appimage-smoke.sh` — launch, persisted SQLite state across a restart, clean termination; falls back to `--appimage-extract-and-run` when FUSE is unavailable), and the Windows NSIS installer (the Windows smoke additionally proves the
-first screen renders, a live practice session starts, and a restart retains
-the data; typed-input persistence on headless runners is a documented
-limitation).
+The Linux job builds all Linux bundle targets through the Tauri bundler (`deb`, `rpm`, `appimage`). Draft creation is gated on three isolated runtime smokes: the Debian package, the AppImage (`scripts/appimage-smoke.sh` — launch, persisted SQLite state across a restart, clean termination; falls back to `--appimage-extract-and-run` when FUSE is unavailable), and the Windows NSIS installer (the Windows smoke drives the application
+through tauri-driver with real WebDriver input and requires the typed practice
+session to persist a row in SQLite before a draft is created).
 
 ## 3. Promote after approval
 
