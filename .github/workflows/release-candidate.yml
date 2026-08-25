@@ -146,8 +146,27 @@ jobs:
           test -n "$package"
           bash scripts/linux-package-smoke.sh "$package"
 
+  appimage-smoke:
+    needs: [validate-tag, build-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ needs.validate-tag.outputs.tag }}
+      - uses: actions/download-artifact@95815c38cf2ff2164869cbab79da8d1f422bc89e # v4.2.1
+        with:
+          name: racoon-typper-linux
+          path: artifacts
+      - name: Launch, persist, and restart the AppImage
+        shell: bash
+        run: |
+          set -euo pipefail
+          appimage="$(find artifacts -type f -name '*.AppImage' -print -quit)"
+          test -n "$appimage"
+          bash scripts/appimage-smoke.sh "$appimage"
+
   publish-draft:
-    needs: [validate-tag, build-linux, build-windows, linux-package-smoke, windows-installer-smoke, validate-flatpak-manifest]
+    needs: [validate-tag, build-linux, build-windows, linux-package-smoke, appimage-smoke, windows-installer-smoke, validate-flatpak-manifest]
     runs-on: ubuntu-latest
     permissions:
       contents: write

@@ -98,6 +98,7 @@ This checklist describes the current baseline and the gates required for a produ
 ### Packaging and release engineering — Phase 6
 
 - [x] Linux artifacts install/launch on clean supported environments (`scripts/linux-package-smoke.sh` in release-candidate).
+- [x] AppImage artifact launches and persists state before a draft is created (`scripts/appimage-smoke.sh` in release-candidate; FUSE with `--appimage-extract-and-run` fallback — Task O).
 - [x] Windows NSIS artifact installs/launches on clean Windows (`scripts/windows-nsis-smoke.ps1` in release-candidate).
 - [x] Checksums, source revision, version, SBOM, and provenance are attached to each release candidate (`docs/release-evidence.md`; Task L).
 - [x] Signing or attestation is verified where supported (AppImage and NSIS `.sig` via Tauri signer; OIDC/SLSA remains TD7).
