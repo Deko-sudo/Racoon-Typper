@@ -24,8 +24,10 @@
   generated CJK lists.
 - **Release evidence hardening** — AppImage artifacts are launch-tested before
   a draft is created (FUSE with extract-and-run fallback), and the Windows
-  clean-smoke now completes the full journey: first screen rendered, a typed
-  session verified as a row in SQLite, restart retaining data.
+  clean-smoke now proves silent install, first-screen rendering, a live
+  practice session start, and restart data retention on every candidate.
+  Typed-input persistence on headless CI runners remains a documented
+  limitation pending a desktop UI automation harness.
 
 ### Fixes
 
