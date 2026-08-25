@@ -36,8 +36,8 @@ The authoritative machine-readable report is `licenses/dependencies.json`. Licen
 | CC0-1.0 OR MIT-0 OR Apache-2.0 | 1 |
 | CDLA-Permissive-2.0 | 2 |
 | ISC | 3 |
-| MIT | 120 |
-| MIT OR Apache-2.0 | 253 |
+| MIT | 122 |
+| MIT OR Apache-2.0 | 251 |
 | MIT OR Apache-2.0 OR LGPL-2.1-or-later | 2 |
 | MIT OR Apache-2.0 OR Zlib | 5 |
 | MIT OR Zlib OR Apache-2.0 | 1 |
@@ -76,7 +76,6 @@ The following tables identify every locked package, its original license express
 | ab_glyph_rasterizer@0.1.10 | Apache-2.0 | https://github.com/alexheretic/ab-glyph | Alex Butler <alexheretic@gmail.com> |
 | ab_glyph@0.2.32 | Apache-2.0 | https://github.com/alexheretic/ab-glyph | Alex Butler <alexheretic@gmail.com> |
 | adler2@2.0.1 | 0BSD OR MIT OR Apache-2.0 | https://github.com/oyvindln/adler2 | Jonas Schievink <jonasschievink@gmail.com>, oyvindln <oyvindln@users.noreply.github.com> |
-| ahash@0.8.12 | MIT OR Apache-2.0 | https://github.com/tkaitchuck/ahash | Tom Kaitchuck <Tom.Kaitchuck@gmail.com> |
 | aho-corasick@1.1.4 | Unlicense OR MIT | https://github.com/BurntSushi/aho-corasick | Andrew Gallant <jamslam@gmail.com> |
 | alloc-no-stdlib@2.0.4 | BSD-3-Clause | https://github.com/dropbox/rust-alloc-no-stdlib | Daniel Reiter Horn <danielrh@dropbox.com> |
 | alloc-stdlib@0.2.4 | BSD-3-Clause | https://github.com/dropbox/rust-alloc-no-stdlib | Daniel Reiter Horn <danielrh@dropbox.com> |
@@ -216,10 +215,10 @@ The following tables identify every locked package, its original license express
 | gtk3-macros@0.18.2 | MIT | https://github.com/gtk-rs/gtk3-rs | The gtk-rs Project Developers |
 | half@2.7.1 | MIT OR Apache-2.0 | https://github.com/VoidStarKat/half-rs | Kathryn Long <squeeself@gmail.com> |
 | hashbrown@0.12.3 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown | Amanieu d'Antras <amanieu@gmail.com> |
-| hashbrown@0.14.5 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown | Amanieu d'Antras <amanieu@gmail.com> |
 | hashbrown@0.15.5 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown | Amanieu d'Antras <amanieu@gmail.com> |
+| hashbrown@0.16.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown | Amanieu d'Antras <amanieu@gmail.com> |
 | hashbrown@0.17.1 | MIT OR Apache-2.0 | https://github.com/rust-lang/hashbrown |  |
-| hashlink@0.9.1 | MIT OR Apache-2.0 | https://github.com/kyren/hashlink | kyren <kerriganw@gmail.com> |
+| hashlink@0.11.1 | MIT OR Apache-2.0 | https://github.com/djc/hashlink |  |
 | heck@0.4.1 | MIT OR Apache-2.0 | https://github.com/withoutboats/heck | Without Boats <woboats@gmail.com> |
 | heck@0.5.0 | MIT OR Apache-2.0 | https://github.com/withoutboats/heck |  |
 | hex@0.4.3 | MIT OR Apache-2.0 | https://github.com/KokaKiwi/rust-hex | KokaKiwi <kokakiwi@kokakiwi.net> |
@@ -268,7 +267,7 @@ The following tables identify every locked package, its original license express
 | libdbus-sys@0.2.7 | Apache-2.0/MIT | https://github.com/diwic/dbus-rs | David Henningsson <diwic@ubuntu.com> |
 | libloading@0.7.4 | ISC | https://github.com/nagisa/rust_libloading/ | Simonas Kazlauskas <libloading@kazlauskas.me> |
 | libredox@0.1.17 | MIT | https://gitlab.redox-os.org/redox-os/libredox.git | 4lDO2 <4lDO2@protonmail.com> |
-| libsqlite3-sys@0.28.0 | MIT | https://github.com/rusqlite/rusqlite | The rusqlite developers |
+| libsqlite3-sys@0.37.0 | MIT | https://github.com/rusqlite/rusqlite | The rusqlite developers |
 | linux-raw-sys@0.12.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/sunfishcode/linux-raw-sys | Dan Gohman <dev@sunfishcode.online> |
 | litemap@0.8.2 | Unicode-3.0 | https://github.com/unicode-org/icu4x | The ICU4X Project Developers |
 | lock_api@0.4.14 | MIT OR Apache-2.0 | https://github.com/Amanieu/parking_lot | Amanieu d'Antras <amanieu@gmail.com> |
@@ -358,9 +357,9 @@ The following tables identify every locked package, its original license express
 | redox_users@0.5.2 | MIT | https://gitlab.redox-os.org/redox-os/users | Jose Narvaez <goyox86@gmail.com>, Wesley Hershberger <mggmugginsmc@gmail.com> |
 | ref-cast-impl@1.0.25 | MIT OR Apache-2.0 | https://github.com/dtolnay/ref-cast | David Tolnay <dtolnay@gmail.com> |
 | ref-cast@1.0.25 | MIT OR Apache-2.0 | https://github.com/dtolnay/ref-cast | David Tolnay <dtolnay@gmail.com> |
-| refinery-core@0.8.16 | MIT OR Apache-2.0 | https://github.com/rust-db/refinery | Katharina Fey <kookie@spacekookie.de>, João Oliveira <hello@jxs.pt> |
-| refinery-macros@0.8.16 | MIT OR Apache-2.0 | https://github.com/rust-db/refinery | Katharina Fey <kookie@spacekookie.de>, João Oliveira <hello@jxs.pt> |
-| refinery@0.8.16 | MIT | https://github.com/rust-db/refinery | Katharina Fey <kookie@spacekookie.de>, João Oliveira <hello@jxs.pt> |
+| refinery-core@0.9.2 | MIT OR Apache-2.0 | https://github.com/rust-db/refinery | Katharina Fey <kookie@spacekookie.de>, João Oliveira <hello@jxs.pt> |
+| refinery-macros@0.9.2 | MIT OR Apache-2.0 | https://github.com/rust-db/refinery | Katharina Fey <kookie@spacekookie.de>, João Oliveira <hello@jxs.pt> |
+| refinery@0.9.2 | MIT | https://github.com/rust-db/refinery | Katharina Fey <kookie@spacekookie.de>, João Oliveira <hello@jxs.pt> |
 | regex-automata@0.4.14 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex | The Rust Project Developers, Andrew Gallant <jamslam@gmail.com> |
 | regex-syntax@0.8.11 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex | The Rust Project Developers, Andrew Gallant <jamslam@gmail.com> |
 | regex@1.12.4 | MIT OR Apache-2.0 | https://github.com/rust-lang/regex | The Rust Project Developers, Andrew Gallant <jamslam@gmail.com> |
@@ -368,7 +367,8 @@ The following tables identify every locked package, its original license express
 | reqwest@0.13.4 | MIT OR Apache-2.0 | https://github.com/seanmonstar/reqwest | Sean McArthur <sean@seanmonstar.com> |
 | rfd@0.16.0 | MIT | https://github.com/PolyMeilex/rfd | Poly <marynczak.bartlomiej@gmail.com> |
 | ring@0.17.14 | Apache-2.0 AND ISC | https://github.com/briansmith/ring |  |
-| rusqlite@0.31.0 | MIT | https://github.com/rusqlite/rusqlite | The rusqlite developers |
+| rsqlite-vfs@0.1.1 | MIT | registry+https://github.com/rust-lang/crates.io-index |  |
+| rusqlite@0.39.0 | MIT | https://github.com/rusqlite/rusqlite | The rusqlite developers |
 | rustc_version@0.4.1 | MIT OR Apache-2.0 | https://github.com/djc/rustc-version-rs |  |
 | rustc-hash@2.1.2 | Apache-2.0 OR MIT | https://github.com/rust-lang/rustc-hash | The Rust Project Developers |
 | rustix@1.1.4 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | https://github.com/bytecodealliance/rustix | Dan Gohman <dev@sunfishcode.online>, Jakub Konka <kubkon@jakubkonka.com> |
@@ -418,6 +418,7 @@ The following tables identify every locked package, its original license express
 | softbuffer@0.4.8 | MIT OR Apache-2.0 | https://github.com/rust-windowing/softbuffer |  |
 | soup3-sys@0.5.0 | MIT | https://gitlab.gnome.org/World/Rust/soup3-rs | The Gtk-rs Project Developers |
 | soup3@0.5.0 | MIT | https://gitlab.gnome.org/World/Rust/soup3-rs |  |
+| sqlite-wasm-rs@0.5.5 | MIT | https://github.com/Spxg/sqlite-wasm-rs | Spxg <unsafe@outlook.es> |
 | stable_deref_trait@1.2.1 | MIT OR Apache-2.0 | https://github.com/storyyeller/stable_deref_trait | Robert Grosse <n210241048576@gmail.com> |
 | string_cache_codegen@0.6.1 | MIT OR Apache-2.0 | https://github.com/servo/string-cache | The Servo Project Developers |
 | string_cache@0.9.0 | MIT OR Apache-2.0 | https://github.com/servo/string-cache | The Servo Project Developers |
@@ -470,7 +471,6 @@ The following tables identify every locked package, its original license express
 | toml_edit@0.22.27 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |  |
 | toml_edit@0.25.12+spec-1.1.0 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |  |
 | toml_parser@1.1.2+spec-1.1.0 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |  |
-| toml_write@0.1.2 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |  |
 | toml_writer@1.1.1+spec-1.1.0 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |  |
 | toml@0.8.23 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |  |
 | toml@0.9.12+spec-1.1.0 | MIT OR Apache-2.0 | https://github.com/toml-rs/toml |  |
