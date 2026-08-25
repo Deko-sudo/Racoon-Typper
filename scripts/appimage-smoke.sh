@@ -21,7 +21,10 @@ chmod +x "$appimage"
 
 workspace=$(mktemp -d)
 cleanup() {
-  pkill -u "$(id -u)" -f 'racoon-typper' 2>/dev/null || true
+  # Target only the mounted/extracted application processes. A bare
+  # 'racoon-typper' pattern would match this script's own argv (the artifact
+  # path) and SIGTERM the shell right after success.
+  pkill -u "$(id -u)" -f '/squashfs-root/|\.mount_' 2>/dev/null || true
   # Give GTK/WebKit children a moment to release files before removing the
   # workspace; otherwise rm -rf can fail with "Directory not empty".
   sleep 1

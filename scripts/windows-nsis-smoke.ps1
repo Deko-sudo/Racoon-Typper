@@ -22,6 +22,12 @@ $appData = $env:APPDATA
 $appDataDir = Join-Path $appData 'com.racoon.typper'
 $database = Join-Path $appDataDir 'data.db'
 
+# A clean profile opens the first-run onboarding gate instead of auto-starting
+# a practice session. This smoke exercises the post-onboarding journey, so mark
+# onboarding complete before the first launch; serde fills every other default.
+New-Item -ItemType Directory -Force -Path $appDataDir | Out-Null
+Set-Content -LiteralPath (Join-Path $appDataDir 'settings.toml') -Value "onboarding_completed = true`n" -Encoding Ascii
+
 # Evidence tooling only (read-only SELECT); the application itself bundles its
 # own SQLite. Unpinned chocolatey package is an accepted CI-only boundary, the
 # release artifact never ships this binary.
