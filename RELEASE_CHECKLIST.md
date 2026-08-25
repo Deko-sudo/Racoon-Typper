@@ -110,7 +110,7 @@ This checklist describes the current baseline and the gates required for a produ
 - [x] Linux artifacts install/launch on clean supported environments (`scripts/linux-package-smoke.sh` in release-candidate).
 - [x] AppImage artifact launches and persists state before a draft is created (`scripts/appimage-smoke.sh` in release-candidate; FUSE with `--appimage-extract-and-run` fallback — Task O).
 - [x] Windows NSIS artifact installs/launches on clean Windows (`scripts/windows-nsis-smoke.ps1` in release-candidate).
-- [x] Windows clean-smoke asserts install, first-screen rendering, typed-session persistence in SQLite (via tauri-driver + selenium-webdriver), and restart retention (`scripts/windows-nsis-smoke.ps1`; Task Q closed, TD-NEW23 resolved).
+- [x] Windows clean-smoke asserts install, first-screen rendering, live session start, and restart retention (`scripts/windows-nsis-smoke.ps1`; Task Q). Typed-input persistence via a WebDriver harness remains open (TD-NEW23): EdgeDriver↔WebView2 attach fails on current runner sessions.
 - [x] Checksums, source revision, version, SBOM, and provenance are attached to each release candidate (`docs/release-evidence.md`; Task L).
 - [x] Signing or attestation is verified where supported (AppImage and NSIS `.sig` via Tauri signer; OIDC/SLSA remains TD7).
 - [x] Release actions use least-privilege permissions and reviewed action versions (SHA-pinned).
