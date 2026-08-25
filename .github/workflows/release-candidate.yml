@@ -120,7 +120,7 @@ jobs:
         with:
           name: racoon-typper-windows
           path: artifacts
-      - name: Install, launch, persist, and restart NSIS package
+      - name: Install, launch, type, save, and restart NSIS package
         shell: pwsh
         run: |
           $installer = Get-ChildItem -Path artifacts -Filter '*.exe' -Recurse | Select-Object -First 1 -ExpandProperty FullName

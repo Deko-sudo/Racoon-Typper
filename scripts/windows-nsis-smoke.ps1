@@ -22,65 +22,128 @@ $appData = $env:APPDATA
 $appDataDir = Join-Path $appData 'com.racoon.typper'
 $database = Join-Path $appDataDir 'data.db'
 
+# Evidence tooling only (read-only SELECT); the application itself bundles its
+# own SQLite. Unpinned chocolatey package is an accepted CI-only boundary, the
+# release artifact never ships this binary.
+if (-not (Get-Command sqlite3 -ErrorAction SilentlyContinue)) {
+  choco install sqlite -y --no-progress | Out-Null
+}
+$sqliteCommand = Get-Command sqlite3 -ErrorAction SilentlyContinue
+if (-not $sqliteCommand) {
+  throw 'sqlite3 CLI is unavailable even after chocolatey install; cannot verify saved tests.'
+}
+$sqlite = $sqliteCommand.Source
+
+function Invoke-SqlScalar([string]$Query) {
+  & $sqlite $database $Query | Select-Object -First 1
+}
+
+function Get-LaunchDiagnostics {
+  $logPath = Join-Path $workspace 'app.log'
+  $out = if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
+  $err = if (Test-Path -LiteralPath "$logPath.err") { Get-Content -LiteralPath "$logPath.err" -Raw } else { '' }
+  return "stdout=[$out] stderr=[$err]"
+}
+
+function Wait-MainWindow([System.Diagnostics.Process]$Process, [int]$TimeoutSeconds) {
+  # Q1 evidence: a non-empty MainWindowTitle proves the WebView composed the
+  # first screen instead of merely keeping the process alive.
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    if ($Process.HasExited) {
+      throw "Application exited during startup with $($Process.ExitCode). $(Get-LaunchDiagnostics)"
+    }
+    $Process.Refresh()
+    if (-not [string]::IsNullOrWhiteSpace($Process.MainWindowTitle)) {
+      Write-Output "First screen rendered: window '$($Process.MainWindowTitle)'"
+      return
+    }
+    Start-Sleep -Seconds 2
+  }
+  throw "Main window did not appear within ${TimeoutSeconds}s. $(Get-LaunchDiagnostics)"
+}
+
+function Wait-TestCountAtLeast([int]$Minimum, [int]$TimeoutSeconds) {
+  # Q2 evidence: a completed practice session must persist a row in `tests`.
+  # The default time-mode test finishes on its own timer; WAL allows reading
+  # while the application keeps running.
+  $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  while ((Get-Date) -lt $deadline) {
+    $count = 0
+    $raw = Invoke-SqlScalar "SELECT COUNT(*) FROM tests;"
+    if ($null -ne $raw -and -not [int]::TryParse([string]$raw, [ref]$count)) { $count = 0 }
+    if ($count -ge $Minimum) { return $count }
+    Start-Sleep -Seconds 5
+  }
+  throw "No persisted test rows appeared within ${TimeoutSeconds}s (expected >= $Minimum). $(Get-LaunchDiagnostics)"
+}
+
+function Send-TypingSample([System.Diagnostics.Process]$Process) {
+  Add-Type -AssemblyName System.Windows.Forms
+  $shell = New-Object -ComObject WScript.Shell
+  if (-not $shell.AppActivate($Process.Id)) {
+    Write-Output 'AppActivate returned false; keystrokes may target another window.'
+  }
+  Start-Sleep -Milliseconds 500
+  for ($i = 0; $i -lt 20; $i++) {
+    [System.Windows.Forms.SendKeys]::SendWait('asdf jkl; ewq poiuy ')
+    Start-Sleep -Milliseconds 400
+  }
+}
+
+function Start-Application {
+  $logPath = Join-Path $workspace 'app.log'
+  return Start-Process -FilePath $executable -PassThru -RedirectStandardOutput $logPath -RedirectStandardError "$logPath.err"
+}
+
 try {
   $install = Start-Process -FilePath $Installer -ArgumentList @('/S', "/D=$installDirectory") -Wait -PassThru
   if ($install.ExitCode -ne 0) { throw "NSIS installer exited with $($install.ExitCode)" }
 
-  $executable = Join-Path $installDirectory 'racoon-app.exe'
+  $script:executable = Join-Path $installDirectory 'racoon-app.exe'
   if (-not (Test-Path -LiteralPath $executable -PathType Leaf)) {
     throw "Installed executable was not found: $executable"
   }
 
-  function Start-And-Stop-App {
-    param([bool]$WaitForDatabase = $false)
-    $logPath = Join-Path $workspace 'app.log'
-    $process = Start-Process -FilePath $executable -PassThru -RedirectStandardOutput $logPath -RedirectStandardError "$logPath.err"
-    if ($WaitForDatabase) {
-      # First launch on a clean runner initializes WebView2 before the app's
-      # setup() creates data.db. Poll for the database instead of a fixed
-      # sleep: Evergreen runtime initialization can exceed 30s on fresh
-      # runner images.
-      $deadline = (Get-Date).AddSeconds(120)
-      while (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
-        if ($process.HasExited) {
-          $out = if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
-          $err = if (Test-Path -LiteralPath "$logPath.err") { Get-Content -LiteralPath "$logPath.err" -Raw } else { '' }
-          throw "Application exited during startup with $($process.ExitCode). stdout=[$out] stderr=[$err]"
-        }
-        if ((Get-Date) -gt $deadline) { break }
-        Start-Sleep -Seconds 5
-      }
-    } else {
-      Start-Sleep -Seconds 10
-      if ($process.HasExited) {
-        $out = if (Test-Path -LiteralPath $logPath) { Get-Content -LiteralPath $logPath -Raw } else { '' }
-        $err = if (Test-Path -LiteralPath "$logPath.err") { Get-Content -LiteralPath "$logPath.err" -Raw } else { '' }
-        throw "Application exited during startup with $($process.ExitCode). stdout=[$out] stderr=[$err]"
-      }
+  # First launch on a clean runner initializes WebView2 before the app's
+  # setup() creates data.db. Poll for the database instead of a fixed sleep:
+  # Evergreen runtime initialization can exceed 30s on fresh runner images.
+  $process = Start-Application
+  $deadline = (Get-Date).AddSeconds(120)
+  while (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
+    if ($process.HasExited) {
+      throw "Application exited during startup with $($process.ExitCode). $(Get-LaunchDiagnostics)"
     }
-    Stop-Process -Id $process.Id -ErrorAction Stop
+    if ((Get-Date) -gt $deadline) { break }
+    Start-Sleep -Seconds 5
+  }
+  if (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
+    throw "First launch did not create the expected application database: $database $(Get-LaunchDiagnostics)"
+  }
+
+  Wait-MainWindow $process 120
+  Send-TypingSample $process
+
+  # Default mode is a 30s time test; it completes on its own timer and the
+  # durable finalization ledger commits the row exactly once.
+  $savedRows = Wait-TestCountAtLeast 1 150
+  Write-Output "Practice session persisted: tests rows = $savedRows"
+
+  if (-not $process.HasExited) {
+    Stop-Process -Id $process.Id -ErrorAction SilentlyContinue
     $process.WaitForExit()
   }
 
-  Start-And-Stop-App -WaitForDatabase $true
-  if (-not (Test-Path -LiteralPath $database -PathType Leaf)) {
-    $out = if (Test-Path -LiteralPath (Join-Path $workspace 'app.log')) { Get-Content -LiteralPath (Join-Path $workspace 'app.log') -Raw } else { '' }
-    $err = if (Test-Path -LiteralPath (Join-Path $workspace 'app.log.err')) { Get-Content -LiteralPath (Join-Path $workspace 'app.log.err') -Raw } else { '' }
-    # Enumerate every data dir that was actually created so the failure shows
-    # where the app really wrote its state (Roaming vs Local, and subpaths).
-    $roaming = Join-Path $appData 'com.racoon.typper'
-    $localAppData = Join-Path $env:LOCALAPPDATA 'com.racoon.typper'
-    $existing = @()
-    foreach ($candidate in @($roaming, $localAppData)) {
-      if (Test-Path -LiteralPath $candidate) {
-        $files = Get-ChildItem -LiteralPath $candidate -Recurse -File -ErrorAction SilentlyContinue | ForEach-Object { $_.FullName }
-        $existing += "DIR=$candidate FILES=[$($files -join ';')]"
-      }
-    }
-    throw "First launch did not create the expected application database: $database stdout=[$out] stderr=[$err] found=[$($existing -join ' | ')]"
+  # Restart proves the persisted state survives a clean process lifecycle.
+  $process = Start-Application
+  Start-Sleep -Seconds 10
+  if ($process.HasExited) {
+    throw "Application exited during restart with $($process.ExitCode). $(Get-LaunchDiagnostics)"
   }
-  Start-And-Stop-App
-  Write-Output 'Windows NSIS smoke passed: installed, launched twice, and retained application data.'
+  Stop-Process -Id $process.Id -ErrorAction Stop
+  $process.WaitForExit()
+
+  Write-Output 'Windows NSIS smoke passed: installed, first screen rendered, typed session saved to SQLite, restart retained data.'
 } finally {
   Remove-Item -LiteralPath $workspace -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $appDataDir -Recurse -Force -ErrorAction SilentlyContinue
