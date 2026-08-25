@@ -108,9 +108,18 @@ try {
   Start-Sleep -Seconds 2
   if ($tauriDriver.HasExited) { throw 'tauri-driver exited immediately after start.' }
 
+  # Node resolves modules from the script's directory upward; expose the
+  # frontend dependency tree at the repository root for the ESM client.
+  $repoRoot = Resolve-Path (Join-Path $PSScriptRoot '..')
+  $moduleLink = Join-Path $repoRoot 'node_modules'
+  if (-not (Test-Path -LiteralPath $moduleLink)) {
+    New-Item -ItemType Junction -Path $moduleLink `
+      -Target (Join-Path $repoRoot 'frontend/node_modules') | Out-Null
+  }
+
   try {
     $env:APP_PATH = $executable
-    Push-Location $PSScriptRoot\..\frontend
+    Push-Location (Join-Path $repoRoot 'frontend')
     node ..\scripts\windows-ui-smoke.mjs
     $uiExit = $LASTEXITCODE
     Pop-Location
