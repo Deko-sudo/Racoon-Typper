@@ -123,6 +123,7 @@ export interface AppSettings {
   ui_language: string;
   practice_language: string;
   onboarding_completed: boolean;
+  keyboard_layout: string;
   vim_mode: boolean;
   daily_goal_type: string;
   daily_goal_wpm: number;

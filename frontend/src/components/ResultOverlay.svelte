@@ -14,6 +14,7 @@
     onReturnToLessons,
     sessionModeType = '',
     sessionLanguage = '',
+    keyboardLayout = 'qwerty',
     uiLang = 'en',
   }: {
     stats: FinalStats;
@@ -24,6 +25,7 @@
     onReturnToLessons: () => void;
     sessionModeType?: string;
     sessionLanguage?: string;
+    keyboardLayout?: string;
     uiLang?: string;
   } = $props();
 
@@ -91,7 +93,7 @@
     <span>{t(uiLang, 'result.backspaces')}: {stats.backspaces}</span>
     <span>{t(uiLang, 'result.duration')}: {(stats.duration_ms / 1000).toFixed(1)}s</span>
   </div>
-  <KeyboardHeatmap heatmap={stats.heatmap} charStats={stats.char_stats} />
+  <KeyboardHeatmap heatmap={stats.heatmap} charStats={stats.char_stats} {keyboardLayout} />
   <div class="result-actions">
     {#if lessonNavigation}
       {#if lessonNavigation.nextLessonId}

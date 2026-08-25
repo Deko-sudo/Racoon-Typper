@@ -539,6 +539,7 @@
       trainingCaretPos={testSession.caretPos}
       trainingRunning={testSession.isRunning}
       trainingLanguage={testSession.isRunning ? testSession.sessionLanguage : testSession.selectedLanguage}
+      keyboardLayout={settingsStore.settings?.keyboard_layout ?? 'qwerty'}
     />
   {:else if view === 'analytics'}
     <AnalyticsView uiLang={uiLang} />

@@ -22,18 +22,77 @@ export const FINGERS: Record<string, string> = {
 };
 
 export const RU_FINGERS: Record<string, string> = {
-  ё: 'LP', ф: 'LP', я: 'LP',
+  ё: 'LP', ф: 'LP', я: 'LP', й: 'LP',
   ц: 'LR', ы: 'LR', ч: 'LR',
   у: 'LM', в: 'LM', с: 'LM',
-  а: 'LI', п: 'LI', к: 'LI', м: 'LI',
+  а: 'LI', п: 'LI', к: 'LI', м: 'LI', и: 'LI',
   о: 'RI', л: 'RI', д: 'RI', р: 'RI', т: 'RI',
   е: 'RM', г: 'RM', ш: 'RM',
-  н: 'RR', щ: 'RR', з: 'RR',
-  ь: 'RP', б: 'RP', ю: 'RP', ъ: 'RP',
+  н: 'RR', щ: 'RR', з: 'RR', х: 'RR',
+  ь: 'RP', б: 'RP', ю: 'RP', ъ: 'RP', ж: 'RP', э: 'RP', '.': 'RP',
 };
 
 export const HOME_ROW_EN = new Set(ROWS[1]);
 export const HOME_ROW_RU = new Set(RU_ROWS[1]);
+
+// Dvorak letter keys on the same physical positions as QWERTY (mirrors
+// `finger_for_key_dvorak` in crates/core/src/finger_map.rs).
+export const DVORAK_ROWS = [
+  ["'", ',', '.', 'p', 'y', 'f', 'g', 'c', 'r', 'l'],
+  ['a', 'o', 'e', 'u', 'i', 'd', 'h', 't', 'n', 's'],
+  [';', 'q', 'j', 'k', 'x', 'b', 'm', 'w', 'v', 'z'],
+];
+
+export const DVORAK_FINGERS: Record<string, string> = {
+  "'": 'LP', a: 'LP', ';': 'LP',
+  ',': 'LR', o: 'LR', q: 'LR',
+  '.': 'LM', e: 'LM', j: 'LM',
+  p: 'LI', y: 'LI', u: 'LI', i: 'LI', k: 'LI', x: 'LI',
+  f: 'RI', g: 'RI', d: 'RI', h: 'RI', b: 'RI', m: 'RI',
+  c: 'RM', t: 'RM', w: 'RM',
+  r: 'RR', n: 'RR', v: 'RR',
+  l: 'RP', s: 'RP', z: 'RP', '/': 'RP',
+};
+
+export type KeyboardLayoutId = 'qwerty' | 'jcuken' | 'dvorak';
+
+const LATIN_LAYOUT_TABLES: Record<
+  Exclude<KeyboardLayoutId, 'jcuken'>,
+  { rows: string[][]; fingers: Record<string, string> }
+> = {
+  qwerty: { rows: ROWS, fingers: FINGERS },
+  dvorak: { rows: DVORAK_ROWS, fingers: DVORAK_FINGERS },
+};
+
+function normalizeLayout(layout: string | undefined | null): Exclude<KeyboardLayoutId, 'jcuken'> {
+  return layout === 'dvorak' ? 'dvorak' : 'qwerty';
+}
+
+// Cyrillic characters physically live on JCUKEN regardless of the selected
+// Latin layout (same rule as `finger_for_char_with_layout` in racoon-core).
+export function layoutRows(
+  layout: string | undefined | null,
+  isCyrillic: boolean,
+): string[][] {
+  if (isCyrillic) return RU_ROWS;
+  return LATIN_LAYOUT_TABLES[normalizeLayout(layout)].rows;
+}
+
+export function layoutFingers(
+  layout: string | undefined | null,
+  isCyrillic: boolean,
+): Record<string, string> {
+  if (isCyrillic) return RU_FINGERS;
+  return LATIN_LAYOUT_TABLES[normalizeLayout(layout)].fingers;
+}
+
+export function isHomeRowKey(key: string): boolean {
+  return (
+    HOME_ROW_EN.has(key) || HOME_ROW_RU.has(key) || DVORAK_HOME_ROW.has(key)
+  );
+}
+
+const DVORAK_HOME_ROW = new Set(DVORAK_ROWS[1]);
 
 export const VIEWPORT_CHARS = 120;
 export const VIEWPORT_PADDING = 30;

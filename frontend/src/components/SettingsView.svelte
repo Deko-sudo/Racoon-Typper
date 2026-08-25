@@ -251,6 +251,14 @@
         <label class="toggle"><input id="setting-layout" type="checkbox" checked={settings.show_layout_warnings} onchange={(e) => onUpdateSetting('show_layout_warnings', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>
       <div class="setting-row">
+        <label for="setting-kbd-layout">{t(uiLang, 'settings.keyboard_layout')}</label>
+        <select id="setting-kbd-layout" value={settings.keyboard_layout || 'qwerty'} onchange={(e) => onUpdateSetting('keyboard_layout', e.currentTarget.value)}>
+          <option value="qwerty">{t(uiLang, 'settings.layout_qwerty')}</option>
+          <option value="jcuken">{t(uiLang, 'settings.layout_jcuken')}</option>
+          <option value="dvorak">{t(uiLang, 'settings.layout_dvorak')}</option>
+        </select>
+      </div>
+      <div class="setting-row">
         <label for="setting-sound">{t(uiLang, 'settings.sound_enabled')}</label>
         <label class="toggle"><input id="setting-sound" type="checkbox" checked={settings.sound_enabled} onchange={(e) => onUpdateSetting('sound_enabled', e.currentTarget.checked)} /><span class="toggle-slider"></span></label>
       </div>

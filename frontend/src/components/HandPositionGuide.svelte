@@ -1,17 +1,19 @@
 <script lang="ts">
   // HandPositionGuide — схема рук с подсветкой нужного пальца.
 
-  import { FINGERS, RU_FINGERS } from '../lib/keyboard';
+  import { layoutFingers } from '../lib/keyboard';
 
   let {
     nextChar = '',
     isRussian = false,
+    keyboardLayout = 'qwerty',
   }: {
     nextChar?: string;
     isRussian?: boolean;
+    keyboardLayout?: string;
   } = $props();
 
-  const fingers = $derived(isRussian ? RU_FINGERS : FINGERS);
+  const fingers = $derived(layoutFingers(keyboardLayout, isRussian));
 
   let activeFinger = $derived(nextChar === ' ' ? 'LT' : fingers[nextChar.toLowerCase()] || '');
 </script>

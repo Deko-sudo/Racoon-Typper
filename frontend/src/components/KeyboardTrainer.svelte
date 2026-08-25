@@ -1,12 +1,19 @@
 <script lang="ts">
-  import { FINGERS, HOME_ROW_EN, HOME_ROW_RU, ROWS, RU_FINGERS, RU_ROWS } from '../lib/keyboard';
+  import { HOME_ROW_RU, layoutFingers, layoutRows } from '../lib/keyboard';
 
   type KeySpec = { label: string; value?: string; span: number; special?: boolean };
   type KeyReference = { label: string; value?: string };
 
-  let { nextChar = '', isRussian = false, lastErrorChar = '', charStats = {} }: {
+  let {
+    nextChar = '',
+    isRussian = false,
+    keyboardLayout = 'qwerty',
+    lastErrorChar = '',
+    charStats = {},
+  }: {
     nextChar?: string;
     isRussian?: boolean;
+    keyboardLayout?: string;
     lastErrorChar?: string;
     charStats?: Record<string, { correct: number; incorrect: number; total: number }>;
   } = $props();
@@ -30,19 +37,23 @@
   const navTop = ['Ins', 'Home', 'PgUp'];
   const navMiddle = ['Del', 'End', 'PgDn'];
 
-  const letters = $derived(isRussian ? RU_ROWS : ROWS);
-  const homeRow = $derived(isRussian ? HOME_ROW_RU : HOME_ROW_EN);
-  const fingers = $derived(isRussian ? RU_FINGERS : FINGERS);
+  const letters = $derived(layoutRows(keyboardLayout, isRussian));
+  const homeRow = $derived(isRussian ? HOME_ROW_RU : new Set(letters[1]));
+  const fingers = $derived(layoutFingers(keyboardLayout, isRussian));
+  // Bracket/quote filler keys exist only on the physical QWERTY positions;
+  // Dvorak's own punctuation occupies those letter slots instead.
+  const latinQwertyExtras = $derived(!isRussian && keyboardLayout !== 'dvorak');
   const topRow = $derived<KeySpec[]>([
     { label: 'Tab', span: 1.5, special: true },
     ...letters[0].map(label => ({ label, span: 1 })),
-    ...(isRussian ? [{ label: '\\', span: 1 }] : [{ label: '[', span: 1 }, { label: ']', span: 1 }, { label: '\\', span: 1 }]),
+    ...(isRussian ? [{ label: '\\', span: 1 }] : latinQwertyExtras ? [{ label: '[', span: 1 }, { label: ']', span: 1 }, { label: '\\', span: 1 }] : []),
   ]);
   const middleRow = $derived<KeySpec[]>([
     { label: 'Caps', span: 1.75, special: true },
     ...letters[1].map(label => ({ label, span: 1 })),
-    // ROWS[1] already ends with `;` in the English layout; add only apostrophe.
-    ...(isRussian ? [] : [{ label: "'", span: 1 }]),
+    // The QWERTY home row ends with `;`, leaving the apostrophe key separate;
+    // Dvorak places its own punctuation inside letters[0..2] already.
+    ...(latinQwertyExtras ? [{ label: "'", span: 1 }] : []),
     { label: 'Enter', span: 2.25, special: true },
   ]);
   const bottomRow = $derived<KeySpec[]>([

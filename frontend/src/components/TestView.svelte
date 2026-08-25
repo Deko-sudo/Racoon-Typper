@@ -176,6 +176,7 @@
     {onReturnToLessons}
     {sessionModeType}
     {sessionLanguage}
+    keyboardLayout={settings?.keyboard_layout ?? 'qwerty'}
     {uiLang}
   />
 {:else if text}

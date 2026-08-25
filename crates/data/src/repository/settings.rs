@@ -57,6 +57,11 @@ pub struct AppSettings {
     /// First-run onboarding has been completed or explicitly skipped.
     #[serde(default)]
     pub onboarding_completed: bool,
+    /// Physical keyboard layout used for finger hints and visualization:
+    /// "qwerty", "jcuken", or "dvorak". Cyrillic characters always resolve to
+    /// the JCUKEN map regardless of this value.
+    #[serde(default = "default_keyboard_layout")]
+    pub keyboard_layout: String,
     #[serde(default)]
     pub vim_mode: bool,
     #[serde(default = "default_daily_goal_type")]
@@ -199,6 +204,14 @@ fn default_ui_language() -> String {
 
 fn default_practice_language() -> String {
     "en".to_string()
+}
+
+fn default_keyboard_layout() -> String {
+    "qwerty".to_string()
+}
+
+fn valid_keyboard_layout(value: &str) -> bool {
+    matches!(value, "qwerty" | "jcuken" | "dvorak")
 }
 
 fn default_daily_goal_type() -> String {
@@ -349,6 +362,7 @@ impl Default for AppSettings {
             ui_language: "en".to_string(),
             practice_language: "en".to_string(),
             onboarding_completed: false,
+            keyboard_layout: "qwerty".to_string(),
             vim_mode: false,
             daily_goal_type: "time".to_string(),
             daily_goal_wpm: 0.0,
@@ -552,6 +566,15 @@ impl SettingsStore {
             }
             "onboarding_completed" => {
                 settings.onboarding_completed = boolean_value(&value, key)?;
+            }
+            "keyboard_layout" => {
+                let value = string_value(&value, key)?;
+                if !valid_keyboard_layout(value) {
+                    return Err(validation_error(
+                        "keyboard_layout must be one of: qwerty, jcuken, dvorak",
+                    ));
+                }
+                settings.keyboard_layout = value.to_string();
             }
             "vim_mode" => {
                 settings.vim_mode = boolean_value(&value, key)?;
@@ -890,6 +913,28 @@ mod tests {
     }
 
     #[test]
+    fn keyboard_layout_roundtrips_and_rejects_unknown_values() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert_eq!(store.load().unwrap().keyboard_layout, "qwerty");
+        for layout in ["jcuken", "dvorak"] {
+            let settings = store
+                .set("keyboard_layout", toml::Value::String(layout.to_string()))
+                .unwrap();
+            assert_eq!(settings.keyboard_layout, layout);
+        }
+        assert_eq!(store.load().unwrap().keyboard_layout, "dvorak");
+        for invalid in ["", "colemak", "QWERTY"] {
+            assert!(store
+                .set("keyboard_layout", toml::Value::String(invalid.to_string()))
+                .is_err());
+        }
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
     fn set_unknown_key_fails() {
         let path = temp_settings_path();
         let store = SettingsStore::new(path.clone());
@@ -1062,6 +1107,7 @@ mod tests {
             ui_language: "ru".to_string(),
             practice_language: "de".to_string(),
             onboarding_completed: true,
+            keyboard_layout: "dvorak".to_string(),
             vim_mode: true,
             daily_goal_type: "time".to_string(),
             daily_goal_wpm: 0.0,
@@ -1080,6 +1126,7 @@ mod tests {
         assert_eq!(deserialized.caret_style, "solid");
         assert_eq!(deserialized.practice_language, "de");
         assert!(deserialized.onboarding_completed);
+        assert_eq!(deserialized.keyboard_layout, "dvorak");
         assert!(!deserialized.show_live_wpm);
         assert!(deserialized.show_accuracy);
     }

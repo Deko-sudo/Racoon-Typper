@@ -1,12 +1,14 @@
 <script lang="ts">
-  import { FINGERS, ROWS, RU_ROWS } from '../lib/keyboard';
+  import { layoutFingers, layoutRows, RU_ROWS } from '../lib/keyboard';
 
   let {
     heatmap = {},
     charStats = {},
+    keyboardLayout = 'qwerty',
   }: {
     heatmap?: Record<string, { total_attempts: number; correct: number; incorrect: number; avg_wpm_at_key: number }>;
     charStats?: Record<string, { correct: number; incorrect: number; total: number }>;
+    keyboardLayout?: string;
   } = $props();
 
   // Автоопределение раскладки по данным: если в stats заметно кириллических
@@ -26,7 +28,7 @@
   });
 
   const heatmapRows = $derived(
-    (isCyrillic ? RU_ROWS : ROWS).map((row) => row.filter((key) => key.length === 1)),
+    (isCyrillic ? RU_ROWS : layoutRows(keyboardLayout, false)).map((row) => row.filter((key) => key.length === 1)),
   );
 
   // Case-insensitive агрегация: бэкенд ключует точным символом ('A' и 'a' —
@@ -47,7 +49,7 @@
   }
 
   function getFinger(key: string): string {
-    return FINGERS[key] || '';
+    return layoutFingers(keyboardLayout, isCyrillic)[key] || '';
   }
 
   // Staggered offsets per row: ANSI stagger 0.25u/0.5u при 40px-клавише и
