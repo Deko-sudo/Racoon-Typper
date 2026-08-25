@@ -77,23 +77,6 @@
     },
     {
       "type": "library",
-      "name": "ahash",
-      "version": "0.8.12",
-      "purl": "pkg:cargo/ahash@0.8.12",
-      "licenses": [
-        {
-          "expression": "MIT OR Apache-2.0"
-        }
-      ],
-      "externalReferences": [
-        {
-          "type": "vcs",
-          "url": "https://github.com/tkaitchuck/ahash"
-        }
-      ]
-    },
-    {
-      "type": "library",
       "name": "aho-corasick",
       "version": "1.1.4",
       "purl": "pkg:cargo/aho-corasick@1.1.4",
@@ -2486,8 +2469,8 @@
     {
       "type": "library",
       "name": "hashbrown",
-      "version": "0.14.5",
-      "purl": "pkg:cargo/hashbrown@0.14.5",
+      "version": "0.15.5",
+      "purl": "pkg:cargo/hashbrown@0.15.5",
       "licenses": [
         {
           "expression": "MIT OR Apache-2.0"
@@ -2503,8 +2486,8 @@
     {
       "type": "library",
       "name": "hashbrown",
-      "version": "0.15.5",
-      "purl": "pkg:cargo/hashbrown@0.15.5",
+      "version": "0.16.1",
+      "purl": "pkg:cargo/hashbrown@0.16.1",
       "licenses": [
         {
           "expression": "MIT OR Apache-2.0"
@@ -2537,8 +2520,8 @@
     {
       "type": "library",
       "name": "hashlink",
-      "version": "0.9.1",
-      "purl": "pkg:cargo/hashlink@0.9.1",
+      "version": "0.11.1",
+      "purl": "pkg:cargo/hashlink@0.11.1",
       "licenses": [
         {
           "expression": "MIT OR Apache-2.0"
@@ -2547,7 +2530,7 @@
       "externalReferences": [
         {
           "type": "vcs",
-          "url": "https://github.com/kyren/hashlink"
+          "url": "https://github.com/djc/hashlink"
         }
       ]
     },
@@ -3366,8 +3349,8 @@
     {
       "type": "library",
       "name": "libsqlite3-sys",
-      "version": "0.28.0",
-      "purl": "pkg:cargo/libsqlite3-sys@0.28.0",
+      "version": "0.37.0",
+      "purl": "pkg:cargo/libsqlite3-sys@0.37.0",
       "licenses": [
         {
           "expression": "MIT"
@@ -4898,8 +4881,8 @@
     {
       "type": "library",
       "name": "refinery-core",
-      "version": "0.8.16",
-      "purl": "pkg:cargo/refinery-core@0.8.16",
+      "version": "0.9.2",
+      "purl": "pkg:cargo/refinery-core@0.9.2",
       "licenses": [
         {
           "expression": "MIT OR Apache-2.0"
@@ -4915,8 +4898,8 @@
     {
       "type": "library",
       "name": "refinery-macros",
-      "version": "0.8.16",
-      "purl": "pkg:cargo/refinery-macros@0.8.16",
+      "version": "0.9.2",
+      "purl": "pkg:cargo/refinery-macros@0.9.2",
       "licenses": [
         {
           "expression": "MIT OR Apache-2.0"
@@ -4932,8 +4915,8 @@
     {
       "type": "library",
       "name": "refinery",
-      "version": "0.8.16",
-      "purl": "pkg:cargo/refinery@0.8.16",
+      "version": "0.9.2",
+      "purl": "pkg:cargo/refinery@0.9.2",
       "licenses": [
         {
           "expression": "MIT"
@@ -5067,9 +5050,20 @@
     },
     {
       "type": "library",
+      "name": "rsqlite-vfs",
+      "version": "0.1.1",
+      "purl": "pkg:cargo/rsqlite-vfs@0.1.1",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ]
+    },
+    {
+      "type": "library",
       "name": "rusqlite",
-      "version": "0.31.0",
-      "purl": "pkg:cargo/rusqlite@0.31.0",
+      "version": "0.39.0",
+      "purl": "pkg:cargo/rusqlite@0.39.0",
       "licenses": [
         {
           "expression": "MIT"
@@ -5918,6 +5912,23 @@
         {
           "type": "vcs",
           "url": "https://gitlab.gnome.org/World/Rust/soup3-rs"
+        }
+      ]
+    },
+    {
+      "type": "library",
+      "name": "sqlite-wasm-rs",
+      "version": "0.5.5",
+      "purl": "pkg:cargo/sqlite-wasm-rs@0.5.5",
+      "licenses": [
+        {
+          "expression": "MIT"
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/Spxg/sqlite-wasm-rs"
         }
       ]
     },
@@ -6793,23 +6804,6 @@
       "name": "toml_parser",
       "version": "1.1.2+spec-1.1.0",
       "purl": "pkg:cargo/toml_parser@1.1.2+spec-1.1.0",
-      "licenses": [
-        {
-          "expression": "MIT OR Apache-2.0"
-        }
-      ],
-      "externalReferences": [
-        {
-          "type": "vcs",
-          "url": "https://github.com/toml-rs/toml"
-        }
-      ]
-    },
-    {
-      "type": "library",
-      "name": "toml_write",
-      "version": "0.1.2",
-      "purl": "pkg:cargo/toml_write@0.1.2",
       "licenses": [
         {
           "expression": "MIT OR Apache-2.0"
