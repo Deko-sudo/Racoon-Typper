@@ -231,12 +231,6 @@ jobs:
             --outfile "artifacts/${TARBALL}.torrent" \
             --comment "Racoon Typper ${RELEASE_TAG} — Linux x86_64 tarball" \
             --webseed "$WEBSEED"
-      - name: Generate checksums
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd artifacts
-          find . -type f -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS
       - name: Sign updater artifacts and generate latest.json
         shell: bash
         env:
@@ -296,6 +290,31 @@ jobs:
             const manifest = { version, notes: "", pub_date: new Date().toISOString(), platforms: { "linux-x86_64": notes.filter(n=>n.platform==="linux-x86_64"), "windows-x86_64": notes.filter(n=>n.platform==="windows-x86_64") } };
             fs.writeFileSync("latest.json", JSON.stringify(manifest, null, 2));
           '
+      # Checksums are generated last so every attached asset — including the
+      # updater signatures and latest.json produced above — is covered, and
+      # entries use flat basenames matching a plain release download.
+      - name: Generate checksums for the exact release asset set
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd artifacts
+          : > SHA256SUMS
+          while IFS= read -r -d '' f; do
+            hash=$(sha256sum "$f" | awk '{print $1}')
+            printf '%s  %s\n' "$hash" "$(basename "$f")" >> SHA256SUMS
+          done < <(find . -type f \( \
+            -name 'racoon-typper*.deb' -o -name 'racoon-typper*.rpm' -o \
+            -name 'racoon-typper*.AppImage' -o -name 'racoon-typper*.AppImage.sig' -o \
+            -name 'racoon-typper*_x64-setup.exe' -o -name 'racoon-typper*_x64-setup.exe.sig' -o \
+            -name 'racoon-typper*-x86_64.tar.gz' -o -name 'racoon-typper*-x86_64.tar.gz.torrent' \
+            \) -print0)
+          for f in latest.json release-evidence/*; do
+            hash=$(sha256sum "$f" | awk '{print $1}')
+            printf '%s  %s\n' "$hash" "$(basename "$f")" >> SHA256SUMS
+          done
+          test "$(wc -l < SHA256SUMS)" -ge 12 || { echo "unexpectedly few checksum entries"; exit 1; }
+          sort -k 2 -o SHA256SUMS SHA256SUMS
+
       - name: Create draft release candidate
         uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
         with:
