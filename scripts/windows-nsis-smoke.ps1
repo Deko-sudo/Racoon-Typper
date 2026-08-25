@@ -61,7 +61,7 @@ function Wait-MainWindow([System.Diagnostics.Process]$Process, [int]$TimeoutSeco
     }
     $Process.Refresh()
     if (-not [string]::IsNullOrWhiteSpace($Process.MainWindowTitle)) {
-      Write-Output "First screen rendered: window '$($Process.MainWindowTitle)'"
+      Write-Host "First screen rendered: window '$($Process.MainWindowTitle)'"
       return
     }
     Start-Sleep -Seconds 2
@@ -77,18 +77,18 @@ function Wait-ScalarAtLeast([string]$Sql, [int]$Minimum, [int]$TimeoutSeconds, [
     if ($null -eq $firstRaw) { $firstRaw = $raw }
     $count = 0
     if ($null -ne $raw -and -not [int]::TryParse([string]$raw, [ref]$count)) {
-      Write-Output "sqlite output for '$Sql' was not a number: [$raw]"
+      Write-Host "sqlite output for '$Sql' was not a number: [$raw]"
       $count = 0
     }
     if ($count -ge $Minimum) { return $count }
     Start-Sleep -Seconds 5
   }
-  Write-Output "First raw sqlite output for '$Sql': [$firstRaw]"
+  Write-Host "First raw sqlite output for '$Sql': [$firstRaw]"
   # Stage counters across the durable pipeline pinpoint where a stuck session
   # stopped: started (ledger) -> completed intent -> finalized -> persisted row.
   foreach ($table in @('session_ledger', 'session_completion_intents', 'session_finalizations', 'tests', 'daily_stats')) {
     $value = Invoke-SqlScalar "SELECT COUNT(*) FROM $table;"
-    Write-Output "stage $table = [$value]"
+    Write-Host "stage $table = [$value]"
   }
   throw "$What did not reach >= $Minimum within ${TimeoutSeconds}s. $(Get-LaunchDiagnostics)"
 }
@@ -107,6 +107,27 @@ function Wait-TestCountAtLeast([int]$Minimum, [int]$TimeoutSeconds) {
     "Persisted test rows"
 }
 
+Add-Type -Namespace Native -Name User32 -MemberDefinition @'
+[DllImport("user32.dll")] public static extern bool SetCursorPos(int X, int Y);
+[DllImport("user32.dll")] public static extern void mouse_event(uint dwFlags, uint dx, uint dy, uint dwData, System.UIntPtr dwExtraInfo);
+'@
+
+function Send-WindowClick([System.Diagnostics.Process]$Process) {
+  $Process.Refresh()
+  $rect = New-Object System.Drawing.Rectangle
+  $handle = $Process.MainWindowHandle
+  if ($handle -eq [IntPtr]::Zero) { Write-Host 'No main window handle; skipping click.'; return }
+  Add-Type -AssemblyName System.Drawing
+  $bounds = [System.Windows.Forms.Screen]::PrimaryScreen.Bounds
+  # Center of the primary screen approximates the maximized app window; the
+  # Tauri window opens centered and roughly 1200x800.
+  $x = [int]($bounds.Width / 2); $y = [int]($bounds.Height / 2)
+  [Native.User32]::SetCursorPos($x, $y) | Out-Null
+  [Native.User32]::mouse_event(0x0002, 0, 0, 0, [UIntPtr]::Zero)  # LEFTDOWN
+  [Native.User32]::mouse_event(0x0004, 0, 0, 0, [UIntPtr]::Zero)  # LEFTUP
+  Write-Host "Clicked at ${x}x${y} to focus the typing surface."
+}
+
 function Send-TypingSample([System.Diagnostics.Process]$Process) {
   Add-Type -AssemblyName System.Windows.Forms
   $shell = New-Object -ComObject WScript.Shell
@@ -119,8 +140,9 @@ function Send-TypingSample([System.Diagnostics.Process]$Process) {
     if ($activated) { break }
   }
   if (-not $activated) {
-    Write-Output 'AppActivate failed for both title and PID; relying on the timer-completion path.'
+    Write-Host 'AppActivate failed for both title and PID; relying on the timer-completion path.'
   }
+  Send-WindowClick $Process
   Start-Sleep -Milliseconds 500
   for ($i = 0; $i -lt 20; $i++) {
     [System.Windows.Forms.SendKeys]::SendWait('asdf jkl; ewq poiuy ')
@@ -165,7 +187,7 @@ try {
   # Default mode is a 30s time test; it completes on its own timer and the
   # durable finalization ledger commits the row exactly once.
   $savedRows = Wait-TestCountAtLeast 1 180
-  Write-Output "Practice session persisted: tests rows = $savedRows"
+  Write-Host "Practice session persisted: tests rows = $savedRows"
 
   if (-not $process.HasExited) {
     Stop-Process -Id $process.Id -ErrorAction SilentlyContinue
@@ -181,7 +203,7 @@ try {
   Stop-Process -Id $process.Id -ErrorAction Stop
   $process.WaitForExit()
 
-  Write-Output 'Windows NSIS smoke passed: installed, first screen rendered, typed session saved to SQLite, restart retained data.'
+  Write-Host 'Windows NSIS smoke passed: installed, first screen rendered, typed session saved to SQLite, restart retained data.'
 } finally {
   Remove-Item -LiteralPath $workspace -Recurse -Force -ErrorAction SilentlyContinue
   Remove-Item -LiteralPath $appDataDir -Recurse -Force -ErrorAction SilentlyContinue
