@@ -1,5 +1,40 @@
 # Changelog — Racoon Typper
 
+## v1.3.0
+
+### Highlights
+
+- **Weekly summaries** — the dashboard gained a "Last 8 Weeks" strip: per-week
+  activity bars, goal-day counters, and weighted WPM/accuracy aggregates built
+  from persisted daily statistics.
+- **First-run onboarding** — a one-time three-step setup (interface language,
+  practice language, daily goal) with an explicit skip; the practice language
+  is now a persisted setting that drives tests and lessons instead of a
+  hard-coded default.
+- **Keyboard layouts** — new `keyboard_layout` setting (QWERTY / ЙЦУКЕН /
+  Dvorak) driving finger hints, the hand guide, result heatmap, and weak-key
+  finger tags; Cyrillic always resolves to JCUKEN, matching the core maps.
+- **Text packs** — versioned `racoon-typper-text-pack` interchange for custom
+  texts: JSON export/preview/import plus Anki-style TSV, RFC4180 CSV, and
+  plain-text block sources with explicit mapping rules; merge or
+  language-scoped replace policies, all inside one sandboxed transaction.
+- **Language resources audit** — every bundled language now has a pinned
+  completeness bar (courses ≥3 modules / ≥12 lessons, ≥10 attributed quotes,
+  ≥300 unique words); fixed Czech word-list shortfall and deduplicated the
+  generated CJK lists.
+- **Release evidence hardening** — AppImage artifacts are launch-tested before
+  a draft is created (FUSE with extract-and-run fallback), and the Windows
+  clean-smoke now completes the full journey: first screen rendered, a typed
+  session verified as a row in SQLite, restart retaining data.
+
+### Fixes
+
+- Whole-file restore lifecycle coordination (TD6), durable live-completion
+  routing (TD4), typed ModeConfig contract pinning (Task R), and reporting
+  adapters behind application use cases (TD1) landed during the cycle.
+- Performance baselines for every reporting adapter at 10k records guard the
+  dashboard query paths against accidental full scans.
+
 ## v1.2.0
 
 ### Highlights
