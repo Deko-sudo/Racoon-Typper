@@ -7,7 +7,9 @@ pub mod quotes;
 pub mod random;
 pub mod words;
 
-pub use courses::{course_loader, Course, CourseLoader, LessonContent, ModuleContent};
+pub use courses::{
+    course_loader, Course, CourseLoader, LessonContent, ModuleContent, SUPPORTED_COURSE_LANGUAGES,
+};
 pub use quotes::{quote_loader, Quote, QuoteLoader, QuotePack};
 pub use random::SystemRandomSource;
 pub use words::{word_pack_loader, WordPack, WordPackLoader};

@@ -295,3 +295,13 @@ zimnice
 lednice
 sporák
  trouba
+lednička
+hrnec
+pánev
+talíř
+vidlička
+lžíce
+utěrka
+mikrovlnka
+sklo
+poklička

@@ -58,6 +58,14 @@ pub struct CourseLoader {
     courses: HashMap<String, Course>,
 }
 
+/// Every language code with bundled course resources. Quote packs and word
+/// packs ship for exactly the same set; the resource-completeness integration
+/// test (`crates/resources/tests/resource_completeness.rs`) fails when any of
+/// the three drifts apart or a language falls below the completeness bar.
+pub const SUPPORTED_COURSE_LANGUAGES: &[&str] = &[
+    "en", "ru", "de", "uk", "cs", "pl", "ro", "it", "fr", "es", "pt", "ja", "zh-hk", "zh-tw", "ko",
+];
+
 impl CourseLoader {
     pub fn new() -> Self {
         let mut courses = HashMap::new();
@@ -93,6 +101,11 @@ impl CourseLoader {
     /// Возвращает курс для языка.
     pub fn load_course(&self, language: &str) -> Option<&Course> {
         self.courses.get(language)
+    }
+
+    /// Возвращает все зарегистрированные коды языков (без гарантии порядка).
+    pub fn languages(&self) -> Vec<&str> {
+        self.courses.keys().map(String::as_str).collect()
     }
 
     /// Возвращает модуль по ID.
