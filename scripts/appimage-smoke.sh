@@ -31,6 +31,9 @@ trap cleanup EXIT
 
 sudo apt-get update -qq
 sudo apt-get install -y -qq xvfb dbus-x11 >/dev/null
+# The Tauri AppImage excludes the system WebKit/GL stack from its bundle, so
+# provide the same runtime libraries CI installs for the deb path (Task O).
+sudo apt-get install -y -qq libwebkit2gtk-4.1-0 libgtk-3-0 libegl1 libgl1 >/dev/null
 # Optional: enables the direct FUSE launch path. Runner images renamed the
 # package across releases (libfuse2/libfuse2t64); when neither installs, the
 # smoke automatically uses --appimage-extract-and-run instead.

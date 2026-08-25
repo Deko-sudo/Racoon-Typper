@@ -63,26 +63,51 @@ function Wait-MainWindow([System.Diagnostics.Process]$Process, [int]$TimeoutSeco
   throw "Main window did not appear within ${TimeoutSeconds}s. $(Get-LaunchDiagnostics)"
 }
 
-function Wait-TestCountAtLeast([int]$Minimum, [int]$TimeoutSeconds) {
-  # Q2 evidence: a completed practice session must persist a row in `tests`.
-  # The default time-mode test finishes on its own timer; WAL allows reading
-  # while the application keeps running.
+function Wait-ScalarAtLeast([string]$Sql, [int]$Minimum, [int]$TimeoutSeconds, [string]$What) {
   $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+  $firstRaw = $null
   while ((Get-Date) -lt $deadline) {
+    $raw = Invoke-SqlScalar $Sql
+    if ($null -eq $firstRaw) { $firstRaw = $raw }
     $count = 0
-    $raw = Invoke-SqlScalar "SELECT COUNT(*) FROM tests;"
-    if ($null -ne $raw -and -not [int]::TryParse([string]$raw, [ref]$count)) { $count = 0 }
+    if ($null -ne $raw -and -not [int]::TryParse([string]$raw, [ref]$count)) {
+      Write-Output "sqlite output for '$Sql' was not a number: [$raw]"
+      $count = 0
+    }
     if ($count -ge $Minimum) { return $count }
     Start-Sleep -Seconds 5
   }
-  throw "No persisted test rows appeared within ${TimeoutSeconds}s (expected >= $Minimum). $(Get-LaunchDiagnostics)"
+  Write-Output "First raw sqlite output for '$Sql': [$firstRaw]"
+  throw "$What did not reach >= $Minimum within ${TimeoutSeconds}s. $(Get-LaunchDiagnostics)"
+}
+
+function Wait-SessionStarted([int]$TimeoutSeconds) {
+  # The durable session ledger gains a row as soon as a practice session
+  # starts — an early, completion-independent liveness signal. Without this
+  # probe a silent start failure would burn the whole completion deadline.
+  Wait-ScalarAtLeast "SELECT COUNT(*) FROM session_ledger;" 1 $TimeoutSeconds `
+    "Session ledger (test session never started)"
+}
+
+function Wait-TestCountAtLeast([int]$Minimum, [int]$TimeoutSeconds) {
+  # Q2 evidence: a completed practice session must persist a row in `tests`.
+  Wait-ScalarAtLeast "SELECT COUNT(*) FROM tests;" $Minimum $TimeoutSeconds `
+    "Persisted test rows"
 }
 
 function Send-TypingSample([System.Diagnostics.Process]$Process) {
   Add-Type -AssemblyName System.Windows.Forms
   $shell = New-Object -ComObject WScript.Shell
-  if (-not $shell.AppActivate($Process.Id)) {
-    Write-Output 'AppActivate returned false; keystrokes may target another window.'
+  $activated = $false
+  foreach ($target in @($Process.MainWindowTitle, $Process.Id)) {
+    for ($attempt = 0; $attempt -lt 3 -and -not $activated; $attempt++) {
+      $activated = [bool]$shell.AppActivate($target)
+      if (-not $activated) { Start-Sleep -Milliseconds 700 }
+    }
+    if ($activated) { break }
+  }
+  if (-not $activated) {
+    Write-Output 'AppActivate failed for both title and PID; relying on the timer-completion path.'
   }
   Start-Sleep -Milliseconds 500
   for ($i = 0; $i -lt 20; $i++) {
@@ -122,11 +147,12 @@ try {
   }
 
   Wait-MainWindow $process 120
+  Wait-SessionStarted 90
   Send-TypingSample $process
 
   # Default mode is a 30s time test; it completes on its own timer and the
   # durable finalization ledger commits the row exactly once.
-  $savedRows = Wait-TestCountAtLeast 1 150
+  $savedRows = Wait-TestCountAtLeast 1 180
   Write-Output "Practice session persisted: tests rows = $savedRows"
 
   if (-not $process.HasExited) {
