@@ -1,6 +1,15 @@
 # Release Checklist — Racoon Typper
 
 This checklist describes the current baseline and the gates required for a production release. Phase 0 does not authorize a public release; licensing, foundation, security, and release-engineering gates remain mandatory.
+## v1.3.0 release (2026-08-25)
+
+- [x] Canonical version is consistently `1.3.0` (Cargo workspace, tauri.conf, frontend package/lock, PKGBUILD).
+- [x] Tag `v1.3.0` recreated from the release commit `d76b1f0` after smoke fixes; PKGBUILD source checksum repinned to the final tag tarball.
+- [x] Release-candidate workflow passed end-to-end: validate-tag, flatpak policy, Linux/Windows builds, AppImage launch smoke, Linux deb smoke, Windows install/first-screen/session-start/restart smoke.
+- [x] `SHA256SUMS` regenerated to cover exactly the attached asset set (including updater signatures and `latest.json`) with flat basenames; all 15 entries verified against a plain release download.
+- [x] Promotion published the draft with 15 assets (AppImage/NSIS + `.sig`, deb, rpm, tarball + torrent, SHA256SUMS, SBOM, provenance, release-manifest, latest.json); updater `latest.json` references signed v1.3.0 artifacts.
+- [x] `release-promotion` environment now has a required-reviewer protection rule; promotion was approved through it.
+- [x] Known limitation recorded: typed-input persistence is not asserted on CI runners (TD-NEW23, future tauri-driver harness).
 
 ## v1.2.0 release (2026-08-21) — published
 
