@@ -19,9 +19,9 @@
 
 | ID | Debt | Priority | When |
 |---|---|---|---|
-| DD1 | `rusqlite` 0.31 → newer releases require a compatibility review. | Low | Post-v1.0 / dependency decision |
-| DD2 | `refinery` 0.8 → newer releases require a compatibility review. | Low | Post-v1.0 / dependency decision |
-| DD3 | `toml` 0.8 → newer releases require a compatibility review. | Low | Post-v1.0 / dependency decision |
+| ~~DD1~~ | **Resolved (v1.3.2 window):** `rusqlite` 0.31 → 0.39. Zero source changes; regression evidence in migration_matrix 16/16, backup_restore 9/9, migration_and_perf 22/22, session_ledger 36/36. | — | Resolved |
+| ~~DD2~~ | **Resolved (v1.3.2 window):** `refinery` 0.8 → 0.9.2. Resolver-coupled with DD1 (core caps rusqlite ≤0.39; 0.40 awaits upstream widening). Migration-matrix evidence as above. | — | Resolved |
+| ~~DD3~~ | **Resolved (v1.3.2 window):** `toml` 0.8 → 1.1. Settings roundtrip 26/26, text-pack 11/11, zero source changes. | — | Resolved |
 | DD4 | GTK3-related Tauri transitive dependencies have maintenance/advisory debt (RUSTSEC-2024-0429 `glib` unsound + gtk3-rs unmaintained cluster). **Decision recorded:** documented acceptance scoped to the Linux-only Tauri webview backend; the unsound `VariantStrIter` path is transitive and not reached by our code. Revisit on Tauri gtk4-rs/glib≥0.20 migration or any reachable soundness advisory. See `docs/adr/0001-glib-gtk3-advisory.md`. | High → monitored | Phase 5 G5 / upstream Tauri gtk4 migration |
 
 ## Resolved foundation debt

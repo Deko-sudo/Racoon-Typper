@@ -1,5 +1,16 @@
 # Changelog — Racoon Typper
 
+## Unreleased
+
+### Dependencies
+
+- **DD1–DD3 dependency window closed** — `rusqlite` 0.31→0.39,
+  `refinery` 0.8→0.9.2 (resolver-coupled pair; refinery-core caps rusqlite
+  ≤0.39), and `toml` 0.8→1.1. Zero source changes required. Regression
+  evidence: migration matrix V1..V7→V9 through the production Refinery
+  runner (16/16), Online Backup API round-trips (9/9), existing-data and WAL
+  preservation, settings TOML round-trips (26/26), full workspace suite green.
+
 ## v1.3.1
 
 ### Release engineering
