@@ -1,6 +1,14 @@
 # Release Checklist — Racoon Typper
 
 This checklist describes the current baseline and the gates required for a production release. Phase 0 does not authorize a public release; licensing, foundation, security, and release-engineering gates remain mandatory.
+## v1.3.1 release (2026-08-25)
+
+- [x] CI-only patch release: Node 24 action refresh (`setup-node` v6.5.0, `download-artifact` v8.0.1, `gh-release` v2.6.2); no product code changes.
+- [x] TD-NEW23 WebDriver harness groundwork exercised on CI: pinned `tauri-driver` 2.0.6 provisioning, selenium-webdriver client, exact-version msedgedriver matching. Session creation fails inside runner desktop sessions ("DevToolsActivePort") — TD stays open with findings; Windows smoke retains proven guarantees.
+- [x] Release-candidate workflow passed end-to-end (8/8 jobs green).
+- [x] SHA256SUMS covers 14 entries; all verified against authenticated byte-exact downloads; updater `latest.json` points at signed v1.3.1 artifacts.
+- [x] **First real use of the fixed in-place promotion pipeline**: the draft was PATCHed to published preserving name and all 15 artifacts; `min_assets` assertion passed; environment approval granted through `release-promotion`.
+
 ## v1.3.0 release (2026-08-25)
 
 - [x] Canonical version is consistently `1.3.0` (Cargo workspace, tauri.conf, frontend package/lock, PKGBUILD).
