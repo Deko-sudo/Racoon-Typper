@@ -119,6 +119,11 @@ try {
 
   try {
     $env:APP_PATH = $executable
+    # msedgedriver attaches to the WebView2 instance over CDP; the spawned
+    # application only exposes that port when these browser arguments are set.
+    New-Item -ItemType Directory -Force -Path (Join-Path $workspace 'webview-profile') | Out-Null
+    $env:WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS =
+      "--remote-debugging-port=9222 --user-data-dir=$(Join-Path $workspace 'webview-profile')"
     Push-Location (Join-Path $repoRoot 'frontend')
     node ..\scripts\windows-ui-smoke.mjs
     $uiExit = $LASTEXITCODE
