@@ -1,0 +1,20 @@
+{
+  "name": "porcelain",
+  "display_name": "Porcelain",
+  "description": "Clean bright white with soft blue-gray accents.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#f4f5f7",
+    "surface": "#ffffff",
+    "text": "#2a2e35",
+    "accent": "#6888a8",
+    "correct": "#5a8068",
+    "incorrect": "#b04848",
+    "caret": "#4a6a88"
+  }
+}

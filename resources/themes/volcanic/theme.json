@@ -1,0 +1,20 @@
+{
+  "name": "volcanic",
+  "display_name": "Volcanic",
+  "description": "Black basalt with molten orange-red fissures.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Warm",
+  "is_dark": true,
+  "preview": {
+    "background": "#0a0806",
+    "surface": "#14100c",
+    "text": "#e8ddd0",
+    "accent": "#d4642a",
+    "correct": "#a0b878",
+    "incorrect": "#e85a3a",
+    "caret": "#f08040"
+  }
+}

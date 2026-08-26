@@ -18,6 +18,18 @@ requireCondition(manifest["app-id"] === "com.racoon.typper", "Unexpected Flatpak
 requireCondition(typeof manifest.runtime === "string" && typeof manifest["runtime-version"] === "string", "Runtime must be explicitly pinned");
 requireCondition(module?.sources?.some((source) => source.type === "dir" && source.path === "."), "Flatpak must build the checked-out source tree");
 requireCondition(module?.["build-commands"]?.includes("npm run tauri:build:binary --prefix frontend"), "Flatpak must build the application binary from source");
+requireCondition(
+  Array.isArray(manifest["sdk-extensions"])
+    && manifest["sdk-extensions"].includes("org.freedesktop.Sdk.Extension.rust-stable")
+    && manifest["sdk-extensions"].includes("org.freedesktop.Sdk.Extension.node22"),
+  "Flatpak must declare the rust-stable and node22 SDK extensions (the GNOME SDK has no cargo/node)",
+);
+requireCondition(
+  typeof module?.["build-options"]?.["append-path"] === "string"
+    && module["build-options"]["append-path"].includes("rust-stable")
+    && module["build-options"]["append-path"].includes("node22"),
+  "Flatpak build must append the rust-stable and node22 extension paths",
+);
 requireCondition(!manifest["finish-args"]?.some((argument) => argument.startsWith("--filesystem=")), "Flatpak runtime must not grant host filesystem access");
 requireCondition(!manifest["finish-args"]?.includes("--share=network"), "Flatpak runtime must not grant network access");
 

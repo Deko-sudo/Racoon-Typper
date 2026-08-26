@@ -123,6 +123,18 @@ function assetProvenance(path) {
       notes: "Lesson text and structure are project content and are covered by the project license.",
     };
   }
+  if (relative.startsWith("resources/fonts/")) {
+    return {
+      asset_name: relative.split("/").at(-1),
+      owner: "DejaVu Fonts project; Bitstream, Inc. (original Vera glyphs)",
+      source: "DejaVu Fonts 2.37 (https://dejavu-fonts.github.io/)",
+      license: "DejaVu Font License (Bitstream Vera + public domain DejaVu changes)",
+      provenance_status: "third-party-font",
+      modified: false,
+      generation: null,
+      notes: "Embedded at build time (include_bytes!) for the PNG result share card; full license text shipped in resources/fonts/DejaVu-LICENSE.",
+    };
+  }
   throw new Error(`No provenance rule for asset: ${relative}`);
 }
 
@@ -138,7 +150,10 @@ function generateAssetInventory() {
     checksum_sha256: sha256(path),
     ...assetProvenance(path),
   }));
-  if (entries.some((entry) => entry.license !== projectLicense)) {
+  const unlicensedThirdParty = entries.some(
+    (entry) => entry.license !== projectLicense && entry.provenance_status !== "third-party-font",
+  );
+  if (unlicensedThirdParty) {
     throw new Error("Every distributed project-owned asset must be Apache-2.0");
   }
   return {
@@ -157,7 +172,7 @@ function generateAssetProvenance(assets) {
   const lines = [
     "# Asset Provenance Inventory",
     "",
-    "This generated inventory covers project-owned resources and application icons distributed by Racoon Typper. Every listed asset is Apache-2.0. The machine-readable source, including SHA-256 checksums and all provenance fields, is `licenses/assets.json`.",
+    "This generated inventory covers project-owned resources and application icons distributed by Racoon Typper. Project-owned assets are Apache-2.0; embedded third-party fonts (resources/fonts/) retain their original license and are marked third-party-font. The machine-readable source, including SHA-256 checksums and all provenance fields, is `licenses/assets.json`.",
     "",
     "Word, course, and quote packs are project-owned generated content. They were generated specifically for Racoon Typper using GLM-5.2 and GPT-5.6 (Codex) during project development; no external repository, website, dataset, book, or application was used.",
     "",

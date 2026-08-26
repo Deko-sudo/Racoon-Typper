@@ -1,8 +1,12 @@
 {
   "app-id": "com.racoon.typper",
   "runtime": "org.gnome.Platform",
-  "runtime-version": "45",
+  "runtime-version": "50",
   "sdk": "org.gnome.Sdk",
+  "sdk-extensions": [
+    "org.freedesktop.Sdk.Extension.rust-stable",
+    "org.freedesktop.Sdk.Extension.node22"
+  ],
   "command": "racoon-typper",
   "modules": [
     {
@@ -27,6 +31,7 @@
         "build-args": [
           "--share=network"
         ],
+        "append-path": "/usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node22/bin",
         "env": {
           "CARGO_HOME": "/run/build/racoon-typper/.cargo",
           "RUST_BACKTRACE": "1"

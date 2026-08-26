@@ -1,12 +1,19 @@
 <script lang="ts">
-  import { FINGERS, HOME_ROW_EN, HOME_ROW_RU, ROWS, RU_FINGERS, RU_ROWS } from '../lib/keyboard';
+  import { HOME_ROW_RU, layoutFingers, layoutRows } from '../lib/keyboard';
 
   type KeySpec = { label: string; value?: string; span: number; special?: boolean };
   type KeyReference = { label: string; value?: string };
 
-  let { nextChar = '', isRussian = false, lastErrorChar = '', charStats = {} }: {
+  let {
+    nextChar = '',
+    isRussian = false,
+    keyboardLayout = 'qwerty',
+    lastErrorChar = '',
+    charStats = {},
+  }: {
     nextChar?: string;
     isRussian?: boolean;
+    keyboardLayout?: string;
     lastErrorChar?: string;
     charStats?: Record<string, { correct: number; incorrect: number; total: number }>;
   } = $props();
@@ -30,19 +37,23 @@
   const navTop = ['Ins', 'Home', 'PgUp'];
   const navMiddle = ['Del', 'End', 'PgDn'];
 
-  const letters = $derived(isRussian ? RU_ROWS : ROWS);
-  const homeRow = $derived(isRussian ? HOME_ROW_RU : HOME_ROW_EN);
-  const fingers = $derived(isRussian ? RU_FINGERS : FINGERS);
+  const letters = $derived(layoutRows(keyboardLayout, isRussian));
+  const homeRow = $derived(isRussian ? HOME_ROW_RU : new Set(letters[1]));
+  const fingers = $derived(layoutFingers(keyboardLayout, isRussian));
+  // Bracket/quote filler keys exist only on the physical QWERTY positions;
+  // Dvorak's own punctuation occupies those letter slots instead.
+  const latinQwertyExtras = $derived(!isRussian && keyboardLayout !== 'dvorak');
   const topRow = $derived<KeySpec[]>([
     { label: 'Tab', span: 1.5, special: true },
     ...letters[0].map(label => ({ label, span: 1 })),
-    ...(isRussian ? [{ label: '\\', span: 1 }] : [{ label: '[', span: 1 }, { label: ']', span: 1 }, { label: '\\', span: 1 }]),
+    ...(isRussian ? [{ label: '\\', span: 1 }] : latinQwertyExtras ? [{ label: '[', span: 1 }, { label: ']', span: 1 }, { label: '\\', span: 1 }] : []),
   ]);
   const middleRow = $derived<KeySpec[]>([
     { label: 'Caps', span: 1.75, special: true },
     ...letters[1].map(label => ({ label, span: 1 })),
-    // ROWS[1] already ends with `;` in the English layout; add only apostrophe.
-    ...(isRussian ? [] : [{ label: "'", span: 1 }]),
+    // The QWERTY home row ends with `;`, leaving the apostrophe key separate;
+    // Dvorak places its own punctuation inside letters[0..2] already.
+    ...(latinQwertyExtras ? [{ label: "'", span: 1 }] : []),
     { label: 'Enter', span: 2.25, special: true },
   ]);
   const bottomRow = $derived<KeySpec[]>([
@@ -149,7 +160,7 @@
   .nav-row, .arrows { display: grid; grid-template-columns: repeat(3, var(--u)); gap: var(--gap); min-height: 44px; }
   .arrows { margin-top: 44px; }
   .numpad { display: grid; grid-template-columns: repeat(4, var(--u)); grid-template-rows: repeat(5, 44px); gap: var(--gap); }
-  .key { min-width: 0; height: 44px; display: grid; place-items: center; background: var(--bg-sub); color: var(--text); border: 1px solid var(--sub); border-radius: 5px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease; }
+  .key { min-width: 0; height: 44px; display: grid; place-items: center; background: var(--color-key-background); color: var(--text); border: 1px solid var(--color-key-border); border-radius: 5px; font-size: 0.72rem; font-weight: 700; white-space: nowrap; transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease; }
   .function-key { width: var(--u); height: 32px; font-size: 0.62rem; }
   .special { color: var(--sub); font-size: 0.62rem; }
   /* Let the final special key fill only its row's remaining physical space.
@@ -159,7 +170,7 @@
   .next-key { background: var(--main); border-color: var(--main); color: var(--color-accent-text); box-shadow: 0 0 0 3px color-mix(in srgb, var(--main) 25%, transparent); transform: translateY(-3px) scale(1.04); z-index: 1; }
   .error-key { background: color-mix(in srgb, var(--error) 22%, var(--bg-sub)); border-color: var(--error); }
   .weak-critical { background: color-mix(in srgb, var(--error) 26%, var(--bg-sub)); border-color: var(--error); color: var(--text); }
-  .weak-warning { background: color-mix(in srgb, #ff8c42 22%, var(--bg-sub)); border-color: #ff8c42; color: var(--text); }
+  .weak-warning { background: color-mix(in srgb, var(--color-warning) 22%, var(--bg-sub)); border-color: var(--color-warning); color: var(--text); }
   .measured-key { border-color: color-mix(in srgb, var(--main) 45%, var(--sub)); }
   .key.next-key { background: var(--main); border-color: var(--main); color: var(--color-accent-text); }
   .num-key { width: var(--u); }

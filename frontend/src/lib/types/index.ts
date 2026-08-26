@@ -6,12 +6,22 @@ export interface CharStatus {
   status: 'pending' | 'correct' | 'incorrect' | 'backspaced';
 }
 
+/// Typed mode configuration. The backend emits one of these shapes per
+/// mode_type; the contract test in scripts/mode-config-contract.test.mjs
+/// pins the exact field sets.
+export type ModeConfig =
+  | { type: 'time'; duration: number; language: string }
+  | { type: 'words'; word_count: number; language: string }
+  | { type: 'quote'; quote_id: number | null; language: string }
+  | { type: 'custom'; language: string }
+  | { type: 'lesson'; lesson_id: string; module_id: string };
+
 export interface TestSessionResponse {
   session_id: string;
   text: string;
   text_length: number;
   mode_type: string;
-  mode_config: Record<string, unknown>;
+  mode_config: ModeConfig;
   language: string;
 }
 
@@ -98,6 +108,8 @@ export interface AppSettings {
   theme: string;
   font_size: number;
   caret_style: string;
+  caret_position: string;
+  caret_animation: string;
   show_live_wpm: boolean;
   show_accuracy: boolean;
   show_keyboard_trainer: boolean;
@@ -107,11 +119,19 @@ export interface AppSettings {
   sound_enabled: boolean;
   sound_volume: number;
   zen_mode_enabled: boolean;
+  blind_mode_enabled: boolean;
   ui_language: string;
+  practice_language: string;
+  onboarding_completed: boolean;
+  keyboard_layout: string;
   vim_mode: boolean;
   daily_goal_type: string;
   daily_goal_wpm: number;
   daily_goal_accuracy: number;
+  daily_goal_minutes: number;
+  pomodoro_work_min: number;
+  pomodoro_break_min: number;
+  custom_theme_colors: string;
 }
 
 export interface ThemeInfo {
@@ -126,7 +146,7 @@ export interface ThemeInfo {
   };
 }
 
-export type ViewName = 'dashboard' | 'test' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys' | 'analytics' | 'achievements';
+export type ViewName = 'dashboard' | 'test' | 'pomodoro' | 'history' | 'bests' | 'custom' | 'settings' | 'lessons' | 'weakkeys' | 'analytics' | 'achievements';
 export type ModeName = 'time' | 'words' | 'quote' | 'custom';
 export type LanguageCode = 'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko';
 
@@ -223,6 +243,33 @@ export interface ProgressPoint {
   wpm: number;
   accuracy: number;
   tests: number;
+  time_ms: number;
+  lessons: number;
+}
+
+export type TextPackPolicy = 'merge' | 'replace';
+
+export interface TextPackImportPlan {
+  policy: TextPackPolicy;
+  source_format: string;
+  language: string;
+  incoming: number;
+  duplicates_in_pack: number;
+  existing_in_language: number;
+  to_insert: number;
+  to_skip: number;
+  removed_by_replace: number;
+}
+
+export interface WeeklySummaryResponse {
+  week_start: string;
+  total_tests: number;
+  total_time_ms: number;
+  avg_wpm: number;
+  best_wpm: number;
+  avg_accuracy: number;
+  days_practiced: number;
+  goal_met_days: number;
 }
 
 export type ProfileImportPolicy = 'merge' | 'replace';

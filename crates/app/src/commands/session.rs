@@ -33,7 +33,7 @@ pub(crate) fn start_test(
         language,
     };
     let mut engine = state.lock()?;
-    let info = session_service::start_test(&mut engine, request)?;
+    let info = session_service::start_test(&mut engine, &app_state, request)?;
     Ok(TestSessionResponse::from_session_info(info))
 }
 
@@ -57,7 +57,32 @@ pub(crate) fn abort_session(
     session_id: SessionId,
 ) -> Result<(), AppError> {
     app_state.require_startup_recovery_ready()?;
-    session_service::abort_session(&state, session_id)
+    session_service::abort_session(&state, &app_state, session_id)
+}
+
+/// Abandons whatever session is currently running, without needing its id.
+///
+/// This is used by the frontend on startup: a hot-reload (dev) or window
+/// reload restarts the renderer but the in-memory `CoreEngine` keeps the
+/// previous session, so a fresh `start_test` would be rejected with
+/// TEST_ALREADY_ACTIVE. `engine.abort()` only discards a Running session and
+/// never touches one that is awaiting/finalizing persistence, so calling this
+/// before starting is safe.
+#[tauri::command]
+pub(crate) fn abandon_active_session(
+    state: State<'_, Mutex<CoreEngine>>,
+    app_state: State<'_, AppState>,
+) -> Result<bool, AppError> {
+    app_state.require_startup_recovery_ready()?;
+    let mut engine = state.lock()?;
+    let session_id = engine.current_session_id().cloned();
+    let abandoned = engine.abort();
+    if abandoned {
+        if let Some(session_id) = session_id {
+            session_service::record_session_abandoned(&app_state, &session_id);
+        }
+    }
+    Ok(abandoned)
 }
 
 #[tauri::command]

@@ -85,13 +85,22 @@ fn capability_permissions() -> BTreeSet<String> {
         .collect()
 }
 
+/// External Tauri plugin permissions explicitly granted to the main window.
+/// These are scoped capabilities from third-party plugins used by specific
+/// features (custom-text import). Update this set when adding/removing a plugin.
+const ALLOWED_PLUGIN_PERMISSIONS: &[&str] = &[
+    "dialog:allow-open",
+    "fs:allow-read-text-file",
+    "clipboard-manager:allow-read-text",
+];
+
 #[test]
 fn main_window_capability_matches_the_registered_frontend_command_surface() {
     let registered = registered_commands();
     let frontend = frontend_invocations();
     let manifest = application_manifest_commands();
     let permissions = capability_permissions();
-    let expected_permissions = manifest
+    let expected_app_permissions: BTreeSet<String> = manifest
         .iter()
         .map(|command| format!("allow-{}", command.replace('_', "-")))
         .collect();
@@ -104,10 +113,32 @@ fn main_window_capability_matches_the_registered_frontend_command_surface() {
         manifest, registered,
         "AppManifest must cover every registered command exactly once"
     );
+
+    // Partition permissions into app-command grants and plugin grants.
+    let actual_app_permissions: BTreeSet<String> = permissions
+        .iter()
+        .filter(|p| !p.contains(':'))
+        .cloned()
+        .collect();
     assert_eq!(
-        permissions, expected_permissions,
-        "main capability must grant only the generated application-command permissions"
+        actual_app_permissions, expected_app_permissions,
+        "main capability must grant exactly the generated application-command permissions"
     );
+
+    let allowed_plugin_set: BTreeSet<String> = ALLOWED_PLUGIN_PERMISSIONS
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let actual_plugin_permissions: BTreeSet<String> = permissions
+        .iter()
+        .filter(|p| p.contains(':'))
+        .cloned()
+        .collect();
+    assert_eq!(
+        actual_plugin_permissions, allowed_plugin_set,
+        "main capability plugin permissions must match the explicit allow-list"
+    );
+
     assert!(
         !permissions
             .iter()

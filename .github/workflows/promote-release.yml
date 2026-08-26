@@ -7,6 +7,11 @@ on:
         description: Draft release tag to promote
         required: true
         type: string
+      min_assets:
+        description: Minimum assets the published release must carry (0 = skip count assertion)
+        required: false
+        default: '12'
+        type: string
 
 permissions:
   contents: read
@@ -29,10 +34,47 @@ jobs:
           tag='${{ inputs.tag }}'
           [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z]+)*$ ]]
           git rev-parse --verify --quiet "refs/tags/$tag" >/dev/null
-      - name: Publish approved release
-        uses: softprops/action-gh-release@c95fe1489396fe8a9eb87c0abf8aa5b2ef267fda # v2.2.1
-        with:
-          tag_name: ${{ inputs.tag }}
-          draft: false
-          prerelease: false
-          generate_release_notes: true
+      # Promote the EXISTING draft in place. GitHub's release-by-tag lookup
+      # excludes drafts, so creating a release by tag_name would silently spawn
+      # a second, asset-less published object next to the draft (observed on
+      # the v1.3.0 promotion). A PATCH on the draft keeps its name and every
+      # verified artifact.
+      - name: Publish approved release in place
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag='${{ inputs.tag }}'
+          draft_id="$(gh api --paginate "repos/${{ github.repository }}/releases" \
+            --jq ".[] | select(.draft and .tag_name == \"$tag\") | .id" | head -1)"
+          if [[ -z "$draft_id" ]]; then
+            echo "::error::No draft release found for $tag — promotion expects an RC draft with attached artifacts."
+            exit 1
+          fi
+          gh api -X PATCH "repos/${{ github.repository }}/releases/$draft_id" \
+            -f draft=false -F prerelease=false --jq '{id, tag_name, draft}' 
+      - name: Assert promoted release integrity
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag='${{ inputs.tag }}'
+          min_assets=${{ inputs.min_assets || '12' }}
+          for attempt in $(seq 1 10); do
+            read -r draft assets < <(gh api "repos/${{ github.repository }}/releases/tags/$tag" \
+              --jq '"\(.draft) \(.assets | length)"')
+            [[ "$draft" == "false" ]] && break
+            echo "release still marked draft; retrying ($attempt/10)"
+            sleep 6
+          done
+          if [[ "$draft" != "false" ]]; then
+            echo "::error::Release $tag is still a draft after promotion."
+            exit 1
+          fi
+          if (( assets < min_assets )); then
+            echo "::error::Promoted release carries $assets assets (< required $min_assets)."
+            exit 1
+          fi
+          echo "Promotion verified: $tag published with $assets assets (>= $min_assets)." 

@@ -52,8 +52,8 @@
     if (data.total === 0) return 'var(--sub)';
     const accuracy = (data.correct / data.total) * 100;
     if (accuracy >= 95) return 'var(--text)';
-    if (accuracy >= 80) return '#5eead4';
-    if (accuracy >= 60) return '#ff8c42';
+    if (accuracy >= 80) return 'var(--color-chart-positive)';
+    if (accuracy >= 60) return 'var(--color-warning)';
     return 'var(--error)';
   }
 
@@ -199,16 +199,21 @@
   .keyboard-main { display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start; min-width: 748px; }
   .keyboard-row { display: flex; gap: 0.25rem; }
   .row-fn { align-self: flex-start; }
-  .row-number { padding-left: 8px; }
-  .row-top { padding-left: 18px; }
-  .row-home { padding-left: 30px; }
-  .row-bottom { padding-left: 46px; }
+  /* The letter columns of each row are aligned to a single vertical line.
+     The padding compensates for the differing widths of the leading special
+     keys (number `` = 48px, tab = 64px, caps = 72px, left shift = 96px), each
+     followed by a 4px gap. Without this, the home row (a/f/j/l) drifts right
+     relative to the rows above and below. */
+  .row-number { padding-left: 60px; }
+  .row-top { padding-left: 44px; }
+  .row-home { padding-left: 36px; }
+  .row-bottom { padding-left: 12px; }
   .row-space { padding-left: 72px; }
   .keyboard-numpad { display: grid; grid-template-columns: repeat(4, 48px); grid-template-rows: repeat(5, 52px); gap: 0.25rem; margin-top: 36px; }
   .key {
-    height: 52px; border: 1px solid var(--bg-sub); border-radius: 4px;
+    height: 52px; border: 1px solid var(--color-key-border); border-radius: 4px;
     display: flex; flex-direction: column; align-items: center; justify-content: center;
-    background: var(--bg-sub); font-size: 0.75rem; transition: all 0.2s; position: relative;
+    background: var(--color-key-background); font-size: 0.75rem; transition: all 0.2s; position: relative;
   }
   .key-fn { height: 32px; width: 40px; }
   .key-special { justify-content: center; }

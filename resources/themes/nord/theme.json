@@ -1,0 +1,20 @@
+{
+  "name": "nord",
+  "display_name": "Nord",
+  "description": "Arctic north-bluish color palette.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Cool",
+  "is_dark": true,
+  "preview": {
+    "background": "#2e3440",
+    "surface": "#272c36",
+    "text": "#e5e9f0",
+    "accent": "#88c0d0",
+    "correct": "#a3be8c",
+    "incorrect": "#bf616a",
+    "caret": "#eceff4"
+  }
+}

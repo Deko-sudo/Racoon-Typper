@@ -496,6 +496,7 @@ fn is_safe_descriptor_string_key(key: &str) -> bool {
             | "sourceid"
             | "quoteid"
             | "lessonid"
+            | "moduleid"
             | "configversion"
             | "difficulty"
     )

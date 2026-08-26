@@ -17,6 +17,7 @@ pub trait TestRepository {
         mode_filter: Option<&str>,
     ) -> Result<Vec<TestSummary>, DbError>;
     fn get_by_id(&self, id: i64) -> Result<TestDetail, DbError>;
+    fn get_id_by_session_id(&self, session_id: &SessionId) -> Result<i64, DbError>;
     fn get_count(&self, mode_filter: Option<&str>) -> Result<i64, DbError>;
     fn get_recent_heatmaps(
         &self,
@@ -40,7 +41,8 @@ const SELECT_ALL_COLS: &str =
     "id, session_id, created_at, mode_type, mode_config, language, text_length,
     duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency,
     correct_chars, incorrect_chars, backspaces, char_stats, heatmap_data,
-    graph_data, is_pb, tags";
+    graph_data, is_pb, tags,
+    EXISTS(SELECT 1 FROM test_replays WHERE test_replays.test_id = tests.id) AS has_replay";
 const SELECT_HISTORY_COLS: &str =
     "id, session_id, created_at, mode_type, mode_config, language, text_length,
     duration_ms, wpm, raw_wpm, accuracy, raw_accuracy, consistency,
@@ -167,6 +169,16 @@ impl<'a> TestRepository for SqliteTestRepository<'a> {
         Ok(TestDetail::from(row))
     }
 
+    fn get_id_by_session_id(&self, session_id: &SessionId) -> Result<i64, DbError> {
+        self.conn
+            .query_row(
+                "SELECT id FROM tests WHERE session_id = ?1",
+                params![session_id.as_str()],
+                |row| row.get(0),
+            )
+            .map_err(|e| DbError::NotFound(format!("Test session={}: {}", session_id, e)))
+    }
+
     fn get_count(&self, mode_filter: Option<&str>) -> Result<i64, DbError> {
         let count: i64 = match mode_filter {
             Some(mode) => self
@@ -248,13 +260,12 @@ fn map_test_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TestRow> {
         graph_data: row.get(18)?,
         is_pb: row.get(19)?,
         tags: row.get(20)?,
+        has_replay: row.get(21)?,
     })
 }
 
 fn map_test_summary_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<TestSummary> {
-    let mut summary = TestSummary::from(map_test_row(row)?);
-    summary.has_replay = row.get(21)?;
-    Ok(summary)
+    Ok(map_test_row(row)?.into())
 }
 
 #[cfg(test)]

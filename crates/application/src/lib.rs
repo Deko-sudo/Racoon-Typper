@@ -49,12 +49,13 @@ pub use reporting::{
     GetStreakReport, GetTestDetails, GetTestReplayPage, HistoryFilter, HistoryItem, HistoryPage,
     HistoryPageSource, HistoryQuery, InclusiveDateRange, InsightInputQuery, InsightInputs,
     ListDailyStatistics, ListPersonalBests, ListTestHistory, ListTestHistoryRequest,
-    OffsetPagination, PersonalBestConfigurationKey, PersonalBestDimension, PersonalBestEntry,
-    RelativeReportingPeriod, ReplayFrame, ReplayPage, ReplayPageSource, ReplayQuery, ReportingDay,
-    ReportingError, ReportingLanguage, ReportingLessonId, ReportingMetricSample, ReportingMode,
-    ReportingModeFilter, ReportingSummary, StreakReport, TestDetails, ANALYTICS_HISTORY_LIMIT,
-    DEFAULT_EXPORT_PAGE_LIMIT, DEFAULT_HISTORY_PAGE_LIMIT, MAX_REPORTING_PAGE_LIMIT,
-    MAX_REPORTING_PAGE_OFFSET,
+    ListWeeklySummaries, OffsetPagination, PersonalBestConfigurationKey, PersonalBestDimension,
+    PersonalBestEntry, RelativeReportingPeriod, ReplayFrame, ReplayPage, ReplayPageSource,
+    ReplayQuery, ReportingDay, ReportingError, ReportingLanguage, ReportingLessonId,
+    ReportingMetricSample, ReportingMode, ReportingModeFilter, ReportingSummary, StreakReport,
+    TestDetails, WeeklySummary, ANALYTICS_HISTORY_LIMIT, DEFAULT_EXPORT_PAGE_LIMIT,
+    DEFAULT_HISTORY_PAGE_LIMIT, MAX_REPORTING_PAGE_LIMIT, MAX_REPORTING_PAGE_OFFSET,
+    MAX_WEEKLY_SUMMARY_WEEKS,
 };
 pub use session::{SessionCompletion, SessionPersistenceReceipt, SessionStartRequest};
 pub use startup_recovery::{

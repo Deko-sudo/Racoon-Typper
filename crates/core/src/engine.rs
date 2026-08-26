@@ -189,21 +189,23 @@ impl CoreEngine {
                     session
                         .mode
                         .on_key_press(ch, key_event.timestamp, &mut session.buffer);
-                match mode_result {
-                    ModeResult::Complete => TypingResult::TestEnded,
-                    ModeResult::Continue => {
-                        match session
-                            .buffer
-                            .typed_chars
-                            .get(previous_caret_pos)
-                            .map(|typed| &typed.status)
-                        {
-                            Some(racoon_domain::CharStatus::Correct) => TypingResult::Correct,
-                            Some(racoon_domain::CharStatus::Incorrect) => TypingResult::Incorrect,
-                            _ => TypingResult::Noop,
-                        }
-                    }
-                    ModeResult::Failed(_) => TypingResult::Noop,
+                // Классификация по фактическому статусу символа в буфере —
+                // одинакова для Continue и Complete (deadline time-mode или
+                // конец текста). Раньше при Complete возвращался TestEnded,
+                // и завершающий keystroke выпадал из трекера/графика, хотя
+                // был обработан буфером (finalize его считал).
+                match session
+                    .buffer
+                    .typed_chars
+                    .get(previous_caret_pos)
+                    .map(|typed| &typed.status)
+                {
+                    Some(racoon_domain::CharStatus::Correct) => TypingResult::Correct,
+                    Some(racoon_domain::CharStatus::Incorrect) => TypingResult::Incorrect,
+                    _ => match mode_result {
+                        ModeResult::Complete => TypingResult::TestEnded,
+                        _ => TypingResult::Noop,
+                    },
                 }
             }
             KeyAction::Backspace => {

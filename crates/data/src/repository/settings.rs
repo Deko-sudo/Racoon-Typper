@@ -18,6 +18,13 @@ pub struct AppSettings {
     pub font_size: i64,
     #[serde(default = "default_caret_style")]
     pub caret_style: String,
+    /// Позиция каретки относительно символа: "before" (перед следующей буквой,
+    /// индустриальный стандарт — дефолт) или "after" (за последней напечатанной).
+    #[serde(default = "default_caret_position")]
+    pub caret_position: String,
+    /// Анимация каретки: "blink" (мигание) или "pulse" (мягкая пульсация).
+    #[serde(default = "default_caret_animation")]
+    pub caret_animation: String,
     #[serde(default = "default_true")]
     pub show_live_wpm: bool,
     #[serde(default = "default_true")]
@@ -38,8 +45,23 @@ pub struct AppSettings {
     pub sound_volume: f64,
     #[serde(default)]
     pub zen_mode_enabled: bool,
+    #[serde(default)]
+    pub blind_mode_enabled: bool,
     #[serde(default = "default_ui_language")]
     pub ui_language: String,
+    /// Practice language for tests and lessons; lowercase resource code
+    /// (for example "en" or "zh-hk"). Membership against the bundled course
+    /// resources is enforced by the application layer.
+    #[serde(default = "default_practice_language")]
+    pub practice_language: String,
+    /// First-run onboarding has been completed or explicitly skipped.
+    #[serde(default)]
+    pub onboarding_completed: bool,
+    /// Physical keyboard layout used for finger hints and visualization:
+    /// "qwerty", "jcuken", or "dvorak". Cyrillic characters always resolve to
+    /// the JCUKEN map regardless of this value.
+    #[serde(default = "default_keyboard_layout")]
+    pub keyboard_layout: String,
     #[serde(default)]
     pub vim_mode: bool,
     #[serde(default = "default_daily_goal_type")]
@@ -48,6 +70,19 @@ pub struct AppSettings {
     pub daily_goal_wpm: f64,
     #[serde(default)]
     pub daily_goal_accuracy: f64,
+    /// Daily typing-time goal in minutes, used when `daily_goal_type == "time"`.
+    #[serde(default)]
+    pub daily_goal_minutes: i64,
+    /// Pomodoro work phase length in minutes.
+    #[serde(default = "default_pomodoro_work_min")]
+    pub pomodoro_work_min: i64,
+    /// Pomodoro break phase length in minutes.
+    #[serde(default = "default_pomodoro_break_min")]
+    pub pomodoro_break_min: i64,
+    /// Кастомная тема: JSON-объект { "--color-*": "#rrggbb" }. Пустая строка —
+    /// тема не настроена. Ключи валидируются по белому списку при set().
+    #[serde(default)]
+    pub custom_theme_colors: String,
 }
 
 fn default_theme() -> String {
@@ -80,7 +115,8 @@ fn normalize_theme(theme: &str) -> String {
         | "carbon"
         | "moonlight"
         | "dawn"
-        | "sage" => theme.to_string(),
+        | "sage"
+        | "custom" => theme.to_string(),
         "racoon_dark" => "racoon_graphite".to_string(),
         "racoon_light" => "racoon_silver".to_string(),
         _ => default_theme(),
@@ -95,6 +131,65 @@ fn default_caret_style() -> String {
     "underline".to_string()
 }
 
+fn default_caret_position() -> String {
+    "before".to_string()
+}
+
+fn default_caret_animation() -> String {
+    "blink".to_string()
+}
+
+fn valid_caret_position(value: &str) -> bool {
+    matches!(value, "before" | "after")
+}
+
+fn valid_caret_animation(value: &str) -> bool {
+    matches!(value, "blink" | "pulse")
+}
+
+/// Валидирует JSON кастомной темы: объект, ключи из белого списка,
+/// значения — hex-цвета "#rrggbb" (или "rrggbb"). Возвращает нормализованный
+/// компактный JSON (ключи отсортированы) или ошибку.
+fn validate_custom_theme_json(value: &str) -> Result<String, DbError> {
+    if value.trim().is_empty() {
+        return Ok(String::new());
+    }
+    if value.chars().count() > MAX_CUSTOM_THEME_JSON_CHARS {
+        return Err(validation_error(format!(
+            "custom_theme_colors must be at most {MAX_CUSTOM_THEME_JSON_CHARS} characters"
+        )));
+    }
+    let parsed: serde_json::Value = serde_json::from_str(value).map_err(|error| {
+        validation_error(format!("custom_theme_colors must be valid JSON: {error}"))
+    })?;
+    let object = parsed
+        .as_object()
+        .ok_or_else(|| validation_error("custom_theme_colors must be a JSON object"))?;
+
+    let mut normalized: std::collections::BTreeMap<String, String> =
+        std::collections::BTreeMap::new();
+    for (key, color) in object {
+        if !CUSTOM_THEME_VARIABLES.contains(&key.as_str()) {
+            return Err(validation_error(format!(
+                "Unsupported custom theme variable: {key}"
+            )));
+        }
+        let color = color
+            .as_str()
+            .ok_or_else(|| validation_error(format!("{key} must be a hex color string")))?;
+        let hex = color.trim().trim_start_matches('#');
+        if hex.len() != 6 || !hex.chars().all(|c| c.is_ascii_hexdigit()) {
+            return Err(validation_error(format!(
+                "{key} must be a six-digit hex color like #rrggbb"
+            )));
+        }
+        normalized.insert(key.clone(), format!("#{}", hex.to_ascii_lowercase()));
+    }
+    serde_json::to_string(&normalized).map_err(|error| {
+        validation_error(format!("custom_theme_colors serialization failed: {error}"))
+    })
+}
+
 fn default_true() -> bool {
     true
 }
@@ -107,14 +202,90 @@ fn default_ui_language() -> String {
     "en".to_string()
 }
 
+fn default_practice_language() -> String {
+    "en".to_string()
+}
+
+fn default_keyboard_layout() -> String {
+    "qwerty".to_string()
+}
+
+fn valid_keyboard_layout(value: &str) -> bool {
+    matches!(value, "qwerty" | "jcuken" | "dvorak")
+}
+
 fn default_daily_goal_type() -> String {
     "time".to_string()
+}
+
+fn default_pomodoro_work_min() -> i64 {
+    25
+}
+
+fn default_pomodoro_break_min() -> i64 {
+    5
 }
 
 const MIN_FONT_SIZE: i64 = 12;
 const MAX_FONT_SIZE: i64 = 72;
 const MAX_DAILY_GOAL_WPM: f64 = 300.0;
 const MAX_DAILY_GOAL_ACCURACY: f64 = 100.0;
+const MAX_DAILY_GOAL_MINUTES: i64 = 1_440;
+const MAX_POMODORO_MINUTES: i64 = 180;
+const MAX_CUSTOM_THEME_JSON_CHARS: usize = 16_384;
+
+/// Белый список CSS-переменных, которые может задавать кастомная тема.
+/// Совпадает с семантическим контрактом тем (docs/THEMES.md).
+const CUSTOM_THEME_VARIABLES: &[&str] = &[
+    "--color-app-background",
+    "--color-surface-primary",
+    "--color-surface-raised",
+    "--color-surface-hover",
+    "--color-surface-active",
+    "--color-text-primary",
+    "--color-text-secondary",
+    "--color-text-muted",
+    "--color-text-disabled",
+    "--color-border",
+    "--color-border-strong",
+    "--color-accent",
+    "--color-accent-hover",
+    "--color-accent-active",
+    "--color-accent-text",
+    "--color-focus-ring",
+    "--color-selection",
+    "--color-caret",
+    "--color-typing-pending",
+    "--color-typing-current",
+    "--color-typing-correct",
+    "--color-typing-incorrect",
+    "--color-typing-corrected",
+    "--color-key-background",
+    "--color-key-border",
+    "--color-key-active",
+    "--color-key-pressed",
+    "--color-success",
+    "--color-warning",
+    "--color-error",
+    "--color-information",
+    "--color-chart-primary",
+    "--color-chart-secondary",
+    "--color-chart-positive",
+    "--color-chart-negative",
+    "--color-chart-grid",
+    "--color-chart-axis",
+    "--color-chart-label",
+    "--color-chart-tooltip-background",
+    "--color-chart-tooltip-border",
+    "--color-chart-selected",
+    "--color-progress-track",
+    "--color-progress-fill",
+    "--color-overlay",
+    "--color-modal-surface",
+    "--color-tooltip-surface",
+    "--color-scrollbar",
+    "--color-scrollbar-hover",
+];
 static SETTINGS_TEMP_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
 fn validation_error(message: impl Into<String>) -> DbError {
@@ -122,7 +293,13 @@ fn validation_error(message: impl Into<String>) -> DbError {
 }
 
 fn valid_caret_style(value: &str) -> bool {
-    matches!(value, "underline" | "block" | "solid" | "off")
+    // thin/thick/bubble/off — актуальные стили. underline/solid/block —
+    // legacy-значения из старых настроек: принимаются, фронтенд маппит их
+    // на новые рендеры (underline→thin, solid→thick, block→bubble).
+    matches!(
+        value,
+        "thin" | "thick" | "bubble" | "off" | "underline" | "block" | "solid"
+    )
 }
 
 fn valid_daily_goal_type(value: &str) -> bool {
@@ -169,6 +346,8 @@ impl Default for AppSettings {
             theme: default_theme(),
             font_size: 24,
             caret_style: "underline".to_string(),
+            caret_position: "before".to_string(),
+            caret_animation: "blink".to_string(),
             show_live_wpm: true,
             show_accuracy: true,
             show_keyboard_trainer: true,
@@ -179,11 +358,19 @@ impl Default for AppSettings {
             verbose_logging: false,
             sound_volume: 0.5,
             zen_mode_enabled: false,
+            blind_mode_enabled: false,
             ui_language: "en".to_string(),
+            practice_language: "en".to_string(),
+            onboarding_completed: false,
+            keyboard_layout: "qwerty".to_string(),
             vim_mode: false,
             daily_goal_type: "time".to_string(),
             daily_goal_wpm: 0.0,
             daily_goal_accuracy: 0.0,
+            daily_goal_minutes: 0,
+            pomodoro_work_min: 25,
+            pomodoro_break_min: 5,
+            custom_theme_colors: String::new(),
         }
     }
 }
@@ -304,6 +491,24 @@ impl SettingsStore {
                 }
                 settings.caret_style = value.to_string();
             }
+            "caret_position" => {
+                let value = string_value(&value, key)?;
+                if !valid_caret_position(value) {
+                    return Err(validation_error(format!(
+                        "Unsupported caret position: {value}"
+                    )));
+                }
+                settings.caret_position = value.to_string();
+            }
+            "caret_animation" => {
+                let value = string_value(&value, key)?;
+                if !valid_caret_animation(value) {
+                    return Err(validation_error(format!(
+                        "Unsupported caret animation: {value}"
+                    )));
+                }
+                settings.caret_animation = value.to_string();
+            }
             "show_live_wpm" => {
                 settings.show_live_wpm = boolean_value(&value, key)?;
             }
@@ -338,6 +543,9 @@ impl SettingsStore {
             "zen_mode_enabled" => {
                 settings.zen_mode_enabled = boolean_value(&value, key)?;
             }
+            "blind_mode_enabled" => {
+                settings.blind_mode_enabled = boolean_value(&value, key)?;
+            }
             "ui_language" => {
                 let value = string_value(&value, key)?;
                 if !valid_language_code(value) {
@@ -346,6 +554,27 @@ impl SettingsStore {
                     ));
                 }
                 settings.ui_language = value.to_string();
+            }
+            "practice_language" => {
+                let value = string_value(&value, key)?;
+                if !valid_language_code(value) {
+                    return Err(validation_error(
+                        "practice_language must be a supported language code",
+                    ));
+                }
+                settings.practice_language = value.to_string();
+            }
+            "onboarding_completed" => {
+                settings.onboarding_completed = boolean_value(&value, key)?;
+            }
+            "keyboard_layout" => {
+                let value = string_value(&value, key)?;
+                if !valid_keyboard_layout(value) {
+                    return Err(validation_error(
+                        "keyboard_layout must be one of: qwerty, jcuken, dvorak",
+                    ));
+                }
+                settings.keyboard_layout = value.to_string();
             }
             "vim_mode" => {
                 settings.vim_mode = boolean_value(&value, key)?;
@@ -376,6 +605,37 @@ impl SettingsStore {
                     )));
                 }
                 settings.daily_goal_accuracy = value;
+            }
+            "daily_goal_minutes" => {
+                let value = integer_value(&value, key)?;
+                if !(0..=MAX_DAILY_GOAL_MINUTES).contains(&value) {
+                    return Err(validation_error(format!(
+                        "daily_goal_minutes must be between 0 and {MAX_DAILY_GOAL_MINUTES}"
+                    )));
+                }
+                settings.daily_goal_minutes = value;
+            }
+            "pomodoro_work_min" => {
+                let value = integer_value(&value, key)?;
+                if !(1..=MAX_POMODORO_MINUTES).contains(&value) {
+                    return Err(validation_error(format!(
+                        "pomodoro_work_min must be between 1 and {MAX_POMODORO_MINUTES}"
+                    )));
+                }
+                settings.pomodoro_work_min = value;
+            }
+            "pomodoro_break_min" => {
+                let value = integer_value(&value, key)?;
+                if !(1..=MAX_POMODORO_MINUTES).contains(&value) {
+                    return Err(validation_error(format!(
+                        "pomodoro_break_min must be between 1 and {MAX_POMODORO_MINUTES}"
+                    )));
+                }
+                settings.pomodoro_break_min = value;
+            }
+            "custom_theme_colors" => {
+                let value = string_value(&value, key)?;
+                settings.custom_theme_colors = validate_custom_theme_json(value)?;
             }
             _ => {
                 return Err(validation_error(format!("Unknown setting key: {key}")));
@@ -559,6 +819,24 @@ mod tests {
     }
 
     #[test]
+    fn caret_animation_defaults_to_blink_and_validates() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert_eq!(store.load().unwrap().caret_animation, "blink");
+        let settings = store
+            .set("caret_animation", toml::Value::String("pulse".to_string()))
+            .unwrap();
+        assert_eq!(settings.caret_animation, "pulse");
+        assert_eq!(store.load().unwrap().caret_animation, "pulse");
+        assert!(store
+            .set("caret_animation", toml::Value::String("spin".to_string()))
+            .is_err());
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
     fn set_show_live_wpm() {
         let path = temp_settings_path();
         let store = SettingsStore::new(path.clone());
@@ -582,6 +860,76 @@ mod tests {
             .unwrap();
         assert!(settings.verbose_logging);
         assert!(store.load().unwrap().verbose_logging);
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn practice_language_roundtrips_and_validates_format() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert_eq!(store.load().unwrap().practice_language, "en");
+        let settings = store
+            .set("practice_language", toml::Value::String("ru".to_string()))
+            .unwrap();
+        assert_eq!(settings.practice_language, "ru");
+        assert_eq!(store.load().unwrap().practice_language, "ru");
+
+        for invalid in ["", "RU", "ru_RU", "russian language!"] {
+            assert!(store
+                .set(
+                    "practice_language",
+                    toml::Value::String(invalid.to_string())
+                )
+                .is_err());
+        }
+        assert!(store
+            .set("practice_language", toml::Value::Boolean(true))
+            .is_err());
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn onboarding_completed_persists_and_defaults_to_false() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert!(!store.load().unwrap().onboarding_completed);
+        let settings = store
+            .set("onboarding_completed", toml::Value::Boolean(true))
+            .unwrap();
+        assert!(settings.onboarding_completed);
+        assert!(store.load().unwrap().onboarding_completed);
+        assert!(store
+            .set(
+                "onboarding_completed",
+                toml::Value::String("yes".to_string())
+            )
+            .is_err());
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn keyboard_layout_roundtrips_and_rejects_unknown_values() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert_eq!(store.load().unwrap().keyboard_layout, "qwerty");
+        for layout in ["jcuken", "dvorak"] {
+            let settings = store
+                .set("keyboard_layout", toml::Value::String(layout.to_string()))
+                .unwrap();
+            assert_eq!(settings.keyboard_layout, layout);
+        }
+        assert_eq!(store.load().unwrap().keyboard_layout, "dvorak");
+        for invalid in ["", "colemak", "QWERTY"] {
+            assert!(store
+                .set("keyboard_layout", toml::Value::String(invalid.to_string()))
+                .is_err());
+        }
 
         std::fs::remove_file(&path).ok();
     }
@@ -626,6 +974,108 @@ mod tests {
     }
 
     #[test]
+    fn pomodoro_settings_default_and_update() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        let defaults = store.load().unwrap();
+        assert_eq!(defaults.pomodoro_work_min, 25);
+        assert_eq!(defaults.pomodoro_break_min, 5);
+
+        let settings = store
+            .set("pomodoro_work_min", toml::Value::Integer(50))
+            .unwrap();
+        assert_eq!(settings.pomodoro_work_min, 50);
+        let settings = store
+            .set("pomodoro_break_min", toml::Value::Integer(10))
+            .unwrap();
+        assert_eq!(settings.pomodoro_break_min, 10);
+        assert_eq!(store.load().unwrap().pomodoro_work_min, 50);
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn pomodoro_settings_reject_out_of_range() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert!(store
+            .set("pomodoro_work_min", toml::Value::Integer(0))
+            .is_err());
+        assert!(store
+            .set("pomodoro_break_min", toml::Value::Integer(181))
+            .is_err());
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn custom_theme_colors_accepts_whitelisted_hex_json() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        let json = r##"{"--color-app-background":"#0d0f12","--color-accent":"#C5CBD4"}"##;
+        let settings = store
+            .set("custom_theme_colors", toml::Value::String(json.to_string()))
+            .unwrap();
+        // Нормализация: lowercase hex, отсортированные ключи.
+        assert!(settings.custom_theme_colors.contains("\"#c5cbd4\""));
+        assert_eq!(
+            store.load().unwrap().custom_theme_colors,
+            settings.custom_theme_colors
+        );
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn custom_theme_colors_rejects_unknown_keys_and_bad_hex() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        assert!(store
+            .set(
+                "custom_theme_colors",
+                toml::Value::String(r##"{"--evil":"#000000"}"##.to_string()),
+            )
+            .is_err());
+        assert!(store
+            .set(
+                "custom_theme_colors",
+                toml::Value::String(r#"{"--color-accent":"red"}"#.to_string()),
+            )
+            .is_err());
+        assert!(store
+            .set(
+                "custom_theme_colors",
+                toml::Value::String("not json".to_string()),
+            )
+            .is_err());
+        // Пустая строка — валидный сброс.
+        let settings = store
+            .set("custom_theme_colors", toml::Value::String(String::new()))
+            .unwrap();
+        assert_eq!(settings.custom_theme_colors, "");
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn custom_theme_id_survives_save_and_reload() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+
+        let settings = store
+            .set("theme", toml::Value::String("custom".to_string()))
+            .unwrap();
+        assert_eq!(settings.theme, "custom");
+        assert_eq!(store.load().unwrap().theme, "custom");
+
+        std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
     fn default_values() {
         let settings = AppSettings::default();
         assert_eq!(settings.theme, "racoon_graphite");
@@ -641,6 +1091,8 @@ mod tests {
             theme: "racoon_graphite".to_string(),
             font_size: 30,
             caret_style: "solid".to_string(),
+            caret_position: "after".to_string(),
+            caret_animation: "pulse".to_string(),
             show_live_wpm: false,
             show_accuracy: true,
             show_keyboard_trainer: true,
@@ -651,11 +1103,19 @@ mod tests {
             verbose_logging: false,
             sound_volume: 0.5,
             zen_mode_enabled: false,
+            blind_mode_enabled: false,
             ui_language: "ru".to_string(),
+            practice_language: "de".to_string(),
+            onboarding_completed: true,
+            keyboard_layout: "dvorak".to_string(),
             vim_mode: true,
             daily_goal_type: "time".to_string(),
             daily_goal_wpm: 0.0,
             daily_goal_accuracy: 0.0,
+            daily_goal_minutes: 0,
+            pomodoro_work_min: 25,
+            pomodoro_break_min: 5,
+            custom_theme_colors: String::new(),
         };
 
         let toml_str = toml::to_string(&settings).unwrap();
@@ -664,6 +1124,9 @@ mod tests {
         assert_eq!(deserialized.theme, "racoon_graphite");
         assert_eq!(deserialized.font_size, 30);
         assert_eq!(deserialized.caret_style, "solid");
+        assert_eq!(deserialized.practice_language, "de");
+        assert!(deserialized.onboarding_completed);
+        assert_eq!(deserialized.keyboard_layout, "dvorak");
         assert!(!deserialized.show_live_wpm);
         assert!(deserialized.show_accuracy);
     }

@@ -1,0 +1,20 @@
+{
+  "name": "glacier",
+  "display_name": "Glacier",
+  "description": "Cool pale ice-blue daylight with crisp contrast.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Light",
+  "is_dark": false,
+  "preview": {
+    "background": "#e8f0f5",
+    "surface": "#f2f7fa",
+    "text": "#1a2a35",
+    "accent": "#5a9cb8",
+    "correct": "#5a8a6a",
+    "incorrect": "#b85555",
+    "caret": "#3a7a98"
+  }
+}

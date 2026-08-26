@@ -2,6 +2,7 @@
   import KeyboardTrainer from './KeyboardTrainer.svelte';
   import type { CharStatus } from '../lib/types/index';
   import { t } from '../lib/i18n';
+  import { layoutFingers } from '../lib/keyboard';
   const TRAINING_VIEWPORT_CHARS = 180;
   const TRAINING_VIEWPORT_PADDING = 45;
 
@@ -15,6 +16,7 @@
     trainingCaretPos = 0,
     trainingRunning = false,
     trainingLanguage = 'en',
+    keyboardLayout = 'qwerty',
   }: {
     weakKeys: Array<{ ch: string; error_count: number; accuracy: number; rank: number }>;
     charStats: Record<string, { correct: number; incorrect: number; total: number }>;
@@ -25,6 +27,7 @@
     trainingCaretPos?: number;
     trainingRunning?: boolean;
     trainingLanguage?: string;
+    keyboardLayout?: string;
   } = $props();
 
   let viewportStart = $derived(Math.max(0, trainingCaretPos - TRAINING_VIEWPORT_PADDING));
@@ -33,6 +36,10 @@
   let viewportOffset = $derived(trainingCaretPos - viewportStart);
   let progress = $derived(trainingCharStatuses.length === 0 ? 0 : (trainingCaretPos / trainingCharStatuses.length) * 100);
   let nextChar = $derived(trainingRunning && trainingCaretPos < trainingText.length ? trainingText[trainingCaretPos] : '');
+  const isCyrillicTraining = $derived(trainingLanguage === 'ru');
+  function fingerFor(ch: string): string {
+    return layoutFingers(keyboardLayout, isCyrillicTraining)[ch.toLowerCase()] || '';
+  }
   function charClass(char: CharStatus, idx: number): string { const classes: string[] = [char.status]; if (idx < viewportOffset) classes.push('past'); else if (idx === viewportOffset) classes.push('current'); else classes.push('future'); return classes.join(' '); }
 </script>
 
@@ -46,6 +53,7 @@
       {#each weakKeys as wk}
         <div class="weak-key-row" class:critical={wk.accuracy < 70}>
           <span class="wk-char">{wk.ch}</span>
+          {#if fingerFor(wk.ch)}<span class="wk-finger">{fingerFor(wk.ch)}</span>{/if}
           <span class="wk-accuracy">{wk.accuracy.toFixed(1)}%</span>
           <span class="wk-errors">{wk.error_count} {t(uiLang, 'weakkeys.errors')}</span>
           <span class="wk-rank">#{wk.rank}</span>
@@ -59,7 +67,7 @@
     <section class="training-card"><header class="training-header"><div><p class="training-eyebrow">{t(uiLang, 'weakkeys.training_label')}</p><h4>{t(uiLang, 'weakkeys.training_title')}</h4></div><div class="training-progress"><span>{trainingCaretPos}/{trainingCharStatuses.length}</span><div class="progress-track"><div class="progress-fill" style:width={`${progress}%`}></div></div></div></header><div class="text-viewport"><div class="text-display">{#if viewportStart > 0}<span class="text-ellipsis">…</span>{/if}{#each viewportChars as char, i}<span class="char {charClass(char, i)}" class:caret={i === viewportOffset}>{char.expected === ' ' ? '\u00A0' : char.expected}</span>{/each}{#if viewportEnd < trainingCharStatuses.length}<span class="text-ellipsis">…</span>{/if}</div></div></section>
   {/if}
 
-  <KeyboardTrainer {charStats} {nextChar} isRussian={trainingLanguage === 'ru'} />
+  <KeyboardTrainer {charStats} {nextChar} isRussian={isCyrillicTraining} {keyboardLayout} />
 </div>
 
 <style>
@@ -76,6 +84,10 @@
   .wk-accuracy { color: var(--text); min-width: 4rem; }
   .wk-errors { color: var(--sub); font-size: 0.75rem; flex: 1; }
   .wk-rank { color: var(--sub); font-size: 0.75rem; }
+  .wk-finger {
+    font-size: 0.65rem; color: var(--main); text-transform: uppercase;
+    border: 1px solid var(--sub); border-radius: 3px; padding: 0.05rem 0.3rem;
+  }
   button {
     background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main);
     padding: 0.5rem 1.5rem; font-family: inherit; font-size: 0.875rem;

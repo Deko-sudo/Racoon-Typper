@@ -31,10 +31,29 @@ fn set_setting_with_state(
 ) -> Result<AppSettings, AppError> {
     state.require_startup_recovery_ready()?;
     validate_setting_key(&key)?;
+    if key == "practice_language" {
+        validate_practice_language(&value)?;
+    }
     let toml_value = json_to_toml_value(&value)?;
     state
         .with_settings(|store| store.set(&key, toml_value))
         .map_err(AppError::from)
+}
+
+/// The data layer only checks the code format; membership against the bundled
+/// course resources is enforced here so onboarding cannot persist a language
+/// the application cannot serve.
+fn validate_practice_language(value: &serde_json::Value) -> Result<(), AppError> {
+    let language = value
+        .as_str()
+        .ok_or_else(|| AppError::InvalidConfig("practice_language must be a string".into()))?;
+    let loader = racoon_resources::CourseLoader::new();
+    if loader.load_course(language).is_none() {
+        return Err(AppError::InvalidConfig(format!(
+            "practice_language must be a supported course language, got '{language}'"
+        )));
+    }
+    Ok(())
 }
 
 #[tauri::command]
@@ -193,6 +212,130 @@ pub(crate) fn get_themes() -> Result<Vec<ThemeInfo>, AppError> {
             "#ffffff",
             "#ff7373",
         ),
+        theme_info(
+            "abyss", "Abyss", true, "#06080f", "#6d8bd6", "#d4d8e8", "#e08b8b",
+        ),
+        theme_info(
+            "solar_flare",
+            "Solar Flare",
+            true,
+            "#120e08",
+            "#e8a83b",
+            "#f0e6d6",
+            "#e87878",
+        ),
+        theme_info(
+            "volcanic", "Volcanic", true, "#0a0806", "#d4642a", "#e8ddd0", "#e85a3a",
+        ),
+        theme_info(
+            "obsidian", "Obsidian", true, "#080a0c", "#3ac8d8", "#dde2e8", "#e88a8a",
+        ),
+        theme_info(
+            "toxic", "Toxic", true, "#060a06", "#48d848", "#c8e8c0", "#e86848",
+        ),
+        theme_info(
+            "chestnut", "Chestnut", true, "#100c08", "#c89858", "#ede0d0", "#dc8c6a",
+        ),
+        theme_info(
+            "glacier", "Glacier", false, "#e8f0f5", "#5a9cb8", "#1a2a35", "#b85555",
+        ),
+        theme_info(
+            "mint_frost",
+            "Mint Frost",
+            false,
+            "#e6f2ee",
+            "#4a9a7a",
+            "#1a2e26",
+            "#aa5050",
+        ),
+        theme_info(
+            "porcelain",
+            "Porcelain",
+            false,
+            "#f4f5f7",
+            "#6888a8",
+            "#2a2e35",
+            "#b04848",
+        ),
+        // Community-inspired palettes (original Apache-2.0 implementations)
+        theme_info(
+            "catppuccin_mocha",
+            "Catppuccin Mocha",
+            true,
+            "#1e1e2e",
+            "#cba6f7",
+            "#cdd6f4",
+            "#f38ba8",
+        ),
+        theme_info(
+            "coral", "Coral", false, "#fff0ed", "#e8654a", "#3d2620", "#c44536",
+        ),
+        theme_info(
+            "dark", "Dark", true, "#1a1a1a", "#cccccc", "#e0e0e0", "#ff6666",
+        ),
+        theme_info(
+            "dracula", "Dracula", true, "#282a36", "#bd93f9", "#f8f8f2", "#ff5555",
+        ),
+        theme_info(
+            "foamy", "Foamy", false, "#e8f5f0", "#3aaa88", "#1a2e26", "#aa4848",
+        ),
+        theme_info(
+            "gruvbox_dark",
+            "Gruvbox Dark",
+            true,
+            "#282828",
+            "#fe8019",
+            "#ebdbb2",
+            "#fb4934",
+        ),
+        theme_info(
+            "light", "Light", false, "#f0f0f0", "#3a7ca5", "#1a1a1a", "#cc4444",
+        ),
+        theme_info(
+            "lilac", "Lilac", false, "#f0ecf4", "#8a6db0", "#2a2230", "#aa4868",
+        ),
+        theme_info(
+            "matrix", "Matrix", true, "#000000", "#00ff00", "#33ff33", "#ff3333",
+        ),
+        theme_info(
+            "nautilus", "Nautilus", true, "#0c1620", "#5fb4ca", "#d8e8f0", "#e08080",
+        ),
+        theme_info(
+            "nord", "Nord", true, "#2e3440", "#88c0d0", "#e5e9f0", "#bf616a",
+        ),
+        theme_info(
+            "rose_pine",
+            "Rosé Pine",
+            true,
+            "#191724",
+            "#c4a7e7",
+            "#e0def4",
+            "#eb6f92",
+        ),
+        theme_info(
+            "serika", "Serika", false, "#e1e1e3", "#e2b714", "#323437", "#ca3e3e",
+        ),
+        theme_info(
+            "serika_dark",
+            "Serika Dark",
+            true,
+            "#323437",
+            "#e2b714",
+            "#e1e1e3",
+            "#ca4754",
+        ),
+        theme_info(
+            "serika_light",
+            "Serika Light",
+            false,
+            "#eceef0",
+            "#e2b714",
+            "#2c2e31",
+            "#ca3e3e",
+        ),
+        theme_info(
+            "terra", "Terra", true, "#1c1814", "#c68855", "#e8dcc8", "#c85544",
+        ),
     ])
 }
 
@@ -231,6 +374,33 @@ pub(crate) fn get_theme_css(name: String) -> Result<String, AppError> {
         "moonlight" => include_str!("../../../../resources/themes/moonlight/theme.css"),
         "dawn" => include_str!("../../../../resources/themes/dawn/theme.css"),
         "sage" => include_str!("../../../../resources/themes/sage/theme.css"),
+        "abyss" => include_str!("../../../../resources/themes/abyss/theme.css"),
+        "solar_flare" => include_str!("../../../../resources/themes/solar_flare/theme.css"),
+        "volcanic" => include_str!("../../../../resources/themes/volcanic/theme.css"),
+        "obsidian" => include_str!("../../../../resources/themes/obsidian/theme.css"),
+        "toxic" => include_str!("../../../../resources/themes/toxic/theme.css"),
+        "chestnut" => include_str!("../../../../resources/themes/chestnut/theme.css"),
+        "glacier" => include_str!("../../../../resources/themes/glacier/theme.css"),
+        "mint_frost" => include_str!("../../../../resources/themes/mint_frost/theme.css"),
+        "porcelain" => include_str!("../../../../resources/themes/porcelain/theme.css"),
+        "catppuccin_mocha" => {
+            include_str!("../../../../resources/themes/catppuccin_mocha/theme.css")
+        }
+        "coral" => include_str!("../../../../resources/themes/coral/theme.css"),
+        "dark" => include_str!("../../../../resources/themes/dark/theme.css"),
+        "dracula" => include_str!("../../../../resources/themes/dracula/theme.css"),
+        "foamy" => include_str!("../../../../resources/themes/foamy/theme.css"),
+        "gruvbox_dark" => include_str!("../../../../resources/themes/gruvbox_dark/theme.css"),
+        "light" => include_str!("../../../../resources/themes/light/theme.css"),
+        "lilac" => include_str!("../../../../resources/themes/lilac/theme.css"),
+        "matrix" => include_str!("../../../../resources/themes/matrix/theme.css"),
+        "nautilus" => include_str!("../../../../resources/themes/nautilus/theme.css"),
+        "nord" => include_str!("../../../../resources/themes/nord/theme.css"),
+        "rose_pine" => include_str!("../../../../resources/themes/rose_pine/theme.css"),
+        "serika" => include_str!("../../../../resources/themes/serika/theme.css"),
+        "serika_dark" => include_str!("../../../../resources/themes/serika_dark/theme.css"),
+        "serika_light" => include_str!("../../../../resources/themes/serika_light/theme.css"),
+        "terra" => include_str!("../../../../resources/themes/terra/theme.css"),
         _ => return Err(AppError::ThemeNotFound(name)),
     };
     Ok(css.to_string())
@@ -346,13 +516,67 @@ mod tests {
         AppState::new(
             Database::open_in_memory().expect("database"),
             settings_path,
+            PathBuf::from("unused-db.db"),
             gate,
         )
+    }
+
+    fn mark_recovery_ready(state: &AppState) {
+        let database = &state.db;
+        let recovery = SqliteSessionRecoveryLedger::new(database);
+        let finalizations = SqliteFinalizationLedger::new(database);
+        let finalizer = SqliteSessionFinalizer::new(database);
+        let clock = FixedClock;
+        let sleeper = NoopSleeper;
+        StartupRecoveryCoordinator::new(
+            &recovery,
+            &finalizations,
+            &finalizer,
+            &clock,
+            &sleeper,
+            StartupRecoveryRetryPolicy::new(NonZeroUsize::new(1).expect("nonzero"), Duration::ZERO),
+        )
+        .run(state.startup_recovery())
+        .expect("startup recovery");
     }
 
     #[test]
     fn rejects_non_scalar_settings_values() {
         assert!(json_to_toml_value(&serde_json::json!(["not", "a", "scalar"])).is_err());
+    }
+
+    #[test]
+    fn practice_language_setting_accepts_bundled_courses_and_rejects_unknown_codes() {
+        let settings_path = std::env::temp_dir().join(format!(
+            "racoon-settings-practice-lang-{}-{}.toml",
+            std::process::id(),
+            std::thread::current().name().unwrap_or("test")
+        ));
+        let _ = std::fs::remove_file(&settings_path);
+        let state = app_state(StartupRecoveryGate::new(), settings_path.clone());
+        mark_recovery_ready(&state);
+
+        let updated = set_setting_with_state(
+            &state,
+            "practice_language".to_string(),
+            serde_json::json!("de"),
+        )
+        .expect("supported course language");
+        assert_eq!(updated.practice_language, "de");
+
+        assert!(set_setting_with_state(
+            &state,
+            "practice_language".to_string(),
+            serde_json::json!("kk"),
+        )
+        .is_err());
+        assert!(set_setting_with_state(
+            &state,
+            "practice_language".to_string(),
+            serde_json::json!(42),
+        )
+        .is_err());
+        let _ = std::fs::remove_file(settings_path);
     }
 
     #[test]
@@ -398,7 +622,7 @@ mod tests {
     #[test]
     fn built_in_theme_catalog_is_complete_and_unique() {
         let themes = get_themes().unwrap();
-        assert_eq!(themes.len(), 25);
+        assert_eq!(themes.len(), 50);
         let unique_names: std::collections::HashSet<_> =
             themes.iter().map(|theme| theme.name.as_str()).collect();
         assert_eq!(unique_names.len(), themes.len());

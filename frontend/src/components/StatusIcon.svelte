@@ -29,8 +29,8 @@
     border-radius: 0.3rem;
   }
   .status-icon.check {
-    color: #6c8;
-    background: color-mix(in srgb, #6c8 14%, transparent);
+    color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 14%, transparent);
   }
   .status-icon.cross {
     color: var(--error);

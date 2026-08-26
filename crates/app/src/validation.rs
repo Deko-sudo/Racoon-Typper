@@ -11,6 +11,7 @@ const MAX_KEY_CODE_CHARS: usize = 64;
 const MAX_TEST_DURATION_SECS: u64 = 3_600;
 const MAX_WORD_COUNT: usize = 1_000;
 const MAX_PROGRESS_DAYS: u32 = 3_650;
+const MAX_WEEKLY_SUMMARY_WEEKS: usize = racoon_application::MAX_WEEKLY_SUMMARY_WEEKS;
 const MAX_THEME_NAME_CHARS: usize = 64;
 const MAX_EXPORT_FORMAT_CHARS: usize = 16;
 const MAX_SOUND_EVENT_CHARS: usize = 32;
@@ -120,6 +121,15 @@ pub fn validate_progress_days(days: u32) -> Result<u32, AppError> {
         )));
     }
     Ok(days)
+}
+
+pub fn validate_weekly_weeks(weeks: usize) -> Result<usize, AppError> {
+    if weeks == 0 || weeks > MAX_WEEKLY_SUMMARY_WEEKS {
+        return Err(AppError::InvalidConfig(format!(
+            "weeks must be between 1 and {MAX_WEEKLY_SUMMARY_WEEKS}"
+        )));
+    }
+    Ok(weeks)
 }
 
 pub fn validate_positive_id(id: i64, kind: &str) -> Result<(), AppError> {

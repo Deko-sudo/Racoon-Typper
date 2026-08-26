@@ -11,6 +11,7 @@ import type {
   EngineOutput,
   Insight,
   LessonProgressRecord,
+  ModeName,
   PersonalBest,
   ProfileImportPlan,
   ProfileImportPolicy,
@@ -20,7 +21,10 @@ import type {
   TestSessionResponse,
   ThemeInfo,
   SoundOutputResponse,
+  TextPackImportPlan,
+  TextPackPolicy,
   WeakKeysReport,
+  WeeklySummaryResponse,
 } from '../types/index';
 
 export interface IpcError {
@@ -38,7 +42,7 @@ export function ipcErrorMessage(error: unknown): string {
 }
 
 export async function startTest(params: {
-  mode: string;
+  mode: ModeName;
   language: string;
   duration?: number;
   wordCount?: number;
@@ -54,6 +58,10 @@ export async function processKey(key: string, code: string, sessionId: string): 
 
 export async function abortSession(sessionId: string): Promise<void> {
   return invoke('abort_session', { sessionId });
+}
+
+export async function abandonActiveSession(): Promise<boolean> {
+  return invoke<boolean>('abandon_active_session');
 }
 
 export async function getStatsHistory(limit: number, offset = 0): Promise<StatsHistoryResponse> {
@@ -82,6 +90,25 @@ export async function deleteCustomText(id: number): Promise<void> {
 
 export async function searchCustomTexts(query: string, limit = 20): Promise<CustomText[]> {
   return invoke<CustomText[]>('search_custom_texts', { query, limit });
+}
+
+export async function importTextFromUrl(url: string): Promise<string> {
+  return invoke<string>('import_text_from_url', { url });
+}
+
+export type KeyHeatData = {
+  total_attempts: number;
+  correct: number;
+  incorrect: number;
+  avg_wpm_at_key: number;
+};
+
+export async function getAggregatedHeatmap(recentCount = 50): Promise<Record<string, KeyHeatData>> {
+  return invoke<Record<string, KeyHeatData>>('get_aggregated_heatmap', { recentCount });
+}
+
+export async function clearStatistics(): Promise<void> {
+  return invoke('clear_statistics');
 }
 
 export async function startCustomTextTest(customTextId: number): Promise<TestSessionResponse> {
@@ -135,6 +162,32 @@ export async function getProgressHistory(days?: number): Promise<ProgressPoint[]
   return invoke<ProgressPoint[]>('get_progress_history', { days });
 }
 
+export async function getWeeklySummaries(weeks?: number): Promise<WeeklySummaryResponse[]> {
+  return invoke<WeeklySummaryResponse[]>('get_weekly_summaries', { weeks });
+}
+
+// Versioned text-pack interchange. `replace` deletes every custom text of the
+// pack language, so callers should always display the preview before applying.
+export async function exportTextPack(language?: string): Promise<string> {
+  return invoke<string>('export_text_pack', { language });
+}
+
+export async function previewTextPackImport(
+  document: string,
+  sourceFormat: string | null,
+  policy: TextPackPolicy,
+): Promise<TextPackImportPlan> {
+  return invoke<TextPackImportPlan>('preview_text_pack_import', { document, sourceFormat, policy });
+}
+
+export async function importTextPack(
+  document: string,
+  sourceFormat: string | null,
+  policy: TextPackPolicy,
+): Promise<TextPackImportPlan> {
+  return invoke<TextPackImportPlan>('import_text_pack', { document, sourceFormat, policy });
+}
+
 // Analytics
 export async function getAchievements(): Promise<Achievement[][]> {
   return invoke<Achievement[][]>('get_achievements');
@@ -148,8 +201,40 @@ export async function getConsistency(): Promise<ConsistencyReport> {
   return invoke<ConsistencyReport>('get_consistency');
 }
 
-export async function exportData(format: 'json' | 'csv'): Promise<string> {
+export async function exportData(format: 'json' | 'csv' | 'markdown'): Promise<string> {
   return invoke<string>('export_data', { format });
+}
+
+export async function exportReport(): Promise<string> {
+  return invoke<string>('export_report');
+}
+
+export type ShareCardStats = {
+  wpm: number;
+  raw_wpm: number;
+  accuracy: number;
+  duration_ms: number;
+  mode: string;
+  language: string;
+  date: string;
+  heatmap: Record<string, { total_attempts: number; correct: number; incorrect: number; avg_wpm_at_key: number }>;
+};
+
+export type ShareCardColors = {
+  background: string;
+  surface: string;
+  text: string;
+  sub: string;
+  accent: string;
+  error: string;
+};
+
+export async function exportResultPng(stats: ShareCardStats, colors: ShareCardColors): Promise<number[]> {
+  return invoke<number[]>('export_result_png', { stats, colors });
+}
+
+export async function exportHeatmapPng(recentCount = 50): Promise<number[]> {
+  return invoke<number[]>('export_heatmap_png', { recentCount });
 }
 
 // Versioned portable profile transfer. `replace` is destructive for portable
@@ -170,6 +255,12 @@ export async function importProfile(
   policy: ProfileImportPolicy,
 ): Promise<ProfileImportPlan> {
   return invoke<ProfileImportPlan>('import_profile', { document, policy });
+}
+
+// Whole-file database restore: closes the live database, replaces the file
+// from a validated backup, and reopens it. The frontend reloads after success.
+export async function restoreDatabase(backupPath: string): Promise<void> {
+  return invoke('restore_database', { backupPath });
 }
 
 // Replay
