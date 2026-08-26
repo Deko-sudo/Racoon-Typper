@@ -32,13 +32,14 @@
       <g clip-path="url(#left-hand-clip)">
         <!-- Highlight bands: x-ranges are bounded by the inter-finger valleys
              measured from the rendered hand path; bottoms extend to the
-             knuckle line (y=132, just above the palm crease), so the whole
-             finger fills while the palm crease and wrist stay untouched. -->
-        <path class="highlight" class:active={activeFinger === 'LP'} d="M20 40h36v96H20Z" />
-        <path class="highlight" class:active={activeFinger === 'LR'} d="M56 14h34v122H56Z" />
-        <path class="highlight" class:active={activeFinger === 'LM'} d="M90 -4h32v140H90Z" />
-        <path class="highlight" class:active={activeFinger === 'LI'} d="M122 10h30v126H122Z" />
-        <path class="highlight" class:active={activeFinger === 'LT'} d="M150 44h48v92H150Z" />
+             finger knuckle lines (staggered: pinky 80, ring 94, middle 98,
+             index 92, thumb 88) — the full finger fills, the palm stays
+             untouched. -->
+        <path class="highlight" class:active={activeFinger === 'LP'} d="M20 40h36v40H20Z" />
+        <path class="highlight" class:active={activeFinger === 'LR'} d="M56 14h34v80H56Z" />
+        <path class="highlight" class:active={activeFinger === 'LM'} d="M90 -4h32v102H90Z" />
+        <path class="highlight" class:active={activeFinger === 'LI'} d="M122 10h30v82H122Z" />
+        <path class="highlight" class:active={activeFinger === 'LT'} d="M150 44h48v44H150Z" />
       </g>
       <use href="#left-hand-shape" class="hand-outline" />
       <path class="palm-line" d="M54 145c22 7 58 7 82-1M139 116c-13 5-22 13-27 25" />
@@ -52,11 +53,11 @@
       <g transform="translate(200 0) scale(-1 1)">
         <use href="#right-hand-shape" class="hand-fill" />
         <g clip-path="url(#right-hand-clip)">
-          <path class="highlight" class:active={activeFinger === 'RP'} d="M20 40h36v96H20Z" />
-          <path class="highlight" class:active={activeFinger === 'RR'} d="M56 14h34v122H56Z" />
-          <path class="highlight" class:active={activeFinger === 'RM'} d="M90 -4h32v140H90Z" />
-          <path class="highlight" class:active={activeFinger === 'RI'} d="M122 10h30v126H122Z" />
-          <path class="highlight" class:active={activeFinger === 'RT'} d="M150 44h48v92H150Z" />
+          <path class="highlight" class:active={activeFinger === 'RP'} d="M20 40h36v40H20Z" />
+          <path class="highlight" class:active={activeFinger === 'RR'} d="M56 14h34v80H56Z" />
+          <path class="highlight" class:active={activeFinger === 'RM'} d="M90 -4h32v102H90Z" />
+          <path class="highlight" class:active={activeFinger === 'RI'} d="M122 10h30v82H122Z" />
+          <path class="highlight" class:active={activeFinger === 'RT'} d="M150 44h48v44H150Z" />
         </g>
         <use href="#right-hand-shape" class="hand-outline" />
         <path class="palm-line" d="M54 145c22 7 58 7 82-1M139 116c-13 5-22 13-27 25" />
