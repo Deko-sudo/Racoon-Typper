@@ -146,10 +146,15 @@
       const charTop = target.offsetTop;
       const charWidth = target.offsetWidth;
       const charHeight = target.offsetHeight;
+      // The .char spans are inline-blocks inheriting line-height 1.65, so
+      // offsetHeight is the full line box; glyphs occupy ~1.18em centered in
+      // it. Size the caret to the glyph box and center it vertically, or the
+      // thin bar pokes above the ascenders and below the baseline.
+      const glyphHeight = Math.min(charHeight, 1.18 * em);
       caretLeft = after ? charLeft + charWidth + offsetPx : charLeft - offsetPx;
-      caretTop = charTop;
+      caretTop = charTop + (charHeight - glyphHeight) / 2;
       caretWidth = widthPx;
-      caretHeight = style === 'bubble' ? Math.max(0, charHeight - 0.04 * em) : charHeight;
+      caretHeight = style === 'bubble' ? Math.max(0, glyphHeight - 0.04 * em) : glyphHeight;
       caretSettled = true;
     };
 
