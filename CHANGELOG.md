@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- **Hand guide highlight geometry** — the active finger highlight no longer
+  spills onto the palm: band bottoms stop at the finger/palm merge lines
+  measured from the rendered hand path, with edges tightened to each finger.
 - **Hand guide finger mapping** — the hand visualization now resolves the
   next character against the active layout's physical key positions instead
   of per-character guesses: A/Ф light up the left pinky, S/Ы the left ring,
