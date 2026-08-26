@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Fixed
+
+- **Hand guide finger mapping** — the hand visualization now resolves the
+  next character against the active layout's physical key positions instead
+  of per-character guesses: A/Ф light up the left pinky, S/Ы the left ring,
+  K/Л the right middle, and so on for every supported layout (QWERTY,
+  ЙЦУКЕН, Dvorak). Number-row and punctuation keys received their standard
+  touch-typing fingers, space uses the right thumb, and unknown keys no
+  longer highlight anything. The keyboard key coloring shares the same
+  position-derived tables.
+
 ### Dependencies
 
 - **DD1–DD3 dependency window closed** — `rusqlite` 0.31→0.39,

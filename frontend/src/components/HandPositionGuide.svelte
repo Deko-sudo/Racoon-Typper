@@ -1,7 +1,7 @@
 <script lang="ts">
   // HandPositionGuide — схема рук с подсветкой нужного пальца.
 
-  import { layoutFingers } from '../lib/keyboard';
+  import { fingerForKey } from '../lib/keyboard';
 
   let {
     nextChar = '',
@@ -13,9 +13,11 @@
     keyboardLayout?: string;
   } = $props();
 
-  const fingers = $derived(layoutFingers(keyboardLayout, isRussian));
-
-  let activeFinger = $derived(nextChar === ' ' ? 'LT' : fingers[nextChar.toLowerCase()] || '');
+  // Physical position decides the finger: the character is resolved against
+  // the active layout's key positions (Cyrillic always maps to JCUKEN), so
+  // A/Ф light up the left pinky, S/Ы the left ring, and so on. Unknown keys
+  // yield '' and leave both hands un-highlighted.
+  let activeFinger = $derived(fingerForKey(nextChar, keyboardLayout, isRussian));
 </script>
 
 <div class="hand-guide" aria-live="polite">

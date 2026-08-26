@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {
   DVORAK_FINGERS,
   DVORAK_ROWS,
+  fingerForKey,
   layoutFingers,
   layoutRows,
   ROWS,
@@ -60,5 +61,71 @@ test('russian tables remain intact through the helpers', () => {
   assert.deepEqual(layoutRows('jcuken', true), RU_ROWS);
   for (const key of allKeys(RU_ROWS)) {
     assert.ok(RU_FINGERS[key], `missing russian finger for ${key}`);
+  }
+});
+
+test('hand guide: required physical-key -> finger pairs (EN/RU)', () => {
+  const cases = [
+    // [latin, cyrillic, expected finger]
+    ['a', 'ф', 'LP'],
+    ['s', 'ы', 'LR'],
+    ['d', 'в', 'LM'],
+    ['f', 'а', 'LI'],
+    ['j', 'о', 'RI'],
+    ['k', 'л', 'RM'],
+    ['l', 'д', 'RR'],
+    [';', 'ж', 'RP'],
+  ];
+  for (const [latin, cyrillic, expected] of cases) {
+    assert.equal(
+      fingerForKey(latin, 'qwerty', false), expected,
+      `latin '${latin}' must activate ${expected}`,
+    );
+    assert.equal(
+      fingerForKey(cyrillic, 'qwerty', true), expected,
+      `cyrillic '${cyrillic}' must activate ${expected} (physical position)`,
+    );
+    // The layout tables used for key coloring must agree.
+    assert.equal(layoutFingers('qwerty', false)[latin], expected);
+    assert.equal(layoutFingers('qwerty', true)[cyrillic], expected);
+  }
+});
+
+test('number row and punctuation keep sensible touch-typing fingers', () => {
+  assert.equal(fingerForKey('1', 'qwerty', false), 'LP');
+  assert.equal(fingerForKey('5', 'qwerty', false), 'LI');
+  assert.equal(fingerForKey('6', 'qwerty', false), 'RI');
+  assert.equal(fingerForKey('0', 'qwerty', false), 'RP');
+  assert.equal(fingerForKey('-', 'qwerty', false), 'RP');
+  assert.equal(fingerForKey('[', 'qwerty', false), 'RP');
+  assert.equal(fingerForKey("'", 'qwerty', false), 'RP');
+  // Russian digits live on the same physical keys.
+  assert.equal(fingerForKey('3', 'jcuken', true), 'LM');
+});
+
+test('space uses the right thumb; unknown keys highlight nothing', () => {
+  assert.equal(fingerForKey(' ', 'qwerty', false), 'RT');
+  assert.equal(fingerForKey('', 'qwerty', false), '');
+  assert.equal(fingerForKey('€', 'qwerty', false), '');
+  assert.equal(fingerForKey('Ω', 'jcuken', true), '');
+});
+
+test('layout switching preserves physical fingers', () => {
+  // Same physical key under Dvorak: 'a' home-left pinky, 's' home-right pinky.
+  assert.equal(fingerForKey('a', 'dvorak', false), 'LP');
+  assert.equal(fingerForKey('s', 'dvorak', false), 'RP');
+  assert.equal(fingerForKey('e', 'dvorak', false), 'LM');
+  // Cyrillic input ignores the Latin layout selection entirely.
+  assert.equal(fingerForKey('л', 'dvorak', true), 'RM');
+  assert.equal(fingerForKey('л', 'qwerty', true), 'RM');
+});
+
+test('every positioned key across all layouts resolves to a finger', () => {
+  for (const [name, rows] of [['qwerty', ROWS], ['jcuken', RU_ROWS], ['dvorak', DVORAK_ROWS]]) {
+    for (const row of rows) {
+      for (const key of row) {
+        assert.match(layoutFingers(name === 'jcuken' ? 'jcuken' : name, name === 'jcuken')[key] ?? '', /^(LP|LR|LM|LI|RI|RM|RR|RP)$/, `${name}: missing finger for '${key}'`);
+      }
+    }
   }
 });

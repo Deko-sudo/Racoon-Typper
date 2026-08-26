@@ -9,50 +9,58 @@ export const RU_ROWS = [
   ['ф', 'ы', 'в', 'а', 'п', 'р', 'о', 'л', 'д', 'ж', 'э'],
   ['я', 'ч', 'с', 'м', 'и', 'т', 'ь', 'б', 'ю', '.'],
 ];
-
-export const FINGERS: Record<string, string> = {
-  q: 'LP', a: 'LP', z: 'LP',
-  w: 'LR', s: 'LR', x: 'LR',
-  e: 'LM', d: 'LM', c: 'LM',
-  r: 'LI', f: 'LI', v: 'LI', t: 'LI', g: 'LI', b: 'LI',
-  y: 'RI', h: 'RI', n: 'RI', u: 'RI', j: 'RI', m: 'RI',
-  i: 'RM', k: 'RM', ',': 'RM',
-  o: 'RR', l: 'RR', '.': 'RR',
-  p: 'RP', ';': 'RP', '/': 'RP',
-};
-
-export const RU_FINGERS: Record<string, string> = {
-  ё: 'LP', ф: 'LP', я: 'LP', й: 'LP',
-  ц: 'LR', ы: 'LR', ч: 'LR',
-  у: 'LM', в: 'LM', с: 'LM',
-  а: 'LI', п: 'LI', к: 'LI', м: 'LI', и: 'LI',
-  о: 'RI', л: 'RI', д: 'RI', р: 'RI', т: 'RI',
-  е: 'RM', г: 'RM', ш: 'RM',
-  н: 'RR', щ: 'RR', з: 'RR', х: 'RR',
-  ь: 'RP', б: 'RP', ю: 'RP', ъ: 'RP', ж: 'RP', э: 'RP', '.': 'RP',
-};
-
-export const HOME_ROW_EN = new Set(ROWS[1]);
-export const HOME_ROW_RU = new Set(RU_ROWS[1]);
-
-// Dvorak letter keys on the same physical positions as QWERTY (mirrors
-// `finger_for_key_dvorak` in crates/core/src/finger_map.rs).
 export const DVORAK_ROWS = [
   ["'", ',', '.', 'p', 'y', 'f', 'g', 'c', 'r', 'l'],
   ['a', 'o', 'e', 'u', 'i', 'd', 'h', 't', 'n', 's'],
   [';', 'q', 'j', 'k', 'x', 'b', 'm', 'w', 'v', 'z'],
 ];
 
-export const DVORAK_FINGERS: Record<string, string> = {
-  "'": 'LP', a: 'LP', ';': 'LP',
-  ',': 'LR', o: 'LR', q: 'LR',
-  '.': 'LM', e: 'LM', j: 'LM',
-  p: 'LI', y: 'LI', u: 'LI', i: 'LI', k: 'LI', x: 'LI',
-  f: 'RI', g: 'RI', d: 'RI', h: 'RI', b: 'RI', m: 'RI',
-  c: 'RM', t: 'RM', w: 'RM',
-  r: 'RR', n: 'RR', v: 'RR',
-  l: 'RP', s: 'RP', z: 'RP', '/': 'RP',
-};
+
+// Canonical touch-typing fingering by PHYSICAL column. All layout tables
+// above are ordered by physical position, so one column map covers every
+// layout and language: the finger depends on where the key sits, not on the
+// character it produces.
+//   cols 0-4  -> left pinky/ring/middle/index/index
+//   cols 5-6  -> right index, col 7 -> right middle,
+//   col 8     -> right ring, col >= 9 -> right pinky
+const FINGER_BY_COLUMN = ['LP', 'LR', 'LM', 'LI', 'LI'] as const;
+function fingerForColumn(column: number): string {
+  if (column < 5) return FINGER_BY_COLUMN[column];
+  if (column <= 6) return 'RI';
+  if (column === 7) return 'RM';
+  if (column === 8) return 'RR';
+  return 'RP';
+}
+
+// Number row — identical physical positions on every layout.
+const DIGIT_ROW = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '0', '-', '='];
+
+function fingersForRows(rows: string[][]): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const row of rows) {
+    row.forEach((character, column) => {
+      const key = character.toLowerCase();
+      if (!(key in map)) map[key] = fingerForColumn(column);
+    });
+  }
+  return map;
+}
+
+export const FINGERS: Record<string, string> = (() => {
+  const map = fingersForRows([DIGIT_ROW, ...ROWS]);
+  // QWERTY-only outer punctuation keeps its home-column finger.
+  for (const key of ['[', ']', '\\', "'", '-', '=']) map[key] ??= 'RP';
+  return map;
+})();
+
+export const RU_FINGERS: Record<string, string> = (() => {
+  const map = fingersForRows([DIGIT_ROW, ...RU_ROWS]);
+  map['ё'] ??= 'LP'; // backtick position — left pinky
+  return map;
+})();
+
+export const DVORAK_FINGERS: Record<string, string> =
+  fingersForRows([DIGIT_ROW, ...DVORAK_ROWS]);
 
 export type KeyboardLayoutId = 'qwerty' | 'jcuken' | 'dvorak';
 
@@ -86,13 +94,30 @@ export function layoutFingers(
   return LATIN_LAYOUT_TABLES[normalizeLayout(layout)].fingers;
 }
 
-export function isHomeRowKey(key: string): boolean {
-  return (
-    HOME_ROW_EN.has(key) || HOME_ROW_RU.has(key) || DVORAK_HOME_ROW.has(key)
-  );
+/// Physical key -> finger for the next-character highlight. Resolves the
+/// character against the active layout's position tables (digits included),
+/// so a displayed character never picks a finger by its glyph: A/Ф share the
+/// left-pinky position, S/Ы the left-ring position, and so on. Unknown keys
+/// return '' and must leave the hand guide un-highlighted.
+export function fingerForKey(
+  char: string,
+  layout: string | undefined | null,
+  isCyrillic: boolean,
+): string {
+  if (!char) return '';
+  if (char === ' ') return 'RT'; // right thumb on the space bar
+  const key = char.toLowerCase();
+  for (const row of [DIGIT_ROW, ...layoutRows(layout, isCyrillic)]) {
+    const column = row.indexOf(key);
+    if (column !== -1) return fingerForColumn(column);
+  }
+  return layoutFingers(layout, isCyrillic)[key] ?? '';
 }
 
-const DVORAK_HOME_ROW = new Set(DVORAK_ROWS[1]);
+export const HOME_ROW_EN = new Set(ROWS[1]);
+export const HOME_ROW_RU = new Set(RU_ROWS[1]);
 
+// Dvorak letter keys on the same physical positions as QWERTY (mirrors
+// `finger_for_key_dvorak` in crates/core/src/finger_map.rs).
 export const VIEWPORT_CHARS = 120;
 export const VIEWPORT_PADDING = 30;
