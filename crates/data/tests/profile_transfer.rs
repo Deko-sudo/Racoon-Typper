@@ -145,3 +145,59 @@ fn profile_transfer_plans_without_writes_then_merges_or_replaces_atomically() {
         1
     );
 }
+
+#[test]
+fn export_rejects_profiles_beyond_the_import_collection_bound() {
+    let source = Database::open_in_memory().expect("source database");
+    source
+        .with_connection(|conn| {
+            conn.execute(
+            "WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM numbers WHERE n < ?1)
+             INSERT INTO custom_texts(name,text,language,created_at)
+             SELECT 'entry-' || n, 'body', 'en', '2026-10-16T00:00:00Z' FROM numbers",
+            [racoon_data::profile_transfer::MAX_PROFILE_ROWS_PER_COLLECTION as i64 + 1],
+        )?;
+            Ok(())
+        })
+        .expect("seed over-limit collection");
+    let result = export_profile(&source, "1.3.1", "2026-10-16T00:00:00Z");
+    assert!(
+        result.is_err(),
+        "export must not return a document the importer rejects"
+    );
+    let rows: i64 = source
+        .with_connection(|conn| {
+            Ok(conn.query_row("SELECT count(*) FROM custom_texts", [], |row| row.get(0))?)
+        })
+        .unwrap();
+    assert_eq!(
+        rows,
+        racoon_data::profile_transfer::MAX_PROFILE_ROWS_PER_COLLECTION as i64 + 1
+    );
+}
+
+#[test]
+fn export_rejects_profiles_beyond_the_import_byte_bound() {
+    let source = Database::open_in_memory().expect("source database");
+    let body = "字".repeat(racoon_data::repository::custom_texts::MAX_CUSTOM_TEXT_LENGTH);
+    source.with_connection(|conn| {
+        conn.execute(
+            "WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM numbers WHERE n < 2250)
+             INSERT INTO custom_texts(name,text,language,created_at)
+             SELECT 'entry-' || n, ?1, 'zh-tw', '2026-10-16T00:00:00Z' FROM numbers",
+            [&body],
+        )?;
+        Ok(())
+    }).expect("seed over-limit document");
+    let result = export_profile(&source, "1.3.1", "2026-10-16T00:00:00Z");
+    assert!(
+        result.is_err(),
+        "export must not return a document the importer rejects"
+    );
+    let rows: i64 = source
+        .with_connection(|conn| {
+            Ok(conn.query_row("SELECT count(*) FROM custom_texts", [], |row| row.get(0))?)
+        })
+        .unwrap();
+    assert_eq!(rows, 2250);
+}

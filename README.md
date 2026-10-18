@@ -88,7 +88,7 @@ local SQLite data store. **No accounts, no servers, no telemetry** — your
 typing data never leaves your machine.
 
 > **Status:** The repository is undergoing a controlled modernization.
-> Release metadata is `1.2.0`, but this is **not** a production-ready release
+> Release metadata is `1.3.1`, but this is **not** a production-ready release
 > claim until the [roadmap gates](ROADMAP.md) are complete. The verified
 > development target is **Linux x86_64**. See
 > [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) for the distinction between
@@ -107,9 +107,9 @@ typing data never leaves your machine.
   terminal, dark blue-gray, and high-contrast variants with a documented
   semantic token contract
 - **Replay & review** — replay past tests, frame by frame
-- **Crash-safe** — durable session identity, crash recovery, and rotating
+- **Session recovery** — durable session identity, process-crash recovery, and rotating
   pre-migration database backups
-- **Offline-first** — runs entirely on-device; no network required
+- **Strictly offline** — no in-app network requests, URL import, telemetry, accounts, or updater; install updates manually
 
 ## 🧱 Tech stack
 
@@ -120,7 +120,7 @@ typing data never leaves your machine.
 | Frontend | Svelte 5, Vite 5, TypeScript 5 |
 | Storage | SQLite (WAL mode) via rusqlite, settings in TOML |
 | Resources | Embedded lessons, word lists, quotes, themes |
-| Toolchain | Rust 1.96.0, Node 22+ (CI uses 22) |
+| Toolchain | Rust 1.96.0, Node 22.12+ on the 22.x line or Node 24+ (CI uses 22) |
 
 ### Architecture
 
@@ -214,8 +214,8 @@ The application keeps all typing data locally. Verified Linux locations:
 
 | Data | Linux location |
 | --- | --- |
-| SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper/data.db` |
-| Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper/settings.toml` |
+| SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/com.racoon.typper/data.db` |
+| Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/com.racoon.typper/settings.toml` |
 
 Export, retention, deletion, and migration behavior are being formalized before
 a production release. See the [Data, Privacy & Retention
@@ -236,12 +236,17 @@ constraints.
 
 ## 🧪 Quality
 
-- **~640 workspace tests** including crash-recovery campaigns
+- Default Rust checks: `cargo test --workspace`.
+  Crash-recovery campaigns are opt-in:
+  `cargo test -p racoon-data --features crash-test-support --test process_crash_recovery`.
+  CI runs that opt-in target as a separate step.
+  The extended ignored campaign requires an additional `-- --ignored`.
+  Frontend regression tests run separately with `npm run test:ui --prefix frontend`.
 - Forward-only Refinery migrations (V001–V009) with a full historical
-  upgrade-matrix (V1..V7 → V9) verified through the production runner
+  upgrade-matrix (V1..V8 → V9) verified through the production runner
 - Least-privilege Tauri capabilities audited against the registered command
   surface; redacted IPC error boundary (no dynamic payload leakage)
-- All GitHub Actions pinned to full commit SHAs; Apache-2.0-only license
+- All GitHub Actions pinned to full commit SHAs; Apache-2.0-compatible dependency license
   policy enforced in CI
 
 ## 📄 License

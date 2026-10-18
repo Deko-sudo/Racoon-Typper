@@ -5,7 +5,7 @@
   import { readTextFile } from '@tauri-apps/plugin-fs';
   import { readText } from '@tauri-apps/plugin-clipboard-manager';
   import * as ipc from '../lib/api/ipc';
-  import { formatForFile, summarizePlan } from '../lib/textPack';
+  import { formatForFile, MAX_TEXT_PACK_BYTES, summarizePlan } from '../lib/textPack';
   import type { TextPackImportPlan, TextPackPolicy } from '../lib/types/index';
 
   let {
@@ -53,17 +53,29 @@
   let packPreview = $state<TextPackImportPlan | null>(null);
   let packDocument = $state('');
   let packSourceFormat = $state<string | null>(null);
+  let previewedDocument = $state('');
+  let previewedFormat = $state<string | null>(null);
+  let previewedPolicy = $state<TextPackPolicy | null>(null);
+  let packReading = $state(false);
+  let packPreviewing = $state(false);
+  let fileRevision = 0;
+  let previewRevision = 0;
 
+  const hasCurrentPreview = $derived(packPreview !== null && previewedDocument === packDocument
+    && previewedFormat === packSourceFormat && previewedPolicy === packPolicy);
   const canApplyPack = $derived(
-    packPreview !== null && !packBusy && (packPolicy !== 'replace' || packReplaceAck),
+    hasCurrentPreview && !packBusy && !packReading && !packPreviewing && (packPolicy !== 'replace' || packReplaceAck),
   );
 
-  function resetPackState() {
+  function invalidatePackPreview() {
+    previewRevision += 1;
     packMessage = '';
     packError = '';
     packPreview = null;
-    packDocument = '';
-    packSourceFormat = null;
+    previewedDocument = '';
+    previewedFormat = null;
+    previewedPolicy = null;
+    packPreviewing = false;
     packReplaceAck = false;
   }
 
@@ -89,44 +101,73 @@
   }
 
   async function choosePackFile(event: Event) {
+    if (packBusy) return;
     const input = event.currentTarget as HTMLInputElement;
     const file = input.files?.[0];
+    const revision = ++fileRevision;
+    invalidatePackPreview();
+    packDocument = '';
+    packSourceFormat = null;
+    packReading = false;
     if (!file) return;
-    packMessage = '';
-    packError = '';
-    packPreview = null;
+    if (file.size <= 0 || file.size > MAX_TEXT_PACK_BYTES) {
+      packError = t(uiLang, file.size <= 0 ? 'textpack.file_error_empty' : 'textpack.file_error_too_large');
+      input.value = '';
+      return;
+    }
+    packReading = true;
     try {
-      packDocument = await file.text();
-      packSourceFormat = formatForFile(file.name);
+      const document = await file.text();
+      if (revision === fileRevision) {
+        packDocument = document;
+        packSourceFormat = formatForFile(file.name);
+      }
     } catch (e) {
-      packError = String(e);
+      if (revision === fileRevision) packError = ipc.ipcErrorMessage(e);
     } finally {
+      if (revision === fileRevision) packReading = false;
       input.value = '';
     }
   }
 
   async function previewPack() {
-    packMessage = '';
-    packError = '';
+    if (packBusy || packReading || packPreviewing) return;
+    invalidatePackPreview();
     if (!packDocument) {
       packError = t(uiLang, 'textpack.choose_file');
       return;
     }
+    const document = packDocument;
+    const format = packSourceFormat;
+    const policy = packPolicy;
+    const revision = previewRevision;
+    packPreviewing = true;
     try {
-      packPreview = await ipc.previewTextPackImport(packDocument, packSourceFormat, packPolicy);
+      const plan = await ipc.previewTextPackImport(document, format, policy);
+      if (revision === previewRevision && document === packDocument && format === packSourceFormat && policy === packPolicy) {
+        packPreview = plan;
+        previewedDocument = document;
+        previewedFormat = format;
+        previewedPolicy = policy;
+      }
     } catch (e) {
-      packPreview = null;
-      packError = ipc.ipcErrorMessage(e);
+      if (revision === previewRevision) packError = ipc.ipcErrorMessage(e);
+    } finally {
+      if (revision === previewRevision) packPreviewing = false;
     }
   }
 
   async function applyPack() {
-    if (!canApplyPack || !packDocument) return;
+    if (!canApplyPack || !previewedDocument || !previewedPolicy) return;
+    const document = previewedDocument;
+    const format = previewedFormat;
+    const policy = previewedPolicy;
     packBusy = true;
     packMessage = '';
     packError = '';
     try {
-      const applied = await ipc.importTextPack(packDocument, packSourceFormat, packPolicy);
+      const applied = await ipc.importTextPack(document, format, policy);
+      invalidatePackPreview();
       packMessage = `${t(uiLang, 'textpack.applied')} ${summarizePlan(applied)}`;
       packPreview = null;
       packDocument = '';
@@ -172,17 +213,6 @@
     }
   }
 
-  async function importFromUrl() {
-    importError = '';
-    const url = window.prompt(t(uiLang, 'custom.import_url_prompt'), 'https://');
-    if (!url) return;
-    try {
-      const text = await ipc.importTextFromUrl(url);
-      onTextChange(text);
-    } catch (e) {
-      importError = `${t(uiLang, 'custom.import_error_failed')} ${e}`;
-    }
-  }
 </script>
 
 <div class="list-view">
@@ -204,7 +234,6 @@
       <div class="import-row">
         <button class="import-btn" onclick={importFromFile}>{t(uiLang, 'custom.import_file')}</button>
         <button class="import-btn" onclick={importFromClipboard}>{t(uiLang, 'custom.import_clipboard')}</button>
-        <button class="import-btn" onclick={importFromUrl}>{t(uiLang, 'custom.import_url')}</button>
       </div>
       <div class="editor-btns">
         <button onclick={onSave}>{t(uiLang, 'custom.save')}</button>
@@ -239,17 +268,18 @@
         {t(uiLang, 'textpack.export')}
       </button>
       <label class="pack-file">
-        <input type="file" accept=".json,.csv,.tsv,.txt,.md" onchange={choosePackFile} />
+        <input type="file" accept=".json,.csv,.tsv,.txt,.md" onchange={choosePackFile} disabled={packBusy} />
       </label>
       <select
         class="pack-select"
         value={packPolicy}
-        onchange={(e) => { packPolicy = e.currentTarget.value as TextPackPolicy; packPreview = null; }}
+        disabled={packBusy}
+        onchange={(e) => { packPolicy = e.currentTarget.value as TextPackPolicy; invalidatePackPreview(); }}
       >
         <option value="merge">{t(uiLang, 'textpack.merge')}</option>
         <option value="replace">{t(uiLang, 'textpack.replace')}</option>
       </select>
-      <button class="pack-btn" onclick={previewPack} disabled={packBusy || !packDocument}>
+      <button class="pack-btn" onclick={previewPack} disabled={packBusy || packReading || packPreviewing || !packDocument}>
         {t(uiLang, 'textpack.preview')}
       </button>
       <button class="pack-btn primary" onclick={applyPack} disabled={!canApplyPack}>
@@ -258,7 +288,7 @@
     </div>
     {#if packPolicy === 'replace'}
       <label class="pack-ack">
-        <input type="checkbox" bind:checked={packReplaceAck} />
+        <input type="checkbox" bind:checked={packReplaceAck} disabled={!hasCurrentPreview || packBusy || packReading || packPreviewing} />
         {t(uiLang, 'textpack.replace_ack')}
       </label>
     {/if}

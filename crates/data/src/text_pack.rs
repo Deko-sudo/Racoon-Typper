@@ -156,47 +156,63 @@ pub fn export_text_pack(
                 ));
             }
         }
-        let repository = SqliteCustomTextRepository::new(conn);
-        let all = repository.get_all(MAX_TEXTS_PER_PACK)?;
-        let scoped: Vec<_> = match language {
-            Some(code) => all
-                .into_iter()
-                .filter(|text| text.language == code)
-                .collect(),
-            None => {
-                let mut languages: Vec<&str> =
-                    all.iter().map(|text| text.language.as_str()).collect();
-                languages.sort_unstable();
-                languages.dedup();
-                if languages.len() > 1 {
-                    return Err(validation(
-                        "Library mixes several languages; export requires one explicit language",
-                    ));
-                }
-                all
-            }
-        };
+        // Scope in SQL before limiting. A truncated export can silently lose
+        // entries on a later replace, so exceeding the pack ceiling is an error.
+        let mut query = conn.prepare(
+            "SELECT name, text, language FROM custom_texts
+             WHERE ?1 IS NULL OR language = ?1
+             ORDER BY last_used_at DESC NULLS LAST, id ASC LIMIT ?2",
+        )?;
+        let scoped = query
+            .query_map(
+                rusqlite::params![language, MAX_TEXTS_PER_PACK as i64 + 1],
+                |row| {
+                    Ok((
+                        TextPackEntryV1 {
+                            name: row.get(0)?,
+                            text: row.get(1)?,
+                        },
+                        row.get::<_, String>(2)?,
+                    ))
+                },
+            )?
+            .collect::<Result<Vec<_>, _>>()?;
+        if scoped.len() > MAX_TEXTS_PER_PACK {
+            return Err(validation("Library exceeds the text pack entry limit"));
+        }
+        if language.is_none()
+            && scoped
+                .iter()
+                .map(|(_, language)| language)
+                .collect::<std::collections::HashSet<_>>()
+                .len()
+                > 1
+        {
+            return Err(validation(
+                "Library mixes several languages; export requires one explicit language",
+            ));
+        }
         let detected_language = scoped
             .first()
-            .map(|text| text.language.clone())
+            .map(|(_, language)| language.clone())
             .or_else(|| language.map(str::to_string))
             .unwrap_or_else(|| "en".to_string());
-        Ok(TextPackExportV1 {
+        let exported = TextPackExportV1 {
             format: TEXT_PACK_FORMAT.to_string(),
             schema_version: TEXT_PACK_SCHEMA_VERSION,
             application_version: application_version.to_string(),
             exported_at: exported_at.to_string(),
             payload: TextPackPayloadV1 {
                 language: detected_language,
-                texts: scoped
-                    .into_iter()
-                    .map(|text| TextPackEntryV1 {
-                        name: text.name,
-                        text: text.text,
-                    })
-                    .collect(),
+                texts: scoped.into_iter().map(|(text, _)| text).collect(),
             },
-        })
+        };
+        let bytes =
+            serde_json::to_vec(&exported).map_err(|_| validation("Text pack cannot be encoded"))?;
+        if bytes.len() > MAX_TEXT_PACK_BYTES {
+            return Err(validation("Export exceeds the text pack byte limit"));
+        }
+        Ok(exported)
     })
 }
 
@@ -222,29 +238,18 @@ pub fn apply_text_pack_import(
     let (payload, resolved_format) = resolve_import(document, source_format)?;
     database.with_transaction(|conn| {
         let repository = SqliteCustomTextRepository::new(conn);
-        let existing = repository.get_all(MAX_TEXTS_PER_PACK)?;
-        let existing_in_language = existing
-            .iter()
-            .filter(|text| text.language == payload.language)
-            .count();
-
+        let existing = existing_names(conn, &payload.language)?;
+        let existing_in_language = existing.len();
         let known: std::collections::HashSet<String> = if policy == TextPackImportPolicy::Merge {
-            existing
-                .iter()
-                .filter(|text| text.language == payload.language)
-                .map(|text| normalize_name(&text.name))
-                .collect()
+            existing.into_iter().collect()
         } else {
             std::collections::HashSet::new()
         };
-
-        if policy == TextPackImportPolicy::Replace && existing_in_language > 0 {
-            for text in existing
-                .iter()
-                .filter(|text| text.language == payload.language)
-            {
-                repository.delete(text.id)?;
-            }
+        if policy == TextPackImportPolicy::Replace {
+            conn.execute(
+                "DELETE FROM custom_texts WHERE language = ?1",
+                [&payload.language],
+            )?;
         }
 
         let unique = deduplicated_entries(&payload.texts);
@@ -511,25 +516,28 @@ fn finalize_payload(
     Ok(())
 }
 
+// Pack size limits constrain incoming documents, not the user's existing library.
+// Load only scoped names, rather than truncating library rows or their text bodies.
+fn existing_names(conn: &Connection, language: &str) -> Result<Vec<String>, DbError> {
+    let mut query = conn.prepare("SELECT name FROM custom_texts WHERE language = ?1")?;
+    let rows = query.query_map([language], |row| row.get::<_, String>(0))?;
+    rows.map(|name| {
+        name.map(|name| normalize_name(&name))
+            .map_err(DbError::from)
+    })
+    .collect()
+}
+
 fn build_import_plan(
     conn: &Connection,
     payload: &TextPackPayloadV1,
     source_format: TextPackSourceFormat,
     policy: TextPackImportPolicy,
 ) -> Result<TextPackImportPlan, DbError> {
-    let repository = SqliteCustomTextRepository::new(conn);
-    let existing = repository.get_all(MAX_TEXTS_PER_PACK)?;
-    let existing_in_language = existing
-        .iter()
-        .filter(|text| text.language == payload.language)
-        .count();
-
+    let existing = existing_names(conn, &payload.language)?;
+    let existing_in_language = existing.len();
     let known: std::collections::HashSet<String> = if policy == TextPackImportPolicy::Merge {
-        existing
-            .iter()
-            .filter(|text| text.language == payload.language)
-            .map(|text| normalize_name(&text.name))
-            .collect()
+        existing.into_iter().collect()
     } else {
         std::collections::HashSet::new()
     };
@@ -637,6 +645,103 @@ mod tests {
         assert_eq!(texts.len(), 2);
         assert!(texts.iter().all(|text| text.language == "en"));
         assert!(texts.iter().any(|text| text.text == "beta\ntext"));
+    }
+
+    #[test]
+    fn export_filters_the_language_before_applying_the_pack_limit() {
+        let source = db();
+        for index in 0..MAX_TEXTS_PER_PACK {
+            seed(&source, &format!("RU-{index}"), "русский", "ru");
+        }
+        seed(&source, "English", "body", "en");
+        let exported = export_text_pack(&source, Some("en"), "1.3.1", "2026-10-16T00:00:00Z")
+            .expect("export explicit language");
+        assert_eq!(exported.payload.language, "en");
+        assert_eq!(exported.payload.texts.len(), 1);
+        assert_eq!(exported.payload.texts[0].name, "English");
+        assert!(export_text_pack(&source, None, "1.3.1", "2026-10-16T00:00:00Z").is_err());
+    }
+
+    #[test]
+    fn export_rejects_over_limit_libraries_instead_of_silently_truncating() {
+        let source = db();
+        for index in 0..=MAX_TEXTS_PER_PACK {
+            seed(&source, &format!("entry-{index}"), "body", "en");
+        }
+        assert!(export_text_pack(&source, Some("en"), "1.3.1", "2026-10-16T00:00:00Z").is_err());
+        assert_eq!(all_texts(&source).len(), MAX_TEXTS_PER_PACK + 1);
+    }
+
+    #[test]
+    fn export_rejects_documents_that_exceed_the_import_byte_limit() {
+        let source = db();
+        let text = "字".repeat(MAX_CUSTOM_TEXT_LENGTH);
+        for index in 0..150 {
+            seed(&source, &format!("entry-{index}"), &text, "zh-tw");
+        }
+        assert!(export_text_pack(&source, Some("zh-tw"), "1.3.1", "2026-10-16T00:00:00Z").is_err());
+        assert_eq!(all_texts(&source).len(), 150);
+    }
+
+    #[test]
+    fn import_merge_checks_existing_names_beyond_the_first_500_library_rows() {
+        let target = db();
+        for index in 0..MAX_TEXTS_PER_PACK {
+            seed(&target, &format!("RU-{index}"), "русский", "ru");
+        }
+        seed(&target, "Shared", "retained body", "en");
+        let document = json_pack("en", &[(" shared ", "incoming body")]);
+        let plan = plan_text_pack_import(
+            &target,
+            document.as_bytes(),
+            None,
+            TextPackImportPolicy::Merge,
+        )
+        .unwrap();
+        let applied = apply_text_pack_import(
+            &target,
+            document.as_bytes(),
+            None,
+            TextPackImportPolicy::Merge,
+        )
+        .unwrap();
+        assert_eq!((plan.existing_in_language, plan.to_skip), (1, 1));
+        assert_eq!((applied.existing_in_language, applied.to_skip), (1, 1));
+        assert_eq!(all_texts(&target).len(), MAX_TEXTS_PER_PACK + 1);
+    }
+
+    #[test]
+    fn import_replace_removes_every_scoped_row_beyond_the_pack_limit() {
+        let target = db();
+        seed(&target, "Russian", "retained", "ru");
+        for index in 0..=MAX_TEXTS_PER_PACK {
+            seed(&target, &format!("EN-{index}"), "old body", "en");
+        }
+        let document = json_pack("en", &[("New", "new body")]);
+        let plan = plan_text_pack_import(
+            &target,
+            document.as_bytes(),
+            None,
+            TextPackImportPolicy::Replace,
+        )
+        .unwrap();
+        let applied = apply_text_pack_import(
+            &target,
+            document.as_bytes(),
+            None,
+            TextPackImportPolicy::Replace,
+        )
+        .unwrap();
+        assert_eq!(plan.removed_by_replace, MAX_TEXTS_PER_PACK + 1);
+        assert_eq!(applied.removed_by_replace, MAX_TEXTS_PER_PACK + 1);
+        let texts = all_texts(&target);
+        assert_eq!(texts.len(), 2);
+        assert!(texts
+            .iter()
+            .any(|text| text.language == "ru" && text.name == "Russian"));
+        assert!(texts
+            .iter()
+            .any(|text| text.language == "en" && text.name == "New"));
     }
 
     #[test]

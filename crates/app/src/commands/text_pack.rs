@@ -92,7 +92,7 @@ fn import_text_pack_with_state(
     source_format: Option<String>,
     policy: racoon_data::text_pack::TextPackImportPolicy,
 ) -> Result<TextPackImportPlan, AppError> {
-    state.require_startup_recovery_ready()?;
+    let _readiness = state.require_startup_recovery_ready()?;
     apply_text_pack_import(
         &state.db,
         document.as_bytes(),

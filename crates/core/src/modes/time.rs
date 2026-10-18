@@ -46,7 +46,7 @@ impl TimeMode {
             return false;
         }
         let elapsed = buf.elapsed_ms();
-        elapsed >= self.duration_secs * 1000
+        elapsed >= self.duration_secs.saturating_mul(1000)
     }
 }
 
@@ -90,6 +90,10 @@ impl TestMode for TimeMode {
 
     fn is_complete(&self, buf: &TextBuffer) -> bool {
         self.time_expired(buf) || buf.is_complete
+    }
+
+    fn completion_duration_ms(&self, elapsed_ms: u64) -> u64 {
+        elapsed_ms.min(self.duration_secs.saturating_mul(1000))
     }
 
     fn get_text(&self) -> &str {

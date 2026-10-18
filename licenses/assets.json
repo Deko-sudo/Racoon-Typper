@@ -829,7 +829,7 @@
       "provenance_status": "third-party-font",
       "modified": false,
       "generation": null,
-      "notes": "Embedded at build time (include_bytes!) for the PNG result share card; full license text shipped in resources/fonts/DejaVu-LICENSE."
+      "notes": "Bundled as local frontend font assets for the Canvas PNG result share card; full license text shipped in resources/fonts/DejaVu-LICENSE."
     },
     {
       "path": "resources/fonts/DejaVuSans-Bold.ttf",
@@ -841,7 +841,7 @@
       "provenance_status": "third-party-font",
       "modified": false,
       "generation": null,
-      "notes": "Embedded at build time (include_bytes!) for the PNG result share card; full license text shipped in resources/fonts/DejaVu-LICENSE."
+      "notes": "Bundled as local frontend font assets for the Canvas PNG result share card; full license text shipped in resources/fonts/DejaVu-LICENSE."
     },
     {
       "path": "resources/fonts/DejaVuSans.ttf",
@@ -853,7 +853,7 @@
       "provenance_status": "third-party-font",
       "modified": false,
       "generation": null,
-      "notes": "Embedded at build time (include_bytes!) for the PNG result share card; full license text shipped in resources/fonts/DejaVu-LICENSE."
+      "notes": "Bundled as local frontend font assets for the Canvas PNG result share card; full license text shipped in resources/fonts/DejaVu-LICENSE."
     },
     {
       "path": "resources/quotes/cs.toml",

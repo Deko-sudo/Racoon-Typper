@@ -6,12 +6,12 @@ production release (Phase 4 work in `ROADMAP.md`).
 ## What data exists
 
 Racoon Typper is local-first. It stores only typing practice data on the user's
-own machine. There is no account, telemetry, or server component.
+own machine. There is no account, telemetry, server component, URL importer, or in-app updater. Updates are installed manually.
 
 | Data | Location | Contents |
 |---|---|---|
-| SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper/data.db` (Linux) | test history, replays, personal bests, daily statistics, streaks, lesson progress, custom texts, session ledger |
-| Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper/settings.toml` (Linux) | typing settings, theme, language preferences |
+| SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/com.racoon.typper/data.db` (Linux) | test history, replays, personal bests, daily statistics, streaks, lesson progress, custom texts, session ledger |
+| Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/com.racoon.typper/settings.toml` (Linux) | typing settings, theme, language preferences |
 
 Platform locations other than Linux x86_64 are unverified; see
 `SUPPORT_MATRIX.md`.
@@ -32,28 +32,45 @@ types or imports. This content never leaves the machine:
 ## Retention
 
 - The application keeps historical test records indefinitely until the user
-  deletes them through the UI or manually removes the database file.
+  clears statistics through Settings or removes the database while the app is
+  closed. Retained backups may still contain the old records.
 - Interrupted recovery records carry a recommended retention policy
   (`INTERRUPTED_SESSION_RETENTION_DAYS`, 90 days) defined in the recovery
   contracts; enforcement of that retention is Phase 4 work.
 
 ## Deletion
 
-- Deleting a test through the UI removes the history row and its associated
-  replay rows in the same transaction.
-- Deleting the application data directory removes all local data. Settings and
-  database live in separate directories; both must be removed for a complete
-  wipe:
-  - data: `${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper/`
-  - settings: `${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper/`
+- Settings' clear-statistics action removes all active database statistics,
+  replays and session-recovery ledgers in one transaction, while preserving
+  custom texts and settings. It is rejected during an active or retryable test.
+  There is no individual-test deletion command. This action does not erase
+  previously retained SQLite snapshots or exported files.
+- To remove the current profile, close the app and remove both its data and
+  settings directories. Exported files and legacy sources outside them remain:
+  - data: `${XDG_DATA_HOME:-$HOME/.local/share}/com.racoon.typper/`
+  - settings: `${XDG_CONFIG_HOME:-$HOME/.config}/com.racoon.typper/`
+
+On each Linux startup, a missing current file may be copied from a legacy
+location. If `XDG_DATA_HOME` or `XDG_CONFIG_HOME` is set, the corresponding
+legacy source is directly inside that directory; otherwise it is under
+`~/.local/share/racoon-typper` or `~/.config/racoon-typper`. Sources are retained.
+Removing a current destination can therefore import the legacy source again.
+For a complete wipe, remove both current and any retained legacy files while
+the app is closed. Legacy WAL/SHM companions are copied only with the main file
+and only when their own destinations are missing.
 
 ## Backup and recovery
 
 The data layer creates transactionally consistent, single-file SQLite backups
 with SQLite's Online Backup API and retains rotating pre-migration snapshots.
-Database-file restore remains a data-layer API and is not exposed through the
-application UI: it must never run while a live `Database` is open on the same
-path. Do not manually copy a live WAL-mode `data.db` file. See the [Profile
+Settings exposes whole-database restore through a file picker. The application
+closes its connection, validates a private migrated copy before replacement,
+retains private rollback snapshots with a local replacement journal, and performs
+filesystem recovery before opening SQLite and session recovery before accepting
+mutations. Cleanup keeps five completed rollback snapshots when removal succeeds;
+pending, legacy/unmarked and interrupted-cleanup copies can remain.
+The data-layer path API itself must never run while a live writer is open on
+the same path. Do not manually copy a live WAL-mode `data.db` file. See the [Profile
 Transfer and Recovery Runbook](profile-transfer.md) for the current recovery
 constraints.
 

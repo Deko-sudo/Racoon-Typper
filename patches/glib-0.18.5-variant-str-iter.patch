@@ -1,0 +1,8 @@
+--- a/src/variant_iter.rs
++++ b/src/variant_iter.rs
+@@ -120 +120 @@
+-            let p: *mut libc::c_char = std::ptr::null_mut();
++            let mut p: *mut libc::c_char = std::ptr::null_mut();
+@@ -126 +126 @@
+-                &p,
++                &mut p,

@@ -64,6 +64,12 @@ pub trait TestMode: Send + Sync {
     /// Завершён ли тест.
     fn is_complete(&self, buf: &TextBuffer) -> bool;
 
+    /// Scoring duration when completion is observed. Timed modes can cap a
+    /// delayed completion tick; untimed modes retain actual elapsed time.
+    fn completion_duration_ms(&self, elapsed_ms: u64) -> u64 {
+        elapsed_ms
+    }
+
     /// Целевой текст для отображения.
     fn get_text(&self) -> &str;
 

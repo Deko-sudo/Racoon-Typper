@@ -10,6 +10,7 @@ import {
   nextOnboardingStep,
   ONBOARDING_STEPS,
   previousOnboardingStep,
+  togglePracticeLanguage,
 } from '../frontend/src/lib/onboarding.ts';
 
 test('onboarding steps are bounded on both edges', () => {
@@ -36,12 +37,29 @@ test('non-numeric goal input falls back to the minimum', () => {
 });
 
 test('result builder clamps every metric independently', () => {
-  const result = buildOnboardingResult('de', 'wpm', -10, 350, 55.5);
+  const result = buildOnboardingResult(['de', 'ru'], 'wpm', -10, 350, 55.5);
   assert.deepEqual(result, {
-    practiceLanguage: 'de',
+    practiceLanguages: ['de', 'ru'],
     goalType: 'wpm',
     goalMinutes: 0,
     goalWpm: 300,
     goalAccuracy: 56,
   });
+});
+
+test('practice languages toggle independently and preserve selection order', () => {
+  const initial = ['ru'];
+  const both = togglePracticeLanguage(initial, 'en');
+  assert.deepEqual(initial, ['ru']);
+  assert.deepEqual(both, ['ru', 'en']);
+  assert.deepEqual(togglePracticeLanguage(both, 'ru'), ['en']);
+  assert.deepEqual(togglePracticeLanguage(['en'], 'en'), []);
+});
+
+test('onboarding rejects an empty selection and owns its language list', () => {
+  assert.throws(() => buildOnboardingResult([], 'time', 15, 40, 90));
+  const selected = ['ru', 'en', 'ru'];
+  const result = buildOnboardingResult(selected, 'time', 15, 40, 90);
+  selected.push('de');
+  assert.deepEqual(result.practiceLanguages, ['ru', 'en']);
 });

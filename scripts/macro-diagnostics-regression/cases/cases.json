@@ -1,0 +1,102 @@
+[
+  {
+    "name": "enum_struct",
+    "message": "#[derive(glib::Enum)] only supports enums",
+    "line": 3
+  },
+  {
+    "name": "enum_missing_name",
+    "message": "requires #[enum_type",
+    "line": 3
+  },
+  {
+    "name": "flags_struct",
+    "message": "#[glib::flags] only supports enums",
+    "line": 3
+  },
+  {
+    "name": "error_struct",
+    "message": "#[derive(glib::ErrorDomain)] only supports enums",
+    "line": 3
+  },
+  {
+    "name": "boxed_missing_name",
+    "message": "requires #[boxed_type",
+    "line": 3
+  },
+  {
+    "name": "shared_missing_name",
+    "message": "requires #[shared_boxed_type",
+    "line": 3
+  },
+  {
+    "name": "subclass_inherent",
+    "message": "This macro should be used on",
+    "line": 2
+  },
+  {
+    "name": "interface_inherent",
+    "message": "This macro should be used on",
+    "line": 2
+  },
+  {
+    "name": "properties_inherent",
+    "message": "This macro should be used on",
+    "line": 2
+  },
+  {
+    "name": "variant_unknown",
+    "message": "unknown type in #[variant_enum] attribute",
+    "line": 3
+  },
+  {
+    "name": "variant_union",
+    "message": "#[derive(glib::Variant)] is not available for unions.",
+    "line": 3
+  },
+  {
+    "name": "variant_data",
+    "message": "only allowed with C-style enums",
+    "line": 4
+  },
+  {
+    "name": "closure_unknown",
+    "message": "Unknown keyword",
+    "line": 2
+  },
+  {
+    "name": "closure_not_move",
+    "message": "Closure with captures needs to be",
+    "line": 2
+  },
+  {
+    "name": "closure_watch",
+    "message": "Only one `@watch` capture is allowed",
+    "line": 2
+  },
+  {
+    "name": "template_missing",
+    "message": "Missing 'template' attribute",
+    "line": 2
+  },
+  {
+    "name": "template_enum",
+    "message": "derive(CompositeTemplate) only supports structs",
+    "line": 2
+  },
+  {
+    "name": "template_parse",
+    "message": "expected string literal",
+    "line": 3
+  },
+  {
+    "name": "template_child",
+    "message": "expected string literal",
+    "line": 5
+  },
+  {
+    "name": "variant_flags_data",
+    "message": "only allowed with bitflags",
+    "line": 4
+  }
+]

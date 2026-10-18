@@ -714,7 +714,7 @@ fn personal_bests_allow_empty_results_and_reject_unstable_dimension_ordering() {
 #[test]
 fn analytics_use_complete_maintained_aggregates_and_a_bounded_recent_consistency_window() {
     let port = FakeAnalyticsPort {
-        achievement: Ok(AchievementInputs::new(100_001, 120.0, 99.0, 512, 0).unwrap()),
+        achievement: Ok(AchievementInputs::new(100_001, 120.0, 99.0, 120.0, 512, 0).unwrap()),
         insight: Ok(InsightInputs::new(
             vec![daily(day(2026, 7, 16), 1, 60.0, 98.0)],
             vec![60.0],
@@ -745,7 +745,7 @@ fn analytics_use_complete_maintained_aggregates_and_a_bounded_recent_consistency
 #[test]
 fn analytics_rejects_corrupt_complete_aggregate_inputs() {
     let port = FakeAnalyticsPort {
-        achievement: AchievementInputs::new(1, f64::NAN, 90.0, 0, 0),
+        achievement: AchievementInputs::new(1, f64::NAN, 90.0, 0.0, 0, 0),
         insight: Ok(InsightInputs::new(vec![], vec![])),
         achievement_queries: RefCell::new(vec![]),
         insight_queries: RefCell::new(vec![]),
@@ -760,7 +760,7 @@ fn analytics_rejects_corrupt_complete_aggregate_inputs() {
 #[test]
 fn analytics_empty_inputs_keep_existing_empty_data_semantics() {
     let port = FakeAnalyticsPort {
-        achievement: Ok(AchievementInputs::new(0, 0.0, 0.0, 0, 0).unwrap()),
+        achievement: Ok(AchievementInputs::new(0, 0.0, 0.0, 0.0, 0, 0).unwrap()),
         insight: Ok(InsightInputs::new(vec![], vec![])),
         achievement_queries: RefCell::new(vec![]),
         insight_queries: RefCell::new(vec![]),

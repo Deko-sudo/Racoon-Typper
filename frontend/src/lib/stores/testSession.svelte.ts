@@ -86,8 +86,11 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   // Key queue (not rendered — plain state)
   let queuedKeys: QueuedKey[] = [];
   let processingKeys = false;
+  let pendingAbort: Promise<boolean> | null = null;
   let sessionGeneration = 0;
   let timeCompletionQueued = false;
+  // Keep the accepted source, not the unrelated global mode controls.
+  let restartSource: (() => Promise<void>) | null = null;
   // Timestamp of the last "accuracy above 95%" toast — debounce (30s).
   let lastHighAccToastAt = 0;
 
@@ -108,7 +111,8 @@ export function createTestSessionStore(deps: TestSessionDeps) {
     finalStats = null;
     sessionModeType = resp.mode_type;
     sessionLanguage = resp.language;
-    sessionDurationMs = resp.mode_type === 'time' && resp.mode_config.type === 'time'
+    selectedLanguage = resp.language as LanguageCode;
+    sessionDurationMs = resp.mode_type === 'time' && 'duration' in resp.mode_config
       ? Math.max(0, resp.mode_config.duration * 1000)
       : 0;
     deps.setCurrentLessonId(lessonId);
@@ -147,36 +151,49 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   // presentation configuration from diverging from the authoritative engine.
   // A retry-pending completion intentionally cannot be abandoned here.
   async function abandonActiveSessionForReplacement(): Promise<boolean> {
+    if (pendingAbort) return pendingAbort;
     if (!isRunning || isComplete) return true;
     if (!sessionId) {
       deps.setError('Abort error: the active session has no backend identity');
       return false;
     }
-    try {
-      await ipc.abortSession(sessionId);
-      clearAbortedSessionPresentation();
-      return true;
-    } catch (error) {
-      deps.setError(`Abort error: ${ipc.ipcErrorMessage(error)}`);
-      return false;
-    }
+    const id = sessionId;
+    const generation = sessionGeneration;
+    pendingAbort = (async () => {
+      try {
+        await ipc.abortSession(id);
+        if (generation !== sessionGeneration) return false;
+        clearAbortedSessionPresentation();
+        return true;
+      } catch (error) {
+        if (generation === sessionGeneration) deps.setError(`Abort error: ${ipc.ipcErrorMessage(error)}`);
+        return false;
+      } finally {
+        pendingAbort = null;
+      }
+    })();
+    return pendingAbort;
   }
 
-  async function startTest() {
+  async function startTest(replaceActive = false, updateConfiguration?: () => void) {
     // Guard against a double start (e.g. a racing onMount + user click). The
     // backend rejects a second start with TEST_ALREADY_ACTIVE; surface a
     // clear message instead of a raw IPC error. `startingTest` closes the gap
     // where isRunning is still false while the first start is in flight.
-    if (isRunning && !isComplete) {
-      deps.setError('Start test error: A test is already running.');
-      return;
-    }
     if (startingTest) return;
     startingTest = true;
-    deps.setError('');
-    finalStats = null;
-    if (deps.getSettings()?.zen_mode_enabled) deps.setZenActive(true);
     try {
+      // Own the complete abort/configuration/start transition. Concurrent
+      // restarts must not abort twice or mutate an in-flight request's config.
+      if (replaceActive && !(await abandonActiveSessionForReplacement())) return;
+      if (isRunning && !isComplete) {
+        deps.setError('Start test error: A test is already running.');
+        return;
+      }
+      updateConfiguration?.();
+      deps.setError('');
+      finalStats = null;
+      if (deps.getSettings()?.zen_mode_enabled) deps.setZenActive(true);
       await deps.beforeStart();
       const params: {
         mode: ModeName;
@@ -192,6 +209,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
 
       const resp = await ipc.startTest(params);
       startTestFromResponse(resp);
+      restartSource = null;
     } catch (error) {
       deps.setZenActive(false);
       deps.setError(`Start test error: ${ipc.ipcErrorMessage(error)}`);
@@ -282,6 +300,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
           await applyEngineOutput(output, queued.key, queued.synthetic);
           if (queued.synthetic && !output.test_complete) timeCompletionQueued = false;
         } catch (error) {
+          if (queued.generation !== sessionGeneration) continue;
           if (queued.synthetic) timeCompletionQueued = false;
           queuedKeys = [];
           deps.setError(`Typing error: ${ipc.ipcErrorMessage(error)}`);
@@ -299,6 +318,23 @@ export function createTestSessionStore(deps: TestSessionDeps) {
     void drainKeyQueue();
   }
 
+  function acceptTypingKey(key: string, code: string) {
+    if (!isRunning || isComplete) return;
+    if (sessionState === 'running' && key !== 'Backspace') {
+      lastTypedChar = key;
+      testStartedAt ??= Date.now();
+    }
+    enqueueKey(key, code);
+  }
+
+  function updateCapsLock(enabled: boolean) {
+    if (capsLockOn === enabled) return;
+    capsLockOn = enabled;
+    if (enabled && deps.getSettings()?.show_capslock_warnings) {
+      deps.notify('WARNING', t(deps.getUiLang(), 'warning.caps_title'));
+    }
+  }
+
   async function abortTest() {
     if (!isRunning) return;
     await abandonActiveSessionForReplacement();
@@ -307,8 +343,8 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   // Restart the current test: abort the active session (if any) then start a
   // fresh one. Used by the in-test "Restart" button.
   async function restartTest() {
-    if (!(await abandonActiveSessionForReplacement())) return;
-    await startTest();
+    if (restartSource) await restartSource();
+    else await startTest(true);
   }
 
   async function startCustomTest(id: number) {
@@ -319,6 +355,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
       await deps.beforeStart();
       const resp = await ipc.startCustomTextTest(id);
       startTestFromResponse(resp);
+      restartSource = () => startCustomTest(id);
       deps.onStarted();
     } catch (error) {
       deps.setError(`Start custom text error: ${error}`);
@@ -335,6 +372,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
       await deps.beforeStart();
       const resp = await ipc.startLesson(lessonId, language);
       startTestFromResponse(resp, lessonId);
+      restartSource = () => startLesson(lessonId, language);
       deps.onStarted();
     } catch (e) {
       deps.setError(`Start lesson error: ${e}`);
@@ -343,19 +381,21 @@ export function createTestSessionStore(deps: TestSessionDeps) {
     }
   }
 
-  async function startTraining() {
+  async function startTraining(navigateToTest = false, language = selectedLanguage) {
     if (startingTest) return;
     startingTest = true;
     try {
       if (!(await abandonActiveSessionForReplacement())) return;
       await deps.beforeStart();
-      const generatedText = await ipc.generateWeakKeysTraining(selectedLanguage, 25);
+      const generatedText = await ipc.generateWeakKeysTraining(language, 25);
       const resp = await ipc.startTest({
         mode: 'custom',
-        language: selectedLanguage,
+        language,
         text: generatedText,
       });
       startTestFromResponse(resp);
+      restartSource = () => startTraining(false, language);
+      if (navigateToTest) deps.onStarted();
     } catch (e) {
       deps.setError(`Training error: ${e}`);
     } finally {
@@ -364,9 +404,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   }
 
   async function updateTestConfigurationAndRestart(update: () => void) {
-    if (!(await abandonActiveSessionForReplacement())) return;
-    update();
-    await startTest();
+    await startTest(true, update);
   }
 
   function onModeChange(m: ModeName) {
@@ -424,6 +462,8 @@ export function createTestSessionStore(deps: TestSessionDeps) {
     startLesson,
     startTraining,
     enqueueKey,
+    acceptTypingKey,
+    updateCapsLock,
     onModeChange,
     onDurationChange,
     onWordCountChange,

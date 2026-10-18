@@ -551,7 +551,8 @@ fn port_failure(error: DbError) -> RecoveryPortFailure {
         | DbError::Write(_)
         | DbError::Transaction(_)
         | DbError::Backup(_)
-        | DbError::Restore(_) => {
+        | DbError::Restore(_)
+        | DbError::RestoreBlocked => {
             RecoveryPortFailure::PermanentFailure(RecoveryPermanentFailure::IntegrityFailure)
         }
         DbError::LockPoisoned => RecoveryPortFailure::RetryableFailure,

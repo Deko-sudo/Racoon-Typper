@@ -1,10 +1,23 @@
 // i18n translations for Racoon Typper UI
+import { achievementMessages } from './achievementMessages';
 
 export type UiLang = 'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko';
 
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  'test.input_label': 'Type the displayed text',
+  'hands.title': 'Finger guide',
+  'hands.hand.L': 'Left hand',
+  'hands.hand.R': 'Right hand',
+  'hands.finger.P': 'Little finger',
+  'hands.finger.R': 'Ring finger',
+  'hands.finger.M': 'Middle finger',
+  'hands.finger.I': 'Index finger',
+  'hands.finger.T': 'Thumb',
+  'hands.space': 'Space',
+  'hands.no_hint': 'No finger hint for this key',
+
   'nav.dashboard': 'Dashboard',
   'nav.test': 'Test',
   'nav.pomodoro': 'Pomodoro',
@@ -92,7 +105,7 @@ const en: Dict = {
   'test.typing_title': 'Typing text',
   'test.blind_active': 'Blind',
   'warning.layout_title': 'Wrong keyboard layout',
-  'warning.layout_message': 'The {current} layout is active. Switch to {expected}.',
+  'warning.layout_message': 'The last input is {current}; this text requires {expected}. Check your system keyboard layout.',
   'warning.caps_title': 'Caps Lock is on',
   'warning.caps_message': 'Caps Lock can reduce typing accuracy.',
   // Notification toasts (user-facing messages)
@@ -143,7 +156,8 @@ const en: Dict = {
   'onboarding.welcome_title': 'Welcome to Racoon Typper',
   'onboarding.subtitle': "Let's set up three things — you can change them later in Settings.",
   'onboarding.step_ui_lang': 'Interface language',
-  'onboarding.step_practice_lang': 'Practice language',
+  'onboarding.step_practice_lang': 'Practice languages',
+  'onboarding.practice_languages_hint': 'Choose one or more languages. Start with the first selected language and switch between them during practice.',
   'onboarding.step_goal': 'Daily goal',
   'onboarding.goal_minutes': 'Minutes per day',
   'onboarding.skip': 'Skip',
@@ -156,6 +170,8 @@ const en: Dict = {
   'textpack.export': 'Export pack',
   'textpack.exported': 'Pack downloaded.',
   'textpack.choose_file': 'Choose a pack file first.',
+  'textpack.file_error_empty': 'Text pack file is empty.',
+  'textpack.file_error_too_large': 'Text pack file exceeds the 4 MiB limit.',
   'textpack.merge': 'Merge (skip existing names)',
   'textpack.replace': 'Replace this language',
   'textpack.replace_ack': 'I understand: all texts in the pack language will be deleted.',
@@ -211,8 +227,6 @@ const en: Dict = {
   'custom.used': 'Used',
   'custom.import_file': 'Import .txt',
   'custom.import_clipboard': 'Paste',
-  'custom.import_url': 'Import URL',
-  'custom.import_url_prompt': 'Enter the URL of the text to import (HTTPS only):',
   'custom.import_error_empty': 'The imported text is empty.',
   'custom.import_error_failed': 'Import failed:',
   // Lessons
@@ -274,6 +288,18 @@ const en: Dict = {
 };
 
 const ru: Dict = {
+  'test.input_label': 'Введите показанный текст',
+  'hands.title': 'Подсказка пальца',
+  'hands.hand.L': 'Левая рука',
+  'hands.hand.R': 'Правая рука',
+  'hands.finger.P': 'Мизинец',
+  'hands.finger.R': 'Безымянный',
+  'hands.finger.M': 'Средний',
+  'hands.finger.I': 'Указательный',
+  'hands.finger.T': 'Большой',
+  'hands.space': 'Пробел',
+  'hands.no_hint': 'Для этой клавиши нет подсказки',
+
   'nav.dashboard': 'Панель',
   'nav.test': 'Тест',
   'nav.pomodoro': 'Помодоро',
@@ -361,7 +387,7 @@ const ru: Dict = {
   'test.typing_title': 'Текст для ввода',
   'test.blind_active': 'Слепая',
   'warning.layout_title': 'Неверная раскладка',
-  'warning.layout_message': 'Сейчас активна {current} раскладка. Переключитесь на {expected}.',
+  'warning.layout_message': 'Последний введённый символ: {current}. Для текста требуется {expected}. Проверьте системную раскладку.',
   'warning.caps_title': 'Caps Lock включён',
   'warning.caps_message': 'Caps Lock может снизить точность ввода.',
   'notification.great_result': 'Отличный результат!',
@@ -411,7 +437,8 @@ const ru: Dict = {
   'onboarding.welcome_title': 'Добро пожаловать в Racoon Typper',
   'onboarding.subtitle': 'Настроим три вещи — потом всё можно изменить в Настройках.',
   'onboarding.step_ui_lang': 'Язык интерфейса',
-  'onboarding.step_practice_lang': 'Язык практики',
+  'onboarding.step_practice_lang': 'Языки практики',
+  'onboarding.practice_languages_hint': 'Выберите один или несколько языков. Начнём с первого выбранного — между языками можно переключаться во время практики.',
   'onboarding.step_goal': 'Дневная цель',
   'onboarding.goal_minutes': 'Минут в день',
   'onboarding.skip': 'Пропустить',
@@ -424,6 +451,8 @@ const ru: Dict = {
   'textpack.export': 'Экспорт пакета',
   'textpack.exported': 'Пакет скачан.',
   'textpack.choose_file': 'Сначала выберите файл пакета.',
+  'textpack.file_error_empty': 'Файл пакета текстов пуст.',
+  'textpack.file_error_too_large': 'Размер пакета текстов превышает лимит 4 МиБ.',
   'textpack.merge': 'Объединить (пропускать существующие)',
   'textpack.replace': 'Заменить этот язык',
   'textpack.replace_ack': 'Я понимаю: все тексты языка пакета будут удалены.',
@@ -479,8 +508,6 @@ const ru: Dict = {
   'custom.used': 'Использован',
   'custom.import_file': 'Импорт .txt',
   'custom.import_clipboard': 'Вставить',
-  'custom.import_url': 'Из URL',
-  'custom.import_url_prompt': 'Введите URL текста для импорта (только HTTPS):',
   'custom.import_error_empty': 'Импортированный текст пуст.',
   'custom.import_error_failed': 'Ошибка импорта:',
   // Lessons
@@ -768,7 +795,7 @@ const dictionaries: Record<string, Dict> = {
 
 export function t(lang: string, key: string): string {
   const dict = dictionaries[lang] || en;
-  return dict[key] || en[key] || key;
+  return dict[key] || achievementMessages[lang]?.[key] || en[key] || achievementMessages.en[key] || key;
 }
 
 export const UI_LANGUAGES: [string, string][] = [

@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { FinalStats } from '../lib/types/index';
-  import * as ipc from '../lib/api/ipc';
+  import { renderShareCard, downloadShareCard } from '../lib/shareCard';
   import KeyboardHeatmap from './KeyboardHeatmap.svelte';
   import { t } from '../lib/i18n';
   import type { LessonResultNavigation } from '../lib/lessonNavigation';
@@ -51,7 +51,7 @@
       const heatmap = (stats.heatmap && typeof stats.heatmap === 'object'
         ? stats.heatmap
         : {}) as Record<string, { total_attempts: number; correct: number; incorrect: number; avg_wpm_at_key: number }>;
-      const bytes = await ipc.exportResultPng(
+      const blob = await renderShareCard(
         {
           wpm: stats.wpm,
           raw_wpm: stats.raw_wpm,
@@ -64,13 +64,7 @@
         },
         colors,
       );
-      const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `racoon-typper-${Math.round(stats.wpm)}wpm-${Date.now()}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
+      downloadShareCard(blob, `racoon-typper-${Math.round(stats.wpm)}wpm-${Date.now()}.png`);
       shareState = 'idle';
     } catch (e) {
       console.error('share png failed:', e);

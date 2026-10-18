@@ -115,8 +115,15 @@ impl ProgressReportingPort for SqliteProgressReportingPort<'_> {
                 let row = SqliteStreakRepository::new(conn).get("daily_test")?;
                 Ok(match row {
                     Some(row) => StreakReport::new(
-                        u64::try_from(row.current_streak)
-                            .map_err(|_| DbError::Validation("streak exceeds u64".into()))?,
+                        if racoon_core::StreakEngine::is_streak_active(
+                            row.last_date.as_deref(),
+                            &as_of.to_string(),
+                        ) {
+                            u64::try_from(row.current_streak)
+                                .map_err(|_| DbError::Validation("streak exceeds u64".into()))?
+                        } else {
+                            0
+                        },
                         u64::try_from(row.longest_streak)
                             .map_err(|_| DbError::Validation("streak exceeds u64".into()))?,
                         as_of,
@@ -728,6 +735,15 @@ fn load_achievement_inputs(
         .iter()
         .map(|pb| pb.best_accuracy)
         .fold(0.0_f64, f64::max);
+    // Scan complete history: independent personal-best columns cannot prove
+    // that speed and accuracy were reached in the same completed session.
+    let best_accurate_wpm = conn
+        .query_row(
+            "SELECT COALESCE(MAX(wpm), 0.0) FROM tests WHERE accuracy >= ?1",
+            params![query.minimum_combined_accuracy()],
+            |row| row.get::<_, f64>(0),
+        )
+        .map_err(|error| DbError::Query(error.to_string()))?;
     let longest_streak = SqliteStreakRepository::new(conn)
         .get("daily_test")?
         .map_or(0, |row| row.longest_streak);
@@ -744,6 +760,7 @@ fn load_achievement_inputs(
             .map_err(|_| DbError::Validation("test count exceeds u64".into()))?,
         best_wpm,
         best_accuracy,
+        best_accurate_wpm,
         u64::try_from(longest_streak)
             .map_err(|_| DbError::Validation("streak exceeds u64".into()))?,
         u64::try_from(lessons_completed)
@@ -809,6 +826,7 @@ fn storage_failure(error: DbError) -> ReportingError {
         | DbError::Write(_)
         | DbError::Backup(_)
         | DbError::Restore(_)
+        | DbError::RestoreBlocked
         | DbError::NotFound(_) => ReportingError::StorageUnavailable,
     }
 }
@@ -1001,6 +1019,38 @@ mod tests {
             .unwrap();
         assert_eq!(report.current_streak(), 3);
         assert_eq!(report.longest_streak(), 9);
+    }
+
+    #[test]
+    fn progress_streak_expires_after_a_missed_day_without_changing_the_record() {
+        let database = db();
+        database
+            .with_transaction(|conn| {
+                SqliteStreakRepository::new(conn).upsert(&StreakRecord {
+                    streak_type: "daily_test".into(),
+                    current_streak: 3,
+                    longest_streak: 9,
+                    last_date: Some("2026-07-16".into()),
+                    started_date: Some("2026-07-14".into()),
+                })
+            })
+            .unwrap();
+        let port = SqliteProgressReportingPort::new(&database);
+        for (date, expected_current) in [("2026-07-16", 3), ("2026-07-17", 3), ("2026-07-18", 0)] {
+            let report = port
+                .load_streak_report(ReportingDay::parse_iso(date).unwrap())
+                .unwrap();
+            assert_eq!(report.current_streak(), expected_current, "as of {date}");
+            assert_eq!(report.longest_streak(), 9);
+        }
+        let retained = database
+            .with_connection(|conn| SqliteStreakRepository::new(conn).get("daily_test"))
+            .unwrap()
+            .unwrap();
+        assert_eq!(
+            retained.current_streak, 3,
+            "reporting must not mutate persisted streaks"
+        );
     }
 
     #[test]

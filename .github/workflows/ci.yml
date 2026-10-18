@@ -31,6 +31,15 @@ jobs:
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: test
         run: cargo test --workspace
+      - name: Test opt-in process-crash recovery
+        run: cargo test -p racoon-data --features crash-test-support --test process_crash_recovery
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Test macro diagnostics backports
+        run: node scripts/check-macro-diagnostics.mjs
+      - name: Test optimized GLib backport contract
+        run: cargo test --manifest-path scripts/glib-variant-regression/Cargo.toml --locked --release
 
   frontend-build:
     runs-on: ubuntu-latest
@@ -43,6 +52,8 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend deps
         run: npm ci --prefix frontend
+      - name: Audit frontend dependencies
+        run: npm audit --prefix frontend --audit-level=moderate
       - name: Check project version
         run: npm run check:version --prefix frontend
       - name: Check IPC command registration contract
@@ -70,8 +81,14 @@ jobs:
         run: cargo install cargo-deny --locked --version 0.20.2
       - name: Validate Rust dependency licenses
         run: cargo deny check licenses
+      - name: Audit all workspace dependency maintenance and soundness findings
+        run: cargo deny --locked check advisories -D unmaintained -D unsound
       - name: Validate project and npm licenses
         run: npm run license:check --prefix frontend
+      - name: Test vendored source provenance
+        run: node --test scripts/vendor-provenance.test.mjs
+      - name: Check vendored GLib against registry advisories
+        run: node scripts/check-vendored-glib-advisories.mjs
       - name: Upload licensing reports
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

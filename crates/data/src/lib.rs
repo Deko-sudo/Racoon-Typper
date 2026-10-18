@@ -8,6 +8,7 @@ pub mod error;
 pub mod models;
 pub mod profile_transfer;
 pub mod repository;
+pub mod statistics_reset;
 pub mod text_pack;
 
 pub use db::Database;

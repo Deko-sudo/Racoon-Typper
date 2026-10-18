@@ -3072,6 +3072,22 @@ mod tests {
     }
 
     #[test]
+    fn fractional_statistics_round_trip_without_changing_canonical_bytes() {
+        for wpm in [1.2345678901234567, 46.715328467153284, 0.8455124082255701] {
+            let mut result = completion(serde_json::json!({"language": "en"}));
+            result.final_stats.wpm = wpm;
+            let intent = CompletionIntent::from_completion(&result, policy()).expect("intent");
+            let restored = CompletionIntent::from_stored_payload(
+                intent.canonical_payload(),
+                intent.fingerprint(),
+            )
+            .expect("canonical floating-point statistics must remain readable");
+            assert_eq!(restored, intent);
+            assert_eq!(restored.payload().final_stats.wpm.to_bits(), wpm.to_bits());
+        }
+    }
+
+    #[test]
     fn canonical_stored_payload_round_trips_without_changing_the_intent() {
         let original = intent(serde_json::json!({"language": "en"}));
         let restored = CompletionIntent::from_stored_payload(

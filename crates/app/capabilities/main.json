@@ -11,7 +11,6 @@
     "allow-delete-custom-text",
     "allow-export-data",
     "allow-export-heatmap-png",
-    "allow-export-result-png",
     "allow-export-profile",
     "allow-export-report",
     "allow-generate-weak-keys-training",
@@ -49,7 +48,6 @@
     "allow-update-custom-text",
     "dialog:allow-open",
     "fs:allow-read-text-file",
-    "clipboard-manager:allow-read-text",
-    "allow-import-text-from-url"
+    "clipboard-manager:allow-read-text"
   ]
 }

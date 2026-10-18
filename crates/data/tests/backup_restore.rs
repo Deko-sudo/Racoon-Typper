@@ -408,3 +408,63 @@ fn backup_rotation_dir_under_data_dir() {
     let dir = backup_rotation_dir(std::path::Path::new("/var/lib/racoon-typper"));
     assert_eq!(dir, std::path::Path::new("/var/lib/racoon-typper/backups"));
 }
+
+#[test]
+fn backup_rejects_the_live_database_as_its_destination() {
+    let root = temp_dir("backup-self");
+    std::fs::create_dir(&root).unwrap();
+    let live = root.join("live.db");
+    let db = Database::open(&live).unwrap();
+    let original = std::fs::read(&live).unwrap();
+    let result = backup_to_path(&db, &live);
+    let unchanged = std::fs::read(&live).unwrap() == original;
+    drop(db);
+    std::fs::remove_dir_all(root).unwrap();
+    assert!(
+        result.is_err(),
+        "backing up onto an open source must be refused"
+    );
+    assert!(unchanged, "rejected backup changed the main file");
+}
+
+#[test]
+fn failed_backup_publication_cleans_its_temporary_snapshot() {
+    let root = temp_dir("backup-cleanup");
+    std::fs::create_dir(&root).unwrap();
+    let dest = root.join("destination.db");
+    std::fs::create_dir(&dest).unwrap();
+    let db = Database::open_in_memory().unwrap();
+    let result = backup_to_path(&db, &dest);
+    let entries = std::fs::read_dir(&root).unwrap().count();
+    std::fs::remove_dir_all(root).unwrap();
+    assert!(result.is_err());
+    assert_eq!(entries, 1, "failed backup left a private snapshot on disk");
+}
+
+#[cfg(unix)]
+#[test]
+fn backup_does_not_follow_a_preexisting_predictable_temporary_symlink() {
+    let root = temp_dir("backup-temp-alias");
+    std::fs::create_dir(&root).unwrap();
+    let victim = root.join("victim.db");
+    let conn = rusqlite::Connection::open(&victim).unwrap();
+    conn.execute("CREATE TABLE retained(id INTEGER)", [])
+        .unwrap();
+    drop(conn);
+    let original = std::fs::read(&victim).unwrap();
+    let dest = root.join("export.db");
+    let old_temp = root.join(format!("export.db.tmp-{}", std::process::id()));
+    std::os::unix::fs::symlink(&victim, &old_temp).unwrap();
+    backup_to_path(&Database::open_in_memory().unwrap(), &dest).unwrap();
+    let unchanged = std::fs::read(&victim).unwrap() == original;
+    let ordinary_file = !std::fs::symlink_metadata(&dest)
+        .unwrap()
+        .file_type()
+        .is_symlink();
+    std::fs::remove_dir_all(root).unwrap();
+    assert!(
+        unchanged,
+        "backup followed a temporary symlink and overwrote another database"
+    );
+    assert!(ordinary_file, "published backup must be a regular file");
+}

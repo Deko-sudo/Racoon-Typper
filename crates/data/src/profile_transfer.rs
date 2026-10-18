@@ -203,13 +203,20 @@ pub fn export_profile(
     )?;
     validate_timestamp(exported_at, "exported_at")?;
     let profile = database.with_connection(export_payload)?;
-    Ok(ProfileExportV1 {
+    validate_payload(&profile)?;
+    let exported = ProfileExportV1 {
         format: PROFILE_FORMAT.to_string(),
         schema_version: PROFILE_SCHEMA_VERSION,
         exported_at: exported_at.to_string(),
         application_version: application_version.to_string(),
         profile,
-    })
+    };
+    let bytes = serde_json::to_vec(&exported)
+        .map_err(|_| validation("Profile document cannot be encoded"))?;
+    if bytes.len() > MAX_PROFILE_BYTES {
+        return Err(validation("Export exceeds the profile document byte limit"));
+    }
+    Ok(exported)
 }
 
 /// Returns an import preview. It never mutates the database.
@@ -489,8 +496,13 @@ fn query_all<T>(
     sql: &str,
     map: impl FnMut(&rusqlite::Row<'_>) -> rusqlite::Result<T>,
 ) -> Result<Vec<T>, DbError> {
+    // Read one extra row so the shared validator rejects oversized collections
+    // explicitly, without silently truncating or loading an unbounded history.
     let mut statement = conn
-        .prepare(sql)
+        .prepare(&format!(
+            "{sql} LIMIT {}",
+            MAX_PROFILE_ROWS_PER_COLLECTION + 1
+        ))
         .map_err(|error| DbError::Query(error.to_string()))?;
     let rows = statement
         .query_map([], map)

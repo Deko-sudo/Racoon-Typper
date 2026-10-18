@@ -7,12 +7,14 @@ use racoon_application::{
 };
 use racoon_core::analytics::{Achievement, Insight};
 use racoon_core::consistency::ConsistencyReport;
+use racoon_core::CoreEngine;
 use racoon_data::repository::{
     DailyStats, DailyStatsRepository, PersonalBestsRepository, ReplayRepository,
     SqliteAnalyticsReportingPort, SqliteDailyStatsRepository, SqlitePersonalBestsRepository,
     SqliteProgressReportingPort, SqliteReplayRepository, SqliteTestRepository, TestRepository,
 };
 use racoon_domain::PersonalBest;
+use std::sync::Mutex;
 use tauri::State;
 
 use crate::commands::contracts::{
@@ -418,20 +420,6 @@ pub(crate) fn export_heatmap_png(
     Ok(render_heatmap_png(&ordered))
 }
 
-/// Рендерит PNG share-карточку результата теста в цветах активной темы.
-///
-/// Статистика приходит с фронтенда (только что завершённый тест из
-/// ResultOverlay), цвета — из getComputedStyle CSS-переменных. Возвращает
-/// PNG-байты; фронтенд скачивает их через Blob-download.
-#[tauri::command]
-pub(crate) fn export_result_png(
-    stats: crate::share_card::ShareStats,
-    colors: crate::share_card::ThemeColors,
-) -> Result<Vec<u8>, AppError> {
-    crate::share_card::render_share_card(&stats, &colors)
-        .map_err(|e| AppError::Internal(format!("share card render: {e}")))
-}
-
 fn local_date_range(days: i64) -> (String, String) {
     // Boundaries must be expressed in the user's local calendar day to match
     // the local dates written by daily_stats/streaks persistence.
@@ -447,24 +435,26 @@ fn local_date_range(days: i64) -> (String, String) {
 /// Custom texts and settings are preserved. Achievements are derived from these
 /// aggregates, so they reset to locked as well.
 #[tauri::command]
-pub(crate) fn clear_statistics(state: State<'_, AppState>) -> Result<(), AppError> {
-    state.require_startup_recovery_ready()?;
-    state.db.with_transaction(|conn| {
-        for table in [
-            "test_replays",
-            "session_ledger",
-            "session_completion_intents",
-            "session_finalizations",
-            "tests",
-            "personal_bests",
-            "daily_stats",
-            "streaks",
-            "lesson_progress",
-        ] {
-            conn.execute(&format!("DELETE FROM {table}"), [])?;
-        }
-        Ok(())
-    })?;
+pub(crate) fn clear_statistics(
+    state: State<'_, AppState>,
+    engine_state: State<'_, Mutex<CoreEngine>>,
+) -> Result<(), AppError> {
+    clear_statistics_with_state(&state, &engine_state)
+}
+
+fn clear_statistics_with_state(
+    state: &AppState,
+    engine_state: &Mutex<CoreEngine>,
+) -> Result<(), AppError> {
+    let _lifecycle = state.begin_database_restore()?;
+    let mut engine = engine_state.lock()?;
+    match engine.session_state() {
+        racoon_domain::SessionState::Idle | racoon_domain::SessionState::Persisted => {}
+        racoon_domain::SessionState::Running => return Err(AppError::TestAlreadyActive),
+        _ => return Err(AppError::SessionFinalizing),
+    }
+    racoon_data::statistics_reset::clear_statistics(&state.db)?;
+    let _ = engine.abort();
     Ok(())
 }
 
@@ -641,5 +631,224 @@ mod tests {
         assert_eq!(four_weeks[3].total_tests, 1);
 
         assert!(get_weekly_summaries_with_state(&state, Some(0)).is_err());
+    }
+    fn ready_reset_state() -> AppState {
+        let state = app_state();
+        state
+            .recover_restored_database(state.startup_recovery())
+            .expect("ready reset fixture");
+        state
+    }
+
+    fn complete_reset_test(state: &AppState, engine: &Mutex<CoreEngine>) -> SessionId {
+        let info = crate::session_service::start_test(
+            &mut engine.lock().expect("engine"),
+            state,
+            crate::session_service::StartTestRequest {
+                mode: "custom".into(),
+                text: Some("ab".into()),
+                language: Some("en".into()),
+                duration: None,
+                word_count: None,
+                quote_id: None,
+            },
+        )
+        .expect("start real session");
+        let id = SessionId::parse(info.session_id).expect("session identity");
+        for ch in info.text.chars() {
+            crate::session_service::process_key(
+                engine,
+                state,
+                id.clone(),
+                ch.to_string(),
+                "KeyA".into(),
+            )
+            .expect("persist real session");
+        }
+        assert_eq!(
+            engine.lock().expect("engine").session_state(),
+            racoon_domain::SessionState::Persisted
+        );
+        id
+    }
+
+    #[test]
+    fn audit_clear_statistics_resets_finalized_history_and_allows_the_next_session() {
+        use racoon_data::repository::{CustomTextRepository, SqliteCustomTextRepository};
+        let state = ready_reset_state();
+        let engine = Mutex::new(CoreEngine::new());
+        let old_id = complete_reset_test(&state, &engine);
+        let settings_before =
+            serde_json::to_value(state.with_settings(|store| store.load()).expect("settings"))
+                .unwrap();
+        let custom_id = state
+            .db
+            .with_connection(|conn| SqliteCustomTextRepository::new(conn).save("Keep", "Текст 字"))
+            .expect("custom text");
+
+        clear_statistics_with_state(&state, &engine).expect("clear complete profile statistics");
+        assert!(engine
+            .lock()
+            .expect("engine")
+            .current_session_id()
+            .is_none());
+        state
+            .db
+            .with_connection(|conn| {
+                for table in [
+                    "tests",
+                    "test_replays",
+                    "personal_bests",
+                    "daily_stats",
+                    "streaks",
+                    "lesson_progress",
+                    "session_finalizations",
+                    "session_completion_intents",
+                    "session_ledger",
+                ] {
+                    let count: i64 =
+                        conn.query_row(&format!("SELECT count(*) FROM {table}"), [], |row| {
+                            row.get(0)
+                        })?;
+                    assert_eq!(count, 0, "{table}");
+                }
+                assert_eq!(
+                    SqliteCustomTextRepository::new(conn)
+                        .get_by_id(custom_id)?
+                        .text,
+                    "Текст 字"
+                );
+                Ok(())
+            })
+            .expect("empty statistics and retained custom text");
+        assert_eq!(
+            settings_before,
+            serde_json::to_value(state.with_settings(|store| store.load()).expect("settings"))
+                .unwrap()
+        );
+        assert!(matches!(
+            crate::session_service::process_key(
+                &engine,
+                &state,
+                old_id.clone(),
+                "a".into(),
+                "KeyA".into()
+            ),
+            Err(AppError::SessionNotFound(_))
+        ));
+        let new_id = complete_reset_test(&state, &engine);
+        assert_ne!(old_id, new_id);
+        state
+            .db
+            .with_connection(|conn| {
+                assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 1);
+                Ok(())
+            })
+            .expect("next session persists once");
+    }
+
+    #[test]
+    fn audit_clear_statistics_resets_legacy_history_with_personal_best_and_replay() {
+        use racoon_data::repository::{PersonalBestsRepository, SqlitePersonalBestsRepository};
+        let state = ready_reset_state();
+        let engine = Mutex::new(CoreEngine::new());
+        seed_test(&state.db, 50.0, "time", "2026-07-16T12:00:00Z");
+        state.db.with_connection(|conn| {
+            let id = conn.query_row("SELECT id FROM tests", [], |row| row.get::<_, i64>(0))?;
+            SqlitePersonalBestsRepository::new(conn)
+                .check_and_update("time", "{}", 50.0, 95.0, id)?;
+            conn.execute("INSERT INTO test_replays (test_id, frame_index, timestamp_ms, position, expected_char) VALUES (?1, 0, 0, 1, 'a')", [id])?;
+            assert_eq!(conn.query_row("SELECT count(*) FROM session_ledger", [], |row| row.get::<_, i64>(0))?, 0);
+            Ok(())
+        }).expect("legacy PB and replay without recovery ledger");
+        clear_statistics_with_state(&state, &engine).expect("clear legacy statistics");
+        state
+            .db
+            .with_connection(|conn| {
+                for table in ["tests", "personal_bests", "test_replays"] {
+                    assert_eq!(
+                        conn.query_row(&format!("SELECT count(*) FROM {table}"), [], |row| row
+                            .get::<_, i64>(0))?,
+                        0
+                    );
+                }
+                Ok(())
+            })
+            .expect("legacy statistics removed");
+    }
+
+    #[test]
+    fn audit_clear_statistics_rejects_running_and_retry_pending_sessions() {
+        use racoon_domain::SessionState;
+        for phase in [
+            SessionState::Running,
+            SessionState::AwaitingPersistence,
+            SessionState::Persisting,
+        ] {
+            let state = ready_reset_state();
+            let mut engine = CoreEngine::new();
+            engine
+                .start_test_mode(
+                    "fixture-session".to_string(),
+                    Box::new(racoon_core::CustomMode::new("a".into(), "en".into())),
+                )
+                .expect("running session");
+            if phase != SessionState::Running {
+                engine.process_key(&racoon_core::KeyEvent {
+                    key: "a".into(),
+                    code: "KeyA".into(),
+                    timestamp: 0,
+                });
+                if phase == SessionState::Persisting {
+                    assert!(engine.begin_persistence());
+                }
+            }
+            let engine = Mutex::new(engine);
+            assert!(
+                clear_statistics_with_state(&state, &engine).is_err(),
+                "must reject {phase:?}"
+            );
+            assert_eq!(engine.lock().expect("engine").session_state(), phase);
+        }
+    }
+
+    #[test]
+    fn audit_clear_statistics_requires_an_exclusive_lifecycle_lease() {
+        let state = ready_reset_state();
+        let engine = Mutex::new(CoreEngine::new());
+        let _active_mutation = state
+            .require_startup_recovery_ready()
+            .expect("shared lease");
+        assert!(matches!(
+            clear_statistics_with_state(&state, &engine),
+            Err(AppError::RecoveryInProgress)
+        ));
+    }
+
+    #[test]
+    fn audit_clear_statistics_failure_retains_the_completed_engine_and_history() {
+        let state = ready_reset_state();
+        let engine = Mutex::new(CoreEngine::new());
+        let old_id = complete_reset_test(&state, &engine);
+        state.db.with_connection(|conn| {
+            conn.execute_batch("CREATE TEMP TRIGGER fail_statistics_reset BEFORE DELETE ON tests BEGIN SELECT RAISE(ABORT, '/private/audit-path secret-payload'); END;")?;
+            Ok(())
+        }).expect("failure seam");
+        let error =
+            clear_statistics_with_state(&state, &engine).expect_err("injected deletion failure");
+        let public_error = serde_json::to_value(error).expect("redacted IPC error");
+        assert_eq!(public_error["code"], "DB_WRITE");
+        assert_eq!(public_error["message"], "The database operation failed.");
+        assert_eq!(
+            engine.lock().expect("engine").current_session_id(),
+            Some(&old_id)
+        );
+        state
+            .db
+            .with_connection(|conn| {
+                assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 1);
+                Ok(())
+            })
+            .expect("history retained");
     }
 }

@@ -38,7 +38,7 @@ npm run tauri:dev --prefix frontend
 
 The Rust toolchain is pinned by `rust-toolchain.toml`; `rustup` installs the
 pinned version automatically. The frontend Node version is pinned by
-`frontend/.nvmrc` (use `nvm use`/`fnm use` or install Node >= 22 manually).
+`frontend/.nvmrc` (use `nvm use`/`fnm use` or install Node 22.12+ on the 22.x line or Node 24+ manually).
 
 ### Validation and binary build
 

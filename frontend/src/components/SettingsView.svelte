@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { AppSettings, ThemeInfo } from '../lib/types/index';
+  import type { AppSettings, LanguageCode, ThemeInfo } from '../lib/types/index';
   import { t, UI_LANGUAGES } from '../lib/i18n';
   import ProfileTransferPanel from './ProfileTransferPanel.svelte';
   import ThemeEditor from './ThemeEditor.svelte';
-  import { checkForUpdate, installUpdate } from '../lib/updater';
+  import PracticeLanguagePicker from './PracticeLanguagePicker.svelte';
   import { open } from '@tauri-apps/plugin-dialog';
   import * as ipc from '../lib/api/ipc';
 
@@ -23,30 +23,8 @@
     onUpdateSetting: (key: string, value: unknown) => void;
   } = $props();
 
-  let updateStatus = $state<string>('');
-  let updateVersion = $state<string | null>(null);
-  let checkingUpdate = $state(false);
-
-  async function handleCheckUpdate() {
-    checkingUpdate = true;
-    updateStatus = '';
-    updateVersion = null;
-    const result = await checkForUpdate();
-    checkingUpdate = false;
-    if (result.error) {
-      updateStatus = `Update check failed: ${result.error}`;
-    } else if (result.available) {
-      updateVersion = result.version ?? null;
-      updateStatus = `Update available: v${result.version}`;
-    } else {
-      updateStatus = 'You are up to date.';
-    }
-  }
-
-  async function handleInstallUpdate() {
-    const ok = await installUpdate();
-    if (!ok) updateStatus = 'Update install failed.';
-  }
+  let practiceLanguages = $state<LanguageCode[]>([]);
+  $effect(() => { practiceLanguages = [...(settings?.practice_languages ?? [])]; });
 
   let clearConfirm = $state(false);
   let clearStatus = $state('');
@@ -186,6 +164,15 @@
           {/each}
         </select>
       </div>
+      <PracticeLanguagePicker
+        languages={practiceLanguages}
+        onChange={(languages) => {
+          practiceLanguages = languages;
+          onUpdateSetting('practice_languages', languages);
+        }}
+        allowEmpty={false}
+        {uiLang}
+      />
       <div class="setting-row">
         <label for="setting-font-size">{t(uiLang, 'settings.font_size')}</label>
         <input id="setting-font-size" type="number" min="12" max="72" value={settings.font_size} onchange={(e) => {
@@ -318,32 +305,20 @@
     </div>
     <ProfileTransferPanel {uiLang} />
     <h3>Data</h3>
-    <div class="update-panel">
-      <button class="update-btn danger" onclick={handleClearStatistics}>
+    <div class="data-panel">
+      <button class="data-btn danger" onclick={handleClearStatistics}>
         {clearConfirm ? 'Confirm clear' : 'Clear all statistics'}
       </button>
       {#if clearStatus}
-        <span class="update-status">{clearStatus}</span>
+        <span class="data-status">{clearStatus}</span>
       {/if}
     </div>
-    <div class="update-panel">
-      <button class="update-btn danger" onclick={handleRestoreDatabase} disabled={restoring}>
+    <div class="data-panel">
+      <button class="data-btn danger" onclick={handleRestoreDatabase} disabled={restoring}>
         {restoring ? t(uiLang, 'settings.restoring') : (restoreConfirm ? t(uiLang, 'settings.restore_confirm_short') : t(uiLang, 'settings.restore_database'))}
       </button>
       {#if restoreStatus}
-        <span class="update-status">{restoreStatus}</span>
-      {/if}
-    </div>
-    <h3>Updates</h3>
-    <div class="update-panel">
-      <button class="update-btn" onclick={handleCheckUpdate} disabled={checkingUpdate}>
-        {checkingUpdate ? 'Checking...' : 'Check for updates'}
-      </button>
-      {#if updateVersion}
-        <button class="update-btn primary" onclick={handleInstallUpdate}>Install v{updateVersion}</button>
-      {/if}
-      {#if updateStatus}
-        <span class="update-status">{updateStatus}</span>
+        <span class="data-status">{restoreStatus}</span>
       {/if}
     </div>
     <h3>{t(uiLang, 'settings.theme_preview')}</h3>
@@ -450,17 +425,16 @@
   .theme-state-preview span:nth-child(2) { border-left: 2px solid; padding-left: 0.25rem; }
   .theme-state-preview span:last-child { text-decoration: underline 2px; text-underline-offset: 0.16em; }
   .selected-label { font-size: 0.62rem; font-weight: 700; }
-  .update-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
-  .update-btn {
+  .data-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-bottom: 1rem; }
+  .data-btn {
     background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main);
     padding: 0.5rem 1.25rem; font-family: inherit; font-size: 0.875rem; cursor: pointer; border-radius: 4px;
   }
-  .update-btn.primary { background-color: var(--main); color: var(--bg); }
-  .update-btn.danger { border-color: var(--error); color: var(--error); }
-  .update-btn.danger:hover:not(:disabled) { background-color: var(--error); color: var(--bg); }
-  .update-btn:hover:not(:disabled) { opacity: 0.85; }
-  .update-btn:disabled { opacity: 0.5; cursor: default; }
-  .update-status { color: var(--sub); font-size: 0.8rem; }
+  .data-btn.danger { border-color: var(--error); color: var(--error); }
+  .data-btn.danger:hover:not(:disabled) { background-color: var(--error); color: var(--bg); }
+  .data-btn:hover:not(:disabled) { opacity: 0.85; }
+  .data-btn:disabled { opacity: 0.5; cursor: default; }
+  .data-status { color: var(--sub); font-size: 0.8rem; }
   /* Live-preview каретки: мини-строка «Hello world|» с теми же классами
      каретки, что и в TestView. Реагирует мгновенно на настройки. */
   .caret-preview-row { align-items: center; }

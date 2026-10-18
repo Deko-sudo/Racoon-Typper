@@ -479,7 +479,7 @@ fn stress_achievements_check() {
         100,
         80.0,
         98.0,
-        30,
+        80.0,
         30,
         20,
         "2026-01-01T00:00:00Z".to_string(),

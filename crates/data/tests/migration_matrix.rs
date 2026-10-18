@@ -866,7 +866,7 @@ fn reopen_upgraded_historical_db_is_idempotent() {
 fn pre_migration_backup_roundtrip_from_v1_fixture() {
     // Build a V1 fixture with epoch data, take a pre-migration backup through
     // the Task B seam, upgrade to V9, then restore the backup into a fresh path
-    // and confirm the restored file is a working V1-era database with the seed
+    // and confirm the restored file is migrated to V9 with the seed
     // data intact. The live Database is dropped before restore per the contract.
     let live = temp_path("premig-v1-live");
     let backup = temp_path("premig-v1-backup.db");
@@ -896,12 +896,12 @@ fn pre_migration_backup_roundtrip_from_v1_fixture() {
         let _db = Database::open_with_pre_migration(&live, |_| {}).expect("upgrade V1 -> V9");
     }
 
-    // Restore the V1 snapshot into a fresh path and confirm it is a usable V1
+    // Restore the V1 snapshot into a fresh path and confirm it is a usable V9
     // database carrying the original tests rows. We avoid opening two
     // connections on `live`; restore writes into `restored`.
     restore_from_path(&snapshot, &restored).expect("restore V1 backup");
 
-    let conn = Connection::open(&restored).expect("open restored V1 db");
+    let conn = Connection::open(&restored).expect("open restored V9 db");
     let test_count: i64 = conn
         .query_row("SELECT COUNT(*) FROM tests", [], |row| row.get(0))
         .expect("count restored tests");
@@ -909,7 +909,16 @@ fn pre_migration_backup_roundtrip_from_v1_fixture() {
         test_count, 2,
         "restored V1 backup must carry both seed rows"
     );
-    // The restored file is pre-V005, so session_id must not be a column yet.
+    // Restore migrates only its private copy; the selected backup remains V1.
+    let source = Connection::open(&snapshot).expect("open unchanged backup");
+    let version: i64 = source
+        .query_row(
+            "SELECT MAX(version) FROM refinery_schema_history",
+            [],
+            |row| row.get(0),
+        )
+        .unwrap();
+    assert_eq!(version, 1);
     let session_col_exists: i64 = conn
         .query_row(
             "SELECT COUNT(*) FROM pragma_table_info('tests') WHERE name = 'session_id'",
@@ -918,8 +927,8 @@ fn pre_migration_backup_roundtrip_from_v1_fixture() {
         )
         .expect("check session_id column");
     assert_eq!(
-        session_col_exists, 0,
-        "restored V1 backup must predate the V005 session_id column"
+        session_col_exists, 1,
+        "restored copy must include the V005 session_id column"
     );
 
     remove_database(&live);

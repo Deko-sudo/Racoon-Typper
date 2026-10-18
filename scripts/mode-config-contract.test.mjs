@@ -64,16 +64,10 @@ test('the TypeScript ModeConfig union covers every backend shape', () => {
   const union = types.match(/export type ModeConfig =([\s\S]*?);\n\nexport interface TestSessionResponse/);
   assert.ok(union, 'ModeConfig union not found');
   const body = union[1];
-  for (const [typeName, fields] of [
-    ['time', ['duration', 'language']],
-    ['words', ['word_count', 'language']],
-    ['quote', ['quote_id', 'language']],
-    ['custom', ['language']],
-    ['lesson', ['lesson_id', 'module_id']],
-  ]) {
-    const variant = body.match(new RegExp(`\\{ type: '${typeName}';([^}]*)\\}`));
-    assert.ok(variant, `ModeConfig missing the ${typeName} variant`);
-    const variantFields = [...variant[1].matchAll(/([a-z_]+):/g)].map((match) => match[1]).sort();
-    assert.deepEqual(variantFields, [...fields].sort(), `${typeName} variant fields mismatch`);
-  }
+  const variants = [...body.matchAll(/\{([^}]*)\}/g)]
+    .map((match) => [...match[1].matchAll(/([a-z_]+):/g)].map((field) => field[1]).sort());
+  assert.deepEqual(variants, [
+    ['duration', 'language'], ['language', 'word_count'], ['language', 'quote_id'],
+    ['language'], ['lesson_id', 'module_id'],
+  ]);
 });
