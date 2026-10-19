@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- Count each source character once in the on-screen keyboard heatmap, keeping
+  mixed-case accuracy and intensity consistent with the saved counts.
+
 - Return aborted ordinary/custom tests to text selection and lessons/training
   to their source views. Leave stale idle cards without another backend abort;
   reopening the Test tab starts a fresh session. Rejected aborts and concurrent
