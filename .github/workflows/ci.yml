@@ -41,7 +41,10 @@ jobs:
         with:
           node-version: 22
       - name: Test macro diagnostics backports
-        run: node scripts/check-macro-diagnostics.mjs
+        run: |
+          # metadata --offline resolves target-specific crates too; warm the full lock first.
+          cargo fetch --locked --manifest-path scripts/macro-diagnostics-regression/Cargo.toml
+          node scripts/check-macro-diagnostics.mjs
       - name: Test optimized GLib backport contract
         run: cargo test --manifest-path scripts/glib-variant-regression/Cargo.toml --locked --release
 
