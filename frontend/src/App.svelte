@@ -84,6 +84,9 @@
     onHistoryChanged: () => void contentStore.loadHistoryTotal(),
     onAchievementsChanged: checkNewAchievements,
     onStarted: () => switchView('test'),
+    onCustomTextAborted: () => {
+      if (view === 'test') switchView('custom');
+    },
   });
 
   const settings = $derived(settingsStore.settings);

@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- Return to the custom text list after an accepted abort, instead of leaving
+  an empty typing card. Rejected aborts and concurrent restarts keep their view.
+
 - Include Cyrillic, CJK, diacritics and other expected Unicode characters in
   result PNG heatmaps. Show localized first-attempt character accuracy instead
   of a fixed Latin keyboard; bound the card size and explicitly account for

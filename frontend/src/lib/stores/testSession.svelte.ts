@@ -36,6 +36,7 @@ export interface TestSessionDeps {
   onHistoryChanged: () => void;
   onAchievementsChanged: () => Promise<void>;
   onStarted: () => void;
+  onCustomTextAborted?: () => void;
 }
 
 interface QueuedKey {
@@ -91,6 +92,8 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   let timeCompletionQueued = false;
   // Keep the accepted source, not the unrelated global mode controls.
   let restartSource: (() => Promise<void>) | null = null;
+  // Weak-key training also uses mode 'custom', but has a different source view.
+  let customTextSession = false;
   // Timestamp of the last "accuracy above 95%" toast — debounce (30s).
   let lastHighAccToastAt = 0;
 
@@ -101,6 +104,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   }
 
   function startTestFromResponse(resp: TestSessionResponse, lessonId: string | null = null) {
+    customTextSession = false;
     sessionGeneration += 1;
     queuedKeys = [];
     timeCompletionQueued = false;
@@ -336,8 +340,13 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   }
 
   async function abortTest() {
-    if (!isRunning) return;
-    await abandonActiveSessionForReplacement();
+    if (!isRunning || startingTest || pendingAbort) return;
+    const returnToTexts = customTextSession;
+    if (!(await abandonActiveSessionForReplacement())) return;
+    // A concurrent restart owns its replacement and must not be navigated away.
+    if (startingTest || sessionState !== 'idle') return;
+    deps.setZenActive(false);
+    if (returnToTexts) deps.onCustomTextAborted?.();
   }
 
   // Restart the current test: abort the active session (if any) then start a
@@ -355,6 +364,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
       await deps.beforeStart();
       const resp = await ipc.startCustomTextTest(id);
       startTestFromResponse(resp);
+      customTextSession = true;
       restartSource = () => startCustomTest(id);
       deps.onStarted();
     } catch (error) {

@@ -33,7 +33,8 @@ const ipcUrl = asModule(`
   export async function generateWeakKeysTraining(language) { trainingLanguages.push(language); return 'weak keys'; }
   export async function startCustomTextTest(id) {
     customStarts.push(id);
-    return {session_id:'custom-'+customStarts.length,text:'фыва',text_length:4,mode_type:'custom',mode_config:{language:'ru'},language:'ru'};
+    const language = id === 43 ? 'en' : 'ru';
+    return {session_id:'custom-'+customStarts.length,text:language === 'ru' ? 'фыва' : 'asdf',text_length:4,mode_type:'custom',mode_config:{language},language};
   }
   export async function startLesson(id, language) {
     lessonStarts.push([id,language]);
@@ -291,4 +292,96 @@ test('a rejected explicit mode start does not discard the accepted custom repeat
     assert.deepEqual(ipc.customStarts,[42,42]);
     assert.equal(session.sessionModeType,'custom');
   } finally {ipc.setHandlers();}
+});
+
+for (const [id, language, firstKey] of [[42, 'ru', 'ф'], [43, 'en', 'a']]) {
+  for (const typed of [false, true]) {
+    test(`aborting ${language} custom text ${typed ? 'after input' : 'before input'} returns to text selection`, async () => {
+      let view = 'test', historyChanges = 0;
+      const zen = [];
+      const session = store({
+        onCustomTextAborted: () => { view = 'custom'; },
+        onHistoryChanged: () => { historyChanges++; },
+        setZenActive: value => zen.push(value),
+      });
+      await session.startCustomTest(id);
+      if (typed) {
+        ipc.setOutput({ ...runningOutput, caret_pos: 1, key_result: 'correct' });
+        session.acceptTypingKey(firstKey, 'KeyA');
+        await tick();
+      }
+      const abortsBefore = ipc.aborts.length;
+      await session.abortTest();
+      assert.equal(view, 'custom');
+      assert.equal(session.sessionState, 'idle');
+      assert.equal(session.isRunning, false);
+      assert.deepEqual(session.charStatuses, []);
+      assert.equal(session.sessionLanguage, language);
+      assert.equal(ipc.aborts.length, abortsBefore + 1);
+      assert.equal(historyChanges, 0);
+      assert.equal(zen.at(-1), false);
+    });
+  }
+}
+
+test('a refused custom abort retains the test and does not navigate', async () => {
+  let navigations = 0;
+  const errors = [];
+  const session = store({ onCustomTextAborted: () => { navigations++; }, setError: value => errors.push(value) });
+  await session.startCustomTest(42);
+  ipc.setHandlers({ abort: () => { throw new Error('abort refused'); } });
+  try {
+    await session.abortTest();
+    assert.equal(navigations, 0);
+    assert.equal(session.isRunning, true);
+    assert.equal(session.text, 'фыва');
+    assert.equal(session.charStatuses.length, 4);
+    assert.match(errors.at(-1), /Abort error:/);
+  } finally { ipc.setHandlers(); }
+});
+
+test('duplicate custom abort navigates once and only after backend acceptance', async () => {
+  const abort = deferred();
+  let navigations = 0;
+  const session = store({ onCustomTextAborted: () => { navigations++; } });
+  await session.startCustomTest(42);
+  const abortsBefore = ipc.aborts.length;
+  ipc.setHandlers({ abort: () => abort.promise });
+  try {
+    const first = session.abortTest(), second = session.abortTest();
+    assert.equal(navigations, 0);
+    assert.equal(session.isRunning, true);
+    assert.equal(ipc.aborts.length, abortsBefore + 1);
+    abort.resolve();
+    await Promise.all([first, second]);
+    assert.equal(navigations, 1);
+  } finally { ipc.setHandlers(); }
+});
+
+test('restart during a pending custom abort keeps the replacement on the test screen', async () => {
+  const abort = deferred();
+  let navigations = 0;
+  const session = store({ onCustomTextAborted: () => { navigations++; } });
+  await session.startCustomTest(42);
+  ipc.setHandlers({ abort: () => abort.promise });
+  try {
+    const stopping = session.abortTest(), restarting = session.restartTest();
+    abort.resolve();
+    await Promise.all([stopping, restarting]);
+    assert.equal(navigations, 0);
+    assert.equal(session.isRunning, true);
+    assert.equal(session.text, 'фыва');
+  } finally { ipc.setHandlers(); }
+});
+
+test('regular and weak-key sessions do not return to custom text selection on abort', async () => {
+  let navigations = 0;
+  const session = store({ onCustomTextAborted: () => { navigations++; } });
+  await session.startCustomTest(42);
+  session.onModeChange('words');
+  await tick();
+  await session.abortTest();
+  await session.startTraining();
+  await session.abortTest();
+  assert.equal(navigations, 0);
 });
