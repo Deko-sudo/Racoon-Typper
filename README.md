@@ -87,10 +87,11 @@ desktop process with a Svelte interface, embedded learning resources, and a
 local SQLite data store. **No accounts, no servers, no telemetry** — your
 typing data never leaves your machine.
 
-> **Status:** The repository is undergoing a controlled modernization.
-> Release metadata is `1.3.1`, but this is **not** a production-ready release
-> claim until the [roadmap gates](ROADMAP.md) are complete. The verified
-> development target is **Linux x86_64**. See
+> **Status:** This branch is an **unreleased Linux stability candidate**.
+> Version metadata remains `1.3.1`; this does not identify the previously
+> published v1.3.1 artifact. Candidate evidence must name its exact commit and
+> artifact checksum. Historical releases and this candidate have separate
+> validation records. The primary target is **Linux x86_64**. See
 > [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) for the distinction between
 > development targets, configured packages, and supported releases.
 
@@ -106,6 +107,8 @@ typing data never leaves your machine.
 - **Themes** — 50 local built-in themes spanning graphite, light, warm, nature,
   terminal, dark blue-gray, and high-contrast variants with a documented
   semantic token contract
+- **Result sharing** — locally rendered PNG saved to Pictures / `Raccoon Typer`
+  and copied as an image to the clipboard; independent delivery status
 - **Replay & review** — replay past tests, frame by frame
 - **Session recovery** — durable session identity, process-crash recovery, and rotating
   pre-migration database backups
@@ -117,7 +120,7 @@ typing data never leaves your machine.
 | --- | --- |
 | Backend | Rust (edition 2021), modular workspace |
 | Desktop shell | Tauri 2 |
-| Frontend | Svelte 5, Vite 5, TypeScript 5 |
+| Frontend | Svelte 5, Vite 7, TypeScript 5 |
 | Storage | SQLite (WAL mode) via rusqlite, settings in TOML |
 | Resources | Embedded lessons, word lists, quotes, themes |
 | Toolchain | Rust 1.96.0, Node 22.12+ on the 22.x line or Node 24+ (CI uses 22) |
@@ -175,7 +178,8 @@ npm run tauri:build:binary --prefix frontend
 npm run tauri:build --prefix frontend
 ```
 
-CI runs these on every push and pull request — see
+CI runs on pushes and pull requests targeting `main` or `master`, and by manual
+dispatch; other branches do not automatically receive these checks. See
 [CONTRIBUTING.md](CONTRIBUTING.md) for the contributor workflow.
 
 ## 📦 Platforms & packages
@@ -189,9 +193,10 @@ CI runs these on every push and pull request — see
 | Flatpak | 🚧 Manifest present, pending redesign |
 | macOS · Linux ARM | ❌ Unsupported (no config) |
 
-Public release artifacts will appear on the
-[Releases page](https://github.com/Deko-sudo/Racoon-Typper/releases) once the
-release pipeline and clean-install smoke tests pass.
+The [Releases page](https://github.com/Deko-sudo/Racoon-Typper/releases) contains
+historical artifacts. Changes on this branch are not included there until a
+new candidate passes its own build/install/runtime gates and is promoted.
+See [Linux candidate verification](docs/release/linux-candidate.md).
 
 ## 📁 Repository layout
 

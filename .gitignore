@@ -35,3 +35,5 @@ Thumbs.db
 .hermes/
 .zcode/
 rdmglm.md
+# Python release-check bytecode
+__pycache__/

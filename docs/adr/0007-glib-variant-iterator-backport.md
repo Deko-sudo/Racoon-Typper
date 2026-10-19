@@ -93,3 +93,11 @@ regenerate notices/SBOM and repeat the application and iterator checks.
 Do not simply remove the override while retaining the affected registry
 version. Reverting this candidate restores the known defective library and
 requires an explicit risk decision before release.
+
+## Candidate maintenance ownership — 2026-10-20
+
+The repository maintainer/release reviewer owns the three existing deltas under
+[the maintenance contract](../dependencies/vendor-maintenance.md). Before release,
+record a fresh advisory revision and repeat its fail-closed source/reference,
+optimized regression, macro diagnostic and native validation gates. This closes
+the ownership/procedure question, not all future dependency risk.

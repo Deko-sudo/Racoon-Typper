@@ -8,6 +8,10 @@
 
 ### Fixed
 
+- Verify Linux package restart retention with an actual persisted custom-text row;
+  restrict smoke cleanup to its own process session. Build an unsigned Debian
+  candidate in CI on Ubuntu 24.04, with source and artifact hash evidence.
+
 - Save result PNGs to the OS Pictures / `Raccoon Typer` folder and copy the image
   to the clipboard. Show animated progress, the acknowledged path and independent
   save/copy failures in the selected UI language instead of assuming a WebView

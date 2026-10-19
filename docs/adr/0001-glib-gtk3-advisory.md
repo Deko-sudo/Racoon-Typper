@@ -132,3 +132,11 @@ do not fix GTK/GLib.
 - [Upstream GLib fix](https://github.com/gtk-rs/gtk-rs-core/pull/1343)
 - [proc-macro-error advisory](https://rustsec.org/advisories/RUSTSEC-2024-0370.html)
 - ROADMAP Gate G5 and R-009; TECH_DEBT DD4; SUPPORT_MATRIX.md
+
+## Candidate maintenance ownership — 2026-10-20
+
+The repository maintainer/release reviewer owns the three existing deltas under
+[the maintenance contract](../dependencies/vendor-maintenance.md). Before release,
+record a fresh advisory revision and repeat its fail-closed source/reference,
+optimized regression, macro diagnostic and native validation gates. This closes
+the ownership/procedure question, not all future dependency risk.

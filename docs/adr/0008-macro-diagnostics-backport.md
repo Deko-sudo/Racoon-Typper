@@ -107,3 +107,11 @@ upstream graph needs neither retired helper; then remove both overrides,
 vendor records/sources and related notices, regenerate inventory/SBOM and
 repeat diagnostics/application/native checks. Reverting to the original
 registry macros restores the known maintenance debt and diagnostic panics.
+
+## Candidate maintenance ownership — 2026-10-20
+
+The repository maintainer/release reviewer owns the three existing deltas under
+[the maintenance contract](../dependencies/vendor-maintenance.md). Before release,
+record a fresh advisory revision and repeat its fail-closed source/reference,
+optimized regression, macro diagnostic and native validation gates. This closes
+the ownership/procedure question, not all future dependency risk.
