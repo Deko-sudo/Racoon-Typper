@@ -244,3 +244,13 @@ export async function getReplay(testId: number): Promise<ReplayFrame[]> {
 export async function getSoundEvent(event: string): Promise<SoundOutputResponse | null> {
   return invoke<SoundOutputResponse | null>('get_sound_event', { event });
 }
+
+/** OS-confirmed delivery of a rendered card; no caller-supplied paths. */
+export interface CardExportOutcome {
+  savedPath: string | null;
+  copied: boolean;
+}
+
+export async function saveResultCard(png: number[]): Promise<CardExportOutcome> {
+  return invoke<CardExportOutcome>('save_result_card', { png });
+}

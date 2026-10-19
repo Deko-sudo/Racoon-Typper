@@ -227,21 +227,6 @@ test('hung PNG encoding times out instead of leaving the export pending', async 
   t.mock.timers.tick(10_001); await attempt;
 });
 
-test('download retains its URL through click and cleans up on success and failure', async t => {
-  const env = environment(t); const { downloadShareCard } = await renderer();
-  const revoke = t.mock.method(URL, 'revokeObjectURL', () => {});
-  t.mock.timers.enable({ apis: ['setTimeout'] });
-  downloadShareCard(new Blob(['png']), 'card.png');
-  assert.equal(env.links[0].download, 'card.png');
-  assert.deepEqual(env.calls.map(c => c[0]), ['append', 'click', 'remove']);
-  assert.equal(revoke.mock.callCount(), 0);
-  t.mock.timers.tick(1000); assert.equal(revoke.mock.callCount(), 1);
-  env.clickFailure = true;
-  assert.throws(() => downloadShareCard(new Blob(['png']), 'card.png'), /click failed/);
-  t.mock.timers.tick(1000); assert.equal(revoke.mock.callCount(), 2);
-  assert.equal(env.calls.at(-1)[0], 'remove');
-});
-
 test('production PNG path removes the font parser and obsolete IPC permission', () => {
   const read = path => readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
   assert.doesNotMatch(read('crates/app/Cargo.toml'), /\bab_glyph\b/);
@@ -252,12 +237,13 @@ test('production PNG path removes the font parser and obsolete IPC permission', 
   assert.doesNotMatch(read('crates/app/capabilities/main.json'), /allow-export-result-png/);
   const overlay = read('frontend/src/components/ResultOverlay.svelte');
   assert.match(overlay, /renderShareCard/); assert.doesNotMatch(overlay, /ipc\.exportResultPng/);
-  assert.match(overlay, /if \(shareState === 'rendering'\) return/);
+  assert.match(overlay, /if \(shareState === 'rendering' \|\| shareState === 'saving'\) return/);
   assert.match(read('crates/app/tauri.conf.json'), /\.\.\/\.\.\/resources\/fonts\/DejaVu-LICENSE/);
   assert.doesNotMatch(source, /\bfetch\s*\(|https?:\/\/|innerHTML|\.invoke\(/);
 });
 
-test('actual result handler prevents overlapping exports and recovers after renderer failure', async t => {
+
+function resultController(render, save) {
   const overlay = readFileSync(new URL('../frontend/src/components/ResultOverlay.svelte', import.meta.url), 'utf8');
   const script = overlay.split('<script lang="ts">')[1].split('</script>')[0];
   const ast = ts.createSourceFile('ResultOverlay.ts', script, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
@@ -266,25 +252,74 @@ test('actual result handler prevents overlapping exports and recovers after rend
   const compiled = ts.transpileModule(functions.map(node => node.getText(ast)).join('\n'), {
     compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext },
   }).outputText;
-  let release; let renders = 0; let downloads = 0; let received, receivedLabels;
-  const render = (value, _, labels) => { renders++; received = value; receivedLabels = labels; return new Promise(resolve => { release = resolve; }); };
-  const controller = new Function('renderShareCard', 'downloadShareCard', 'stats', 'getComputedStyle', 'document', 't', `
-    let shareState = 'idle', sessionModeType = 'custom', sessionLanguage = 'ru', uiLang = 'de';
+  return new Function('renderShareCard', 'saveResultCard', 'stats', 'getComputedStyle', 'document', 't', `
+    let shareState = 'idle', shareOutcome = null, sessionModeType = 'custom', sessionLanguage = 'ru', uiLang = 'de';
     ${compiled}
-    return { run: handleSharePng, state: () => shareState };
-  `)(render, () => { downloads++; }, stats, () => ({ getPropertyValue: () => '' }), { documentElement: {} }, translate);
+    return { run: handleSharePng, state: () => shareState, outcome: () => shareOutcome };
+  `)(render, save, stats, () => ({ getPropertyValue: () => '' }), { documentElement: {} }, translate);
+}
+
+test('actual result handler waits for OS acknowledgement and prevents overlapping rendering and delivery', async () => {
+  let releaseRender, releaseSave; let renders = 0; let saves = 0; let received, receivedLabels;
+  const controller = resultController((value, _, labels) => {
+    renders++; received = value; receivedLabels = labels; return new Promise(resolve => { releaseRender = resolve; });
+  }, bytes => { saves++; assert.deepEqual(bytes, [1, 2, 3]); return new Promise(resolve => { releaseSave = resolve; }); });
   const first = controller.run(); await controller.run();
   assert.equal(renders, 1); assert.equal(controller.state(), 'rendering');
   assert.equal(received.wpm, stats.wpm); assert.equal(received.language, 'ru');
-  assert.equal(receivedLabels.title, translate('de', 'share_card.symbols'), 'UI language is independent of practice language');
-  release(new Blob(['png'])); await first;
-  assert.equal(downloads, 1); assert.equal(controller.state(), 'idle');
-  const failure = new Function('renderShareCard', 'downloadShareCard', 'stats', 'getComputedStyle', 'document', 't', `
-    let shareState = 'idle', sessionModeType = 'custom', sessionLanguage = 'ru', uiLang = 'de';
-    ${compiled}
-    return { run: handleSharePng, state: () => shareState };
-  `)(async () => { throw new Error('font failed'); }, () => assert.fail('must not download on failure'), stats, () => ({ getPropertyValue: () => '' }), { documentElement: {} }, translate);
-  const errors = t.mock.method(console, 'error', () => {});
-  await failure.run(); assert.equal(failure.state(), 'error');
-  await failure.run(); assert.equal(errors.mock.callCount(), 2, 'error state allows retry');
+  assert.equal(receivedLabels.title, translate('de', 'share_card.symbols'));
+  releaseRender(new Blob([new Uint8Array([1, 2, 3])]));
+  await new Promise(resolve => setImmediate(resolve));
+  assert.equal(controller.state(), 'saving'); assert.equal(controller.outcome(), null);
+  await controller.run(); assert.equal(renders, 1); assert.equal(saves, 1);
+  releaseSave({ savedPath: '/Pictures/Raccoon Typer/card.png', copied: true }); await first;
+  assert.equal(controller.state(), 'done'); assert.equal(controller.outcome().copied, true);
+});
+
+for (const outcome of [
+  { savedPath: '/Pictures/Raccoon Typer/card.png', copied: true },
+  { savedPath: '/Pictures/Raccoon Typer/card.png', copied: false },
+  { savedPath: null, copied: true }, { savedPath: null, copied: false },
+]) {
+  test(`actual result handler retains independent delivery outcomes ${JSON.stringify(outcome)}`, async () => {
+    let count = 0;
+    const controller = resultController(async () => new Blob(['png']), async () => { count++; return outcome; });
+    await controller.run(); assert.equal(controller.state(), 'done'); assert.equal(controller.outcome(), outcome);
+    await controller.run(); assert.equal(count, 2, 'partial and complete failures allow retry');
+  });
+}
+
+for (const stage of ['render', 'delivery']) {
+  test(`actual result handler recovers from ${stage} failure without false success`, async t => {
+    const errors = t.mock.method(console, 'error', () => {}); let fail = true;
+    const controller = resultController(async () => {
+      if (fail && stage === 'render') throw Error('/private/font');
+      return new Blob(['png']);
+    }, async () => {
+      if (fail) throw Error('/private/Pictures');
+      return { savedPath: '/Pictures/Raccoon Typer/card.png', copied: true };
+    });
+    await controller.run(); assert.equal(controller.state(), 'error'); assert.equal(controller.outcome(), null);
+    assert.equal(errors.mock.calls[0].arguments.length, 1, 'no OS error details logged');
+    fail = false; await controller.run(); assert.equal(controller.state(), 'done');
+  });
+}
+
+test('PNG feedback is localized for every UI language and accessible without motion', () => {
+  const overlay = readFileSync(new URL('../frontend/src/components/ResultOverlay.svelte', import.meta.url), 'utf8');
+  assert.doesNotMatch(overlay, /downloadShareCard|createObjectURL/);
+  assert.match(overlay, /role="status" aria-live="polite" aria-atomic="true"/);
+  assert.match(overlay, /prefers-reduced-motion: reduce/);
+  assert.match(overlay, /shareOutcome.savedPath/); assert.match(overlay, /shareOutcome.copied/);
+  const dictionary = readFileSync(new URL('../frontend/src/lib/i18n.ts', import.meta.url), 'utf8');
+  const ast = ts.createSourceFile('i18n.ts', dictionary, ts.ScriptTarget.Latest, true, ts.ScriptKind.TS);
+  const declarations = ast.statements.filter(ts.isVariableStatement).flatMap(s => s.declarationList.declarations);
+  for (const [lang] of UI_LANGUAGES) {
+    const name = { 'zh-hk': 'zhHK', 'zh-tw': 'zhTW' }[lang] ?? lang;
+    const properties = new Set(declarations.find(v => v.name.text === name).initializer.properties.map(p => p.name.text));
+    for (const key of ['share_png', 'share_png_error', 'png_rendering', 'png_delivering', 'png_saved', 'png_copied', 'png_save_failed', 'png_copy_failed']) {
+      assert.ok(properties.has(`result.${key}`), `${lang}/${key}: explicit translation`);
+      assert.notEqual(translate(lang, `result.${key}`), `result.${key}`);
+    }
+  }
 });

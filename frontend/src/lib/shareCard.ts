@@ -136,17 +136,3 @@ export async function renderShareCard(stats: ShareCardStats, colors: ShareCardCo
   if (blob.type !== 'image/png' || !blob.size) throw new Error('Share card PNG encoding failed');
   return blob;
 }
-
-export function downloadShareCard(blob: Blob, filename: string): void {
-  const url = URL.createObjectURL(blob);
-  try {
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    try { link.click(); } finally { link.remove(); }
-  } finally {
-    // WebKit may consume the link asynchronously after click dispatch.
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-}

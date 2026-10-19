@@ -8,6 +8,14 @@
 
 ### Fixed
 
+- Save result PNGs to the OS Pictures / `Raccoon Typer` folder and copy the image
+  to the clipboard. Show animated progress, the acknowledged path and independent
+  save/copy failures in the selected UI language instead of assuming a WebView
+  download click succeeded.
+
+- Count each source character once in the on-screen keyboard heatmap, keeping
+  mixed-case accuracy and intensity consistent with the saved counts.
+
 - Return aborted ordinary/custom tests to text selection and lessons/training
   to their source views. Leave stale idle cards without another backend abort;
   reopening the Test tab starts a fresh session. Rejected aborts and concurrent
