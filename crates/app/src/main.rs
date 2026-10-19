@@ -195,6 +195,7 @@ fn register_commands<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Bu
         commands::reporting::export_data,
         commands::reporting::export_report,
         commands::reporting::export_heatmap_png,
+        commands::result_card::save_result_card,
         // Versioned portable profile transfer
         commands::profile_transfer::export_profile,
         // Versioned text-pack interchange

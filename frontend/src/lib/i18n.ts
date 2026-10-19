@@ -6,6 +6,14 @@ export type UiLang = 'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  "result.share_png": "Save PNG",
+  "result.share_png_error": "Unable to confirm PNG export. Check Pictures and try again.",
+  "result.png_rendering": "Preparing image…",
+  "result.png_delivering": "Saving image and copying to clipboard…",
+  "result.png_saved": "Saved to:",
+  "result.png_copied": "Image copied. Paste with Ctrl+V (⌘V on macOS).",
+  "result.png_save_failed": "Could not save to Pictures / Raccoon Typer. Check folder permissions and retry.",
+  "result.png_copy_failed": "Could not copy the image. Press PNG to retry.",
   'share_card.symbols': 'Character accuracy',
   'share_card.first_attempt': 'Correct on the first attempt (%)',
   'share_card.empty': 'No character data',
@@ -137,8 +145,6 @@ const en: Dict = {
   'result.correct': 'Correct', 'result.incorrect': 'Incorrect',
   'result.backspaces': 'Backspaces', 'result.duration': 'Duration',
   'result.restart': 'Restart',
-  'result.share_png': 'Share PNG',
-  'result.share_png_error': 'Failed to render the share card.',
   'result.next_lesson': 'Next lesson',
   'result.repeat_lesson': 'Repeat lesson',
   'result.back_to_lessons': 'Back to lessons',
@@ -294,6 +300,14 @@ const en: Dict = {
 };
 
 const ru: Dict = {
+  "result.share_png": "Сохранить PNG",
+  "result.share_png_error": "Не удалось подтвердить экспорт PNG. Проверьте папку изображений и повторите.",
+  "result.png_rendering": "Готовим изображение…",
+  "result.png_delivering": "Сохраняем и копируем в буфер обмена…",
+  "result.png_saved": "Сохранено в:",
+  "result.png_copied": "Изображение скопировано. Вставьте через Ctrl+V (⌘V на macOS).",
+  "result.png_save_failed": "Не удалось сохранить в Изображения / Raccoon Typer. Проверьте права на папку и повторите.",
+  "result.png_copy_failed": "Не удалось скопировать изображение. Нажмите PNG для повтора.",
   'share_card.symbols': 'Точность по символам',
   'share_card.first_attempt': 'Верно с первой попытки (%)',
   'share_card.empty': 'Нет данных по символам',
@@ -424,8 +438,6 @@ const ru: Dict = {
   'result.correct': 'Верно', 'result.incorrect': 'Ошибок',
   'result.backspaces': 'Стираний', 'result.duration': 'Длительность',
   'result.restart': 'Заново',
-  'result.share_png': 'Поделиться PNG',
-  'result.share_png_error': 'Не удалось создать карточку результата.',
   'result.next_lesson': 'Следующий урок',
   'result.repeat_lesson': 'Повторить урок',
   'result.back_to_lessons': 'К списку уроков',
@@ -581,6 +593,14 @@ const ru: Dict = {
 };
 
 const de: Dict = {
+  "result.share_png": "PNG speichern",
+  "result.share_png_error": "PNG-Export nicht bestätigt. Bilderordner prüfen und erneut versuchen.",
+  "result.png_rendering": "Bild wird vorbereitet…",
+  "result.png_delivering": "Bild wird gespeichert und kopiert…",
+  "result.png_saved": "Gespeichert unter:",
+  "result.png_copied": "Bild kopiert. Mit Strg+V einfügen (⌘V unter macOS).",
+  "result.png_save_failed": "Speichern in Bilder / Raccoon Typer fehlgeschlagen. Ordnerrechte prüfen und erneut versuchen.",
+  "result.png_copy_failed": "Bild konnte nicht kopiert werden. Zum Wiederholen PNG drücken.",
   'share_card.symbols': 'Genauigkeit nach Zeichen',
   'share_card.first_attempt': 'Beim ersten Versuch richtig (%)',
   'share_card.empty': 'Keine Zeichendaten',
@@ -604,6 +624,14 @@ const de: Dict = {
 };
 
 const uk: Dict = {
+  "result.share_png": "Зберегти PNG",
+  "result.share_png_error": "Не вдалося підтвердити експорт PNG. Перевірте папку зображень і повторіть.",
+  "result.png_rendering": "Готуємо зображення…",
+  "result.png_delivering": "Зберігаємо та копіюємо до буфера обміну…",
+  "result.png_saved": "Збережено в:",
+  "result.png_copied": "Зображення скопійовано. Вставте через Ctrl+V (⌘V на macOS).",
+  "result.png_save_failed": "Не вдалося зберегти в Зображення / Raccoon Typer. Перевірте права на папку та повторіть.",
+  "result.png_copy_failed": "Не вдалося скопіювати зображення. Натисніть PNG для повтору.",
   'share_card.symbols': 'Точність за символами',
   'share_card.first_attempt': 'Правильно з першої спроби (%)',
   'share_card.empty': 'Немає даних за символами',
@@ -627,6 +655,14 @@ const uk: Dict = {
 };
 
 const es: Dict = {
+  "result.share_png": "Guardar PNG",
+  "result.share_png_error": "No se confirmó la exportación PNG. Revisa la carpeta Imágenes e inténtalo de nuevo.",
+  "result.png_rendering": "Preparando imagen…",
+  "result.png_delivering": "Guardando y copiando al portapapeles…",
+  "result.png_saved": "Guardado en:",
+  "result.png_copied": "Imagen copiada. Pega con Ctrl+V (⌘V en macOS).",
+  "result.png_save_failed": "No se pudo guardar en Imágenes / Raccoon Typer. Revisa los permisos y reintenta.",
+  "result.png_copy_failed": "No se pudo copiar la imagen. Pulsa PNG para reintentar.",
   'share_card.symbols': 'Precisión por carácter',
   'share_card.first_attempt': 'Correcto al primer intento (%)',
   'share_card.empty': 'No hay datos de caracteres',
@@ -650,6 +686,14 @@ const es: Dict = {
 };
 
 const fr: Dict = {
+  "result.share_png": "Enregistrer PNG",
+  "result.share_png_error": "Export PNG non confirmé. Vérifiez le dossier Images et réessayez.",
+  "result.png_rendering": "Préparation de l’image…",
+  "result.png_delivering": "Enregistrement et copie dans le presse-papiers…",
+  "result.png_saved": "Enregistré dans :",
+  "result.png_copied": "Image copiée. Collez avec Ctrl+V (⌘V sur macOS).",
+  "result.png_save_failed": "Échec de l’enregistrement dans Images / Raccoon Typer. Vérifiez les droits et réessayez.",
+  "result.png_copy_failed": "Impossible de copier l’image. Appuyez sur PNG pour réessayer.",
   'share_card.symbols': 'Précision par caractère',
   'share_card.first_attempt': 'Correct dès la première tentative (%)',
   'share_card.empty': 'Aucune donnée sur les caractères',
@@ -673,6 +717,14 @@ const fr: Dict = {
 };
 
 const it: Dict = {
+  "result.share_png": "Salva PNG",
+  "result.share_png_error": "Esportazione PNG non confermata. Controlla la cartella Immagini e riprova.",
+  "result.png_rendering": "Preparazione immagine…",
+  "result.png_delivering": "Salvataggio e copia negli appunti…",
+  "result.png_saved": "Salvato in:",
+  "result.png_copied": "Immagine copiata. Incolla con Ctrl+V (⌘V su macOS).",
+  "result.png_save_failed": "Impossibile salvare in Immagini / Raccoon Typer. Controlla i permessi e riprova.",
+  "result.png_copy_failed": "Impossibile copiare l’immagine. Premi PNG per riprovare.",
   'share_card.symbols': 'Precisione per carattere',
   'share_card.first_attempt': 'Corretto al primo tentativo (%)',
   'share_card.empty': 'Nessun dato sui caratteri',
@@ -696,6 +748,14 @@ const it: Dict = {
 };
 
 const pt: Dict = {
+  "result.share_png": "Guardar PNG",
+  "result.share_png_error": "Não foi possível confirmar a exportação PNG. Verifique a pasta Imagens e tente novamente.",
+  "result.png_rendering": "A preparar imagem…",
+  "result.png_delivering": "A guardar e copiar para a área de transferência…",
+  "result.png_saved": "Guardado em:",
+  "result.png_copied": "Imagem copiada. Cole com Ctrl+V (⌘V no macOS).",
+  "result.png_save_failed": "Não foi possível guardar em Imagens / Raccoon Typer. Verifique as permissões e tente novamente.",
+  "result.png_copy_failed": "Não foi possível copiar a imagem. Prima PNG para tentar novamente.",
   'share_card.symbols': 'Precisão por caractere',
   'share_card.first_attempt': 'Correto na primeira tentativa (%)',
   'share_card.empty': 'Sem dados de caracteres',
@@ -719,6 +779,14 @@ const pt: Dict = {
 };
 
 const pl: Dict = {
+  "result.share_png": "Zapisz PNG",
+  "result.share_png_error": "Nie potwierdzono eksportu PNG. Sprawdź folder obrazów i spróbuj ponownie.",
+  "result.png_rendering": "Przygotowywanie obrazu…",
+  "result.png_delivering": "Zapisywanie i kopiowanie do schowka…",
+  "result.png_saved": "Zapisano w:",
+  "result.png_copied": "Obraz skopiowany. Wklej przez Ctrl+V (⌘V w macOS).",
+  "result.png_save_failed": "Nie można zapisać w Obrazy / Raccoon Typer. Sprawdź uprawnienia i ponów próbę.",
+  "result.png_copy_failed": "Nie można skopiować obrazu. Naciśnij PNG, aby ponowić.",
   'share_card.symbols': 'Dokładność według znaków',
   'share_card.first_attempt': 'Poprawnie za pierwszym razem (%)',
   'share_card.empty': 'Brak danych o znakach',
@@ -742,6 +810,14 @@ const pl: Dict = {
 };
 
 const cs: Dict = {
+  "result.share_png": "Uložit PNG",
+  "result.share_png_error": "Export PNG nebyl potvrzen. Zkontrolujte složku Obrázky a zkuste to znovu.",
+  "result.png_rendering": "Připravuji obrázek…",
+  "result.png_delivering": "Ukládám a kopíruji do schránky…",
+  "result.png_saved": "Uloženo do:",
+  "result.png_copied": "Obrázek zkopírován. Vložte pomocí Ctrl+V (⌘V na macOS).",
+  "result.png_save_failed": "Nelze uložit do Obrázky / Raccoon Typer. Zkontrolujte oprávnění a zkuste to znovu.",
+  "result.png_copy_failed": "Obrázek nelze zkopírovat. Zkuste znovu tlačítkem PNG.",
   'share_card.symbols': 'Přesnost podle znaků',
   'share_card.first_attempt': 'Správně na první pokus (%)',
   'share_card.empty': 'Žádná data o znacích',
@@ -765,6 +841,14 @@ const cs: Dict = {
 };
 
 const ro: Dict = {
+  "result.share_png": "Salvează PNG",
+  "result.share_png_error": "Exportul PNG nu a fost confirmat. Verifică folderul de imagini și reîncearcă.",
+  "result.png_rendering": "Se pregătește imaginea…",
+  "result.png_delivering": "Se salvează și se copiază în clipboard…",
+  "result.png_saved": "Salvat în:",
+  "result.png_copied": "Imagine copiată. Lipește cu Ctrl+V (⌘V pe macOS).",
+  "result.png_save_failed": "Nu s-a putut salva în Imagini / Raccoon Typer. Verifică permisiunile și reîncearcă.",
+  "result.png_copy_failed": "Imaginea nu a putut fi copiată. Apasă PNG pentru a reîncerca.",
   'share_card.symbols': 'Precizie pe caractere',
   'share_card.first_attempt': 'Corect la prima încercare (%)',
   'share_card.empty': 'Nu există date despre caractere',
@@ -788,6 +872,14 @@ const ro: Dict = {
 };
 
 const ja: Dict = {
+  "result.share_png": "PNGを保存",
+  "result.share_png_error": "PNGの書き出しを確認できません。画像フォルダーを確認して再試行してください。",
+  "result.png_rendering": "画像を準備中…",
+  "result.png_delivering": "保存してクリップボードにコピー中…",
+  "result.png_saved": "保存先:",
+  "result.png_copied": "画像をコピーしました。Ctrl+V（macOSでは⌘V）で貼り付けできます。",
+  "result.png_save_failed": "画像 / Raccoon Typer に保存できません。フォルダーの権限を確認して再試行してください。",
+  "result.png_copy_failed": "画像をコピーできません。PNGを押して再試行してください。",
   'share_card.symbols': '文字ごとの正確さ',
   'share_card.first_attempt': '最初の入力で正解した割合（%）',
   'share_card.empty': '文字データがありません',
@@ -811,6 +903,14 @@ const ja: Dict = {
 };
 
 const ko: Dict = {
+  "result.share_png": "PNG 저장",
+  "result.share_png_error": "PNG 내보내기를 확인할 수 없습니다. 사진 폴더를 확인하고 다시 시도하세요.",
+  "result.png_rendering": "이미지 준비 중…",
+  "result.png_delivering": "저장하고 클립보드에 복사 중…",
+  "result.png_saved": "저장 위치:",
+  "result.png_copied": "이미지가 복사되었습니다. Ctrl+V(macOS는 ⌘V)로 붙여넣으세요.",
+  "result.png_save_failed": "사진 / Raccoon Typer에 저장할 수 없습니다. 폴더 권한을 확인하고 다시 시도하세요.",
+  "result.png_copy_failed": "이미지를 복사할 수 없습니다. PNG를 눌러 다시 시도하세요.",
   'share_card.symbols': '문자별 정확도',
   'share_card.first_attempt': '첫 입력 정답률 (%)',
   'share_card.empty': '문자 데이터 없음',
@@ -834,6 +934,14 @@ const ko: Dict = {
 };
 
 const zhHK: Dict = {
+  "result.share_png": "儲存PNG",
+  "result.share_png_error": "未能確認PNG匯出。請檢查圖片資料夾後重試。",
+  "result.png_rendering": "正在準備圖片…",
+  "result.png_delivering": "正在儲存並複製到剪貼簿…",
+  "result.png_saved": "已儲存至：",
+  "result.png_copied": "圖片已複製。按Ctrl+V貼上（macOS使用⌘V）。",
+  "result.png_save_failed": "無法儲存至圖片 / Raccoon Typer。請檢查資料夾權限後重試。",
+  "result.png_copy_failed": "無法複製圖片。請按PNG重試。",
   'share_card.symbols': '各字元準確度',
   'share_card.first_attempt': '首次輸入正確率（%）',
   'share_card.empty': '沒有字元資料',
@@ -857,6 +965,14 @@ const zhHK: Dict = {
 };
 
 const zhTW: Dict = {
+  "result.share_png": "儲存PNG",
+  "result.share_png_error": "無法確認PNG匯出。請檢查圖片資料夾後重試。",
+  "result.png_rendering": "正在準備圖片…",
+  "result.png_delivering": "正在儲存並複製到剪貼簿…",
+  "result.png_saved": "已儲存至：",
+  "result.png_copied": "圖片已複製。按Ctrl+V貼上（macOS使用⌘V）。",
+  "result.png_save_failed": "無法儲存至圖片 / Raccoon Typer。請檢查資料夾權限後重試。",
+  "result.png_copy_failed": "無法複製圖片。請按PNG重試。",
   'share_card.symbols': '各字元準確度',
   'share_card.first_attempt': '首次輸入正確率（%）',
   'share_card.empty': '沒有字元資料',

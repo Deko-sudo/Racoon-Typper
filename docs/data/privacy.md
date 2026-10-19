@@ -82,3 +82,14 @@ versioned portable JSON profile export/import with a no-write preview and
 custom texts, but excludes settings, replays, raw SQLite backups, and operational
 recovery/finalization ledgers. The detailed procedure and limits are documented
 in the [Profile Transfer and Recovery Runbook](profile-transfer.md).
+
+### Result PNG and clipboard
+
+Pressing **Save PNG** writes the result card to the operating system's Pictures
+folder, inside `Raccoon Typer`, and also copies the image to the system clipboard.
+The card contains visible result metrics and first-attempt character statistics.
+It is generated locally without a network request. The UI reports the actual
+saved path and clipboard outcome separately; a failed operation can be retried.
+PNG files remain until you delete them and are not removed by Clear statistics.
+Clipboard managers and applications where you paste can retain their own copies.
+On Linux, availability after closing the app depends on the clipboard manager.

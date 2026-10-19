@@ -29,6 +29,7 @@ const APP_COMMANDS: &[&str] = &[
     "export_data",
     "export_report",
     "export_heatmap_png",
+    "save_result_card",
     "export_profile",
     "preview_profile_import",
     "import_profile",

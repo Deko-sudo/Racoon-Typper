@@ -15,6 +15,7 @@ pub(crate) mod contracts;
 pub(crate) mod preferences;
 pub(crate) mod profile_transfer;
 pub(crate) mod reporting;
+pub(crate) mod result_card;
 pub(crate) mod session;
 pub(crate) mod text_pack;
 

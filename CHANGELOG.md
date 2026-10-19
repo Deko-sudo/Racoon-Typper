@@ -8,6 +8,11 @@
 
 ### Fixed
 
+- Save result PNGs to the OS Pictures / `Raccoon Typer` folder and copy the image
+  to the clipboard. Show animated progress, the acknowledged path and independent
+  save/copy failures in the selected UI language instead of assuming a WebView
+  download click succeeded.
+
 - Count each source character once in the on-screen keyboard heatmap, keeping
   mixed-case accuracy and intensity consistent with the saved counts.
 
