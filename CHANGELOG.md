@@ -8,8 +8,10 @@
 
 ### Fixed
 
-- Return to the custom text list after an accepted abort, instead of leaving
-  an empty typing card. Rejected aborts and concurrent restarts keep their view.
+- Return aborted ordinary/custom tests to text selection and lessons/training
+  to their source views. Leave stale idle cards without another backend abort;
+  reopening the Test tab starts a fresh session. Rejected aborts and concurrent
+  restarts keep their view.
 
 - Include Cyrillic, CJK, diacritics and other expected Unicode characters in
   result PNG heatmaps. Show localized first-attempt character accuracy instead

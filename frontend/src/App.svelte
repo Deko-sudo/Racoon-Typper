@@ -84,8 +84,8 @@
     onHistoryChanged: () => void contentStore.loadHistoryTotal(),
     onAchievementsChanged: checkNewAchievements,
     onStarted: () => switchView('test'),
-    onCustomTextAborted: () => {
-      if (view === 'test') switchView('custom');
+    onAborted: (destination) => {
+      if (view === 'test' || view === 'weakkeys') switchView(destination);
     },
   });
 
@@ -272,6 +272,9 @@
 
   function switchView(v: ViewName) {
     navigation.navigate(v);
+    if (v === 'test' && testSession.sessionState === 'idle') {
+      void testSession.startTest();
+    }
     // Уход с тестовых вью на любой другой — абандоним бегущую сессию,
     // иначе таймер доедет в фоне и запишет брошенный тест в историю
     // (и пометит урок выполненным).

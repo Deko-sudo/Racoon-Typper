@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url';
 
 // Compile the actual rune store with the existing frontend toolchain.
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
-const { transpileModule, ScriptTarget, ModuleKind } = require('typescript');
+const { transpileModule, ScriptTarget, ModuleKind, createSourceFile, SyntaxKind } = require('typescript');
 const { compileModule } = require('svelte/compiler');
 const asModule = (source) => `data:text/javascript;base64,${Buffer.from(source).toString('base64')}`;
 const ipcUrl = asModule(`
@@ -55,6 +55,20 @@ const compiled = compileModule(js, { filename: 'testSession.svelte.js', dev: fal
   .replace("'../api/ipc'", JSON.stringify(ipcUrl))
   .replace("'../i18n'", JSON.stringify(asModule('export const t = (_, key) => key;')));
 const { createTestSessionStore } = await import(asModule(compiled));
+
+// Exercise the real App navigation function, including the return-to-Test path.
+const appScript = readFileSync(new URL('../frontend/src/App.svelte', import.meta.url), 'utf8')
+  .match(/<script[^>]*>([\s\S]*?)<\/script>/)[1];
+const switchNode = createSourceFile('App.ts', appScript, ScriptTarget.Latest, true).statements
+  .find(node => node.kind === SyntaxKind.FunctionDeclaration && node.name?.text === 'switchView');
+const switchJs = transpileModule(switchNode.getText(), {
+  compilerOptions: { target: ScriptTarget.ESNext, module: ModuleKind.ESNext },
+}).outputText;
+function appNavigation(session) {
+  return new Function('navigation', 'testSession', 'contentStore', `${switchJs}; return switchView;`)(
+    { navigate() {} }, session, { loadCustomTexts() {}, loadLessons() {}, loadWeakKeys() {} },
+  );
+}
 
 function store(overrides = {}) {
   return createTestSessionStore({
@@ -300,7 +314,7 @@ for (const [id, language, firstKey] of [[42, 'ru', 'ф'], [43, 'en', 'a']]) {
       let view = 'test', historyChanges = 0;
       const zen = [];
       const session = store({
-        onCustomTextAborted: () => { view = 'custom'; },
+        onAborted: () => { view = 'custom'; },
         onHistoryChanged: () => { historyChanges++; },
         setZenActive: value => zen.push(value),
       });
@@ -327,7 +341,7 @@ for (const [id, language, firstKey] of [[42, 'ru', 'ф'], [43, 'en', 'a']]) {
 test('a refused custom abort retains the test and does not navigate', async () => {
   let navigations = 0;
   const errors = [];
-  const session = store({ onCustomTextAborted: () => { navigations++; }, setError: value => errors.push(value) });
+  const session = store({ onAborted: () => { navigations++; }, setError: value => errors.push(value) });
   await session.startCustomTest(42);
   ipc.setHandlers({ abort: () => { throw new Error('abort refused'); } });
   try {
@@ -343,7 +357,7 @@ test('a refused custom abort retains the test and does not navigate', async () =
 test('duplicate custom abort navigates once and only after backend acceptance', async () => {
   const abort = deferred();
   let navigations = 0;
-  const session = store({ onCustomTextAborted: () => { navigations++; } });
+  const session = store({ onAborted: () => { navigations++; } });
   await session.startCustomTest(42);
   const abortsBefore = ipc.aborts.length;
   ipc.setHandlers({ abort: () => abort.promise });
@@ -361,7 +375,7 @@ test('duplicate custom abort navigates once and only after backend acceptance', 
 test('restart during a pending custom abort keeps the replacement on the test screen', async () => {
   const abort = deferred();
   let navigations = 0;
-  const session = store({ onCustomTextAborted: () => { navigations++; } });
+  const session = store({ onAborted: () => { navigations++; } });
   await session.startCustomTest(42);
   ipc.setHandlers({ abort: () => abort.promise });
   try {
@@ -374,14 +388,107 @@ test('restart during a pending custom abort keeps the replacement on the test sc
   } finally { ipc.setHandlers(); }
 });
 
-test('regular and weak-key sessions do not return to custom text selection on abort', async () => {
-  let navigations = 0;
-  const session = store({ onCustomTextAborted: () => { navigations++; } });
+test('regular tests return to text selection and weak-key sessions return to training', async () => {
+  const destinations = [];
+  const session = store({ onAborted: destination => destinations.push(destination) });
   await session.startCustomTest(42);
   session.onModeChange('words');
   await tick();
   await session.abortTest();
   await session.startTraining();
   await session.abortTest();
-  assert.equal(navigations, 0);
+  assert.deepEqual(destinations, ['custom', 'weakkeys']);
+});
+
+for (const language of ['en', 'ru']) {
+  for (const mode of ['time', 'words', 'quote']) {
+    for (const typed of [false, true]) {
+      test(`ordinary ${mode}/${language} abort ${typed ? 'after input' : 'before input'} opens text selection`, async () => {
+        let returns = 0;
+        const session = store({ onAborted: () => { returns++; } });
+        session.selectedLanguage = language;
+        await session.startTest();
+        if (mode !== 'time') { session.onModeChange(mode); await tick(); }
+        if (typed) {
+          ipc.setOutput({ ...runningOutput, caret_pos: 1, key_result: 'correct' });
+          session.acceptTypingKey(language === 'ru' ? 'п' : 'h', 'KeyG');
+          await tick();
+        }
+        await session.abortTest();
+        assert.equal(returns, 1);
+        assert.equal(session.sessionState, 'idle');
+        assert.equal(session.text, '', 'an abandoned test cannot render a stale 0/0 card');
+        assert.deepEqual(session.charStatuses, []);
+      });
+    }
+  }
+}
+
+test('abort can leave an already idle card without a second backend abort', async () => {
+  let returns = 0;
+  const session = store({ onAborted: () => { returns++; } });
+  await session.startCustomTest(42);
+  await session.abandonActiveSessionForReplacement();
+  assert.equal(session.sessionState, 'idle');
+  const abortsBefore = ipc.aborts.length;
+  await session.abortTest();
+  assert.equal(returns, 1);
+  assert.equal(ipc.aborts.length, abortsBefore);
+});
+
+test('abort cannot discard a completed result', async () => {
+  let returns = 0;
+  const session = store({ onAborted: () => { returns++; } });
+  await session.startCustomTest(42);
+  ipc.setOutput({session_state:'persisted',caret_pos:4,key_result:'test_ended',live_stats:null,
+    test_complete:{duration_ms:1000,accuracy:100,wpm:48}});
+  session.enqueueKey('', '', true);
+  await tick();
+  await session.abortTest();
+  assert.equal(returns, 0);
+  assert.equal(session.isComplete, true);
+  assert.notEqual(session.finalStats, null);
+});
+
+test('lesson abort returns to lessons, including after a repeated lesson', async () => {
+  const destinations = [];
+  const session = store({ onAborted: destination => destinations.push(destination) });
+  await session.startLesson('home-row-ru', 'ru');
+  await session.restartTest();
+  await session.abortTest();
+  assert.deepEqual(destinations, ['lessons']);
+  assert.equal(session.text, '');
+});
+
+test('reopening the Test tab after abort starts a populated session instead of an idle card', async () => {
+  const session = store();
+  await session.startCustomTest(42);
+  await session.abortTest();
+  assert.equal(session.sessionState, 'idle');
+  assert.equal(session.text, '');
+  const startsBefore = ipc.starts.length;
+  const navigate = appNavigation(session);
+  navigate('test');
+  await tick();
+  assert.equal(ipc.starts.length, startsBefore + 1);
+  assert.equal(session.sessionState, 'running');
+  assert.equal(session.charStatuses.length, Array.from(session.text).length);
+  assert.ok(session.text.length > 0);
+  navigate('test');
+  await tick();
+  assert.equal(ipc.starts.length, startsBefore + 1, 'an active test is not replaced');
+});
+
+test('reopening the Test tab preserves a completed result', async () => {
+  const session = store();
+  await session.startCustomTest(42);
+  ipc.setOutput({session_state:'persisted',caret_pos:4,key_result:'test_ended',live_stats:null,
+    test_complete:{duration_ms:1000,accuracy:100,wpm:48}});
+  session.enqueueKey('', '', true);
+  await tick();
+  const startsBefore = ipc.starts.length;
+  appNavigation(session)('test');
+  await tick();
+  assert.equal(ipc.starts.length, startsBefore);
+  assert.equal(session.isComplete, true);
 });

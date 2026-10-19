@@ -21,6 +21,7 @@ import type {
 } from '../types/index';
 
 export type SoundEventName = 'key_press' | 'error' | 'lesson_complete';
+type AbortDestination = 'custom' | 'lessons' | 'weakkeys';
 
 export interface TestSessionDeps {
   getSettings: () => AppSettings | null;
@@ -36,7 +37,7 @@ export interface TestSessionDeps {
   onHistoryChanged: () => void;
   onAchievementsChanged: () => Promise<void>;
   onStarted: () => void;
-  onCustomTextAborted?: () => void;
+  onAborted?: (destination: AbortDestination) => void;
 }
 
 interface QueuedKey {
@@ -92,8 +93,8 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   let timeCompletionQueued = false;
   // Keep the accepted source, not the unrelated global mode controls.
   let restartSource: (() => Promise<void>) | null = null;
-  // Weak-key training also uses mode 'custom', but has a different source view.
-  let customTextSession = false;
+  // Ordinary tests return to text selection; lessons/training retain their source.
+  let abortDestination: AbortDestination = 'custom';
   // Timestamp of the last "accuracy above 95%" toast — debounce (30s).
   let lastHighAccToastAt = 0;
 
@@ -104,7 +105,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   }
 
   function startTestFromResponse(resp: TestSessionResponse, lessonId: string | null = null) {
-    customTextSession = false;
+    abortDestination = 'custom';
     sessionGeneration += 1;
     queuedKeys = [];
     timeCompletionQueued = false;
@@ -148,6 +149,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
     caretPos = 0;
     charStatuses = [];
     erroredPositions = new Set();
+    text = '';
   }
 
   // Replacing a running test is an explicit user action. The backend must
@@ -340,13 +342,13 @@ export function createTestSessionStore(deps: TestSessionDeps) {
   }
 
   async function abortTest() {
-    if (!isRunning || startingTest || pendingAbort) return;
-    const returnToTexts = customTextSession;
-    if (!(await abandonActiveSessionForReplacement())) return;
+    if (isComplete || startingTest || pendingAbort) return;
+    const destination = abortDestination;
+    if (isRunning && !(await abandonActiveSessionForReplacement())) return;
     // A concurrent restart owns its replacement and must not be navigated away.
     if (startingTest || sessionState !== 'idle') return;
     deps.setZenActive(false);
-    if (returnToTexts) deps.onCustomTextAborted?.();
+    deps.onAborted?.(destination);
   }
 
   // Restart the current test: abort the active session (if any) then start a
@@ -364,7 +366,6 @@ export function createTestSessionStore(deps: TestSessionDeps) {
       await deps.beforeStart();
       const resp = await ipc.startCustomTextTest(id);
       startTestFromResponse(resp);
-      customTextSession = true;
       restartSource = () => startCustomTest(id);
       deps.onStarted();
     } catch (error) {
@@ -382,6 +383,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
       await deps.beforeStart();
       const resp = await ipc.startLesson(lessonId, language);
       startTestFromResponse(resp, lessonId);
+      abortDestination = 'lessons';
       restartSource = () => startLesson(lessonId, language);
       deps.onStarted();
     } catch (e) {
@@ -404,6 +406,7 @@ export function createTestSessionStore(deps: TestSessionDeps) {
         text: generatedText,
       });
       startTestFromResponse(resp);
+      abortDestination = 'weakkeys';
       restartSource = () => startTraining(false, language);
       if (navigateToTest) deps.onStarted();
     } catch (e) {
