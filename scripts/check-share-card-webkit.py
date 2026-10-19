@@ -10,6 +10,8 @@ import base64
 import functools
 import http.server
 import json
+import hashlib
+import struct
 from pathlib import Path
 import sys
 import threading
@@ -55,6 +57,16 @@ def evaluated(webview, task, _data=None):
             details = json.loads(state['details'])
             assert all(url.startswith(origin + '/') for url in details['resources']), 'Non-local resource'
             (output / 'webkit-card.png').write_bytes(base64.b64decode(state['png']))
+            cards = json.loads(state['cards'])
+            assert len(cards) == 16, 'Expected 15 languages and overflow fixture'
+            for card in cards:
+                png = base64.b64decode(card.pop('png'), validate=True)
+                assert png[:8] == b'\x89PNG\r\n\x1a\n'
+                width, height = struct.unpack('>II', png[16:24])
+                assert width == 900 and 470 <= height <= 900
+                (output / (card['language'] + '.png')).write_bytes(png)
+                card['sha256'] = hashlib.sha256(png).hexdigest()
+            result['cards'] = cards
         Gtk.main_quit()
     except Exception as error:
         result = {'ok': False, 'error': str(error)}
@@ -62,7 +74,7 @@ def evaluated(webview, task, _data=None):
 
 
 def poll():
-    view.evaluate_javascript("JSON.stringify({status:document.querySelector('#status')?.textContent,details:document.querySelector('#results')?.textContent,png:document.querySelector('#png-base64')?.textContent})", -1, None, None, None, evaluated, None)
+    view.evaluate_javascript("JSON.stringify({status:document.querySelector('#status')?.textContent,details:document.querySelector('#results')?.textContent,png:document.querySelector('#png-base64')?.textContent,cards:document.querySelector('#png-cards')?.textContent})", -1, None, None, None, evaluated, None)
     return True
 
 

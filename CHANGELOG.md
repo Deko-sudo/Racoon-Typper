@@ -8,6 +8,11 @@
 
 ### Fixed
 
+- Include Cyrillic, CJK, diacritics and other expected Unicode characters in
+  result PNG heatmaps. Show localized first-attempt character accuracy instead
+  of a fixed Latin keyboard; bound the card size and explicitly account for
+  characters beyond the 60-tile limit. Overall scores and saved data are unchanged.
+
 - Journal whole-database replacement and recover unfinished swaps before opening
   SQLite; preserve the complete original main/WAL/SHM/journal snapshot on failure.
   Retain five completed rollback snapshots with best-effort cleanup, preserving

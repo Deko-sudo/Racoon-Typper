@@ -5,18 +5,27 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { languageSamples, sampleHeatmap } from './fixtures/share-card-languages.mjs';
+import { t as translate, UI_LANGUAGES } from './i18n-test-loader.mjs';
 const require = createRequire(new URL('../frontend/package.json', import.meta.url));
 const ts = require('typescript');
+const asModule = js => `data:text/javascript;base64,${Buffer.from(js).toString('base64')}`;
+const modelSource = readFileSync(new URL('../frontend/src/lib/heatmapPresentation.ts', import.meta.url), 'utf8');
+const modelUrl = asModule(ts.transpileModule(modelSource, { compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext } }).outputText);
+const { buildCharacterHeatmap, characterLabel, MAX_HEATMAP_TILES } = await import(modelUrl);
 const source = readFileSync(new URL('../frontend/src/lib/shareCard.ts', import.meta.url), 'utf8');
 let sequence = 0;
 async function renderer() {
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext } }).outputText
     .replace(/import regularFontUrl[^;]+;/, 'const regularFontUrl = "/assets/DejaVuSans.ttf";')
-    .replace(/import boldFontUrl[^;]+;/, 'const boldFontUrl = "/assets/DejaVuSans-Bold.ttf";');
+    .replace(/import boldFontUrl[^;]+;/, 'const boldFontUrl = "/assets/DejaVuSans-Bold.ttf";')
+    .replace("'./heatmapPresentation'", JSON.stringify(modelUrl));
   return import(`data:text/javascript;base64,${Buffer.from(js + `\n// instance ${sequence++}`).toString('base64')}`);
 }
 const stats = { wpm: 87.4, raw_wpm: 94.2, accuracy: 96.8, duration_ms: 30_000, mode: 'Время Čas', language: 'ru', date: '2026-10-17', heatmap: {} };
 const colors = { background: '#0d0f12', surface: '#15181d', text: '#e7e9ed', sub: '#8c94a0', accent: '#c5cbd4', error: '#dc8d8d' };
+const labelKeys = { title: 'symbols', legend: 'first_attempt', empty: 'empty', space: 'space', shown: 'shown', remaining: 'remaining' };
+const labelsFor = lang => Object.fromEntries(Object.entries(labelKeys).map(([name, key]) => [name, translate(lang, `share_card.${key}`)]));
 
 function environment(t) {
   const env = { calls: [], faces: [], fonts: [], canvases: [], links: [], noContext: false, fontFailure: false, fontHang: false, nullBlob: false, encodingHang: false, clickFailure: false };
@@ -56,6 +65,109 @@ function environment(t) {
   return env;
 }
 
+for (const [language, sample] of Object.entries(languageSamples)) {
+  test(`PNG preserves every expected letter in ${language}`, async t => {
+    const env = environment(t); const { renderShareCard } = await renderer();
+    await renderShareCard({ ...stats, language, heatmap: sampleHeatmap(sample) }, colors, labelsFor(language));
+    const labels = env.calls.filter(c => c[0] === 'text').map(c => c[3]);
+    for (const symbol of new Set(Array.from(sample).filter(ch => /\p{Letter}/u.test(ch)))) {
+      assert.ok(labels.includes(symbol), `${language}: missing ${symbol}`);
+    }
+    assert.ok(labels.includes(translate(language, 'share_card.symbols')));
+    assert.ok(labels.includes(translate(language, 'share_card.first_attempt')));
+    assert.ok(labels.includes(translate(language, 'share_card.space')));
+    const canvas = env.canvases[0];
+    assert.equal(canvas.width, 900); assert.ok(canvas.height >= 470 && canvas.height <= 900);
+    assert.equal(env.calls.filter(c => c[0] === 'rect' && c[4] === 72 && c[5] === 60).length, new Set(Array.from(sample)).size);
+    assert.ok(env.calls.filter(c => c[0] === 'rect' && c[4] === 72 && c[5] === 60).every(c => c[1] === colors.surface));
+  });
+}
+
+test('fixtures and explicit PNG translations cover every selectable UI language', () => {
+  assert.deepEqual(Object.keys(languageSamples).sort(), UI_LANGUAGES.map(([lang]) => lang).sort());
+  const ast = ts.createSourceFile('i18n.ts', readFileSync(new URL('../frontend/src/lib/i18n.ts', import.meta.url), 'utf8'), ts.ScriptTarget.Latest, true);
+  const variables = ast.statements.filter(ts.isVariableStatement).flatMap(s => [...s.declarationList.declarations]);
+  for (const [lang] of UI_LANGUAGES) {
+    const name = { 'zh-hk': 'zhHK', 'zh-tw': 'zhTW' }[lang] ?? lang;
+    const properties = new Set(variables.find(v => v.name.text === name).initializer.properties.map(p => p.name.text));
+    for (const key of Object.values(labelKeys)) {
+      assert.ok(properties.has(`share_card.${key}`), `${lang}/${key}: requires explicit translation`);
+      const placeholders = value => [...value.matchAll(/\{(\w+)\}/g)].map(m => m[1]).sort();
+      assert.deepEqual(placeholders(translate(lang, `share_card.${key}`)), placeholders(translate('en', `share_card.${key}`)));
+    }
+  }
+});
+
+test('character counts retain case, diacritics and scalar identities without alias duplication', () => {
+  const input = sampleHeatmap('Aaаёїґößș漢한😀𠮷ée\u0301 1!?');
+  for (const value of Object.values(input)) Object.freeze(value);
+  Object.freeze(input);
+  const model = buildCharacterHeatmap(input);
+  assert.equal(model.symbolCount, Object.keys(input).length);
+  for (const [symbol, counts] of Object.entries(input)) {
+    const tile = model.tiles.find(t => t.symbol === symbol);
+    for (const field of ['correct', 'incorrect', 'total_attempts']) assert.equal(tile[field], counts[field], symbol);
+  }
+  assert.equal(model.tiles.find(t => t.symbol === 'A').total_attempts, 1);
+  assert.equal(model.tiles.find(t => t.symbol === 'a').total_attempts, 1);
+  assert.equal(model.tiles.find(t => t.symbol === '𠮷').codePoint, 'U+20BB7');
+  assert.equal(characterLabel(' ', 'Пробел'), 'Пробел');
+  assert.equal(characterLabel('\u0301', 'Space'), '◌\u0301');
+  assert.equal(characterLabel('\u200d', 'Space'), '·');
+  assert.equal(characterLabel('\n', 'Space'), '·');
+});
+
+test('empty and invalid counts never produce misleading percentages or mutate the input', () => {
+  assert.deepEqual(buildCharacterHeatmap({}).tiles, []);
+  assert.deepEqual(buildCharacterHeatmap({ a: { total_attempts: 0, correct: 0, incorrect: 0 } }).tiles, []);
+  for (const counts of [null, { total_attempts: -1, correct: 0, incorrect: 0 },
+    { total_attempts: 1, correct: 0.5, incorrect: 0.5 }, { total_attempts: NaN, correct: 0, incorrect: 0 },
+    { total_attempts: 1, correct: 1, incorrect: 1 }]) {
+    assert.throws(() => buildCharacterHeatmap({ a: counts }), /Invalid character heatmap/);
+  }
+  assert.throws(() => buildCharacterHeatmap({ '\ud800': { total_attempts: 1, correct: 1, incorrect: 0 } }), /Invalid character heatmap/);
+  assert.throws(() => buildCharacterHeatmap({ aa: { total_attempts: 1, correct: 1, incorrect: 0 } }), /Invalid character heatmap/);
+  assert.throws(() => buildCharacterHeatmap({ a: { total_attempts: Number.MAX_SAFE_INTEGER, correct: Number.MAX_SAFE_INTEGER, incorrect: 0 }, b: { total_attempts: 1, correct: 1, incorrect: 0 } }), /supported range/);
+});
+
+test('tile limit conserves every count in the explicit remainder and order is deterministic', () => {
+  for (const size of [59, 60, 61, 1000]) {
+    const input = Object.fromEntries(Array.from({ length: size }, (_, i) => {
+      const total_attempts = 1 + i % 7, correct = Math.floor(total_attempts / 2);
+      return [String.fromCodePoint(0x4e00 + i), { total_attempts, correct, incorrect: total_attempts - correct }];
+    }));
+    const model = buildCharacterHeatmap(input);
+    assert.equal(model.tiles.length, Math.min(MAX_HEATMAP_TILES, size));
+    assert.equal(model.remaining.symbolCount, Math.max(0, size - MAX_HEATMAP_TILES));
+    for (const field of ['correct', 'incorrect', 'total_attempts']) {
+      const total = Object.values(input).reduce((n, value) => n + value[field], 0);
+      assert.equal(model.totals[field], total);
+      assert.equal(model.tiles.reduce((n, tile) => n + tile[field], model.remaining[field]), total);
+    }
+    assert.deepEqual(model, buildCharacterHeatmap(Object.fromEntries(Object.entries(input).reverse())));
+  }
+});
+
+test('overflow PNG is bounded and accounts for the undisplayed symbols explicitly', async t => {
+  const env = environment(t); const { renderShareCard } = await renderer();
+  const heatmap = sampleHeatmap(Array.from({ length: 1000 }, (_, i) => String.fromCodePoint(0x4e00 + i)).join(''));
+  await renderShareCard({ ...stats, heatmap }, colors, labelsFor('ru'));
+  const canvas = env.canvases[0]; assert.ok(canvas.height <= 900);
+  const text = env.calls.filter(c => c[0] === 'text').map(c => c[3]);
+  assert.ok(text.includes('Показано 60 из 1000 символов'));
+  assert.ok(text.includes('Остальные 940: первых попыток 940 · верно 940 · ошибок 0'));
+  assert.equal(text.filter(s => /^U\+[0-9A-F]+$/.test(s)).length, 60);
+  assert.ok(env.calls.filter(c => c[0] === 'text').every(c => c[4] + c[6] <= 876 && c[5] < canvas.height));
+});
+
+test('non-ASCII and invisible symbols keep an ASCII code-point caption without replacing the glyph', async t => {
+  const env = environment(t); const { renderShareCard } = await renderer();
+  await renderShareCard({ ...stats, heatmap: sampleHeatmap('Aé e\u0301😀𠮷\u200d') }, colors);
+  const text = env.calls.filter(c => c[0] === 'text').map(c => c[3]);
+  for (const value of ['A', 'é', 'e', '◌\u0301', '😀', '𠮷', '·', 'U+00E9', 'U+0301', 'U+1F600', 'U+20BB7', 'U+200D']) assert.ok(text.includes(value), value);
+  assert.equal(text.includes('U+0041'), false, 'ordinary ASCII needs no technical caption');
+});
+
 test('draws backend values, Unicode, theme and empty heatmap at 900x470 using bundled fonts', async t => {
   const env = environment(t); const { renderShareCard } = await renderer();
   const blob = await renderShareCard(Object.freeze(stats), Object.freeze(colors));
@@ -63,7 +175,8 @@ test('draws backend values, Unicode, theme and empty heatmap at 900x470 using bu
   assert.equal(env.canvases[0].width, 900); assert.equal(env.canvases[0].height, 470);
   const text = env.calls.filter(c => c[0] === 'text').map(c => c[3]);
   for (const value of ['87.4', '94.2', '96.8%', '30.0s', 'Время Čas · ru · 2026-10-17', 'WPM', 'TIME']) assert.ok(text.includes(value), value);
-  assert.equal(text.filter(v => /^[a-z]$/.test(v)).length, 26);
+  assert.ok(text.includes('No character data'));
+  assert.equal(text.filter(v => /^[a-z]$/.test(v)).length, 0);
   assert.equal(env.fonts.length, 2);
   assert.deepEqual(env.faces.map(f => f.options.weight), ['400', '700']);
   assert.ok(env.faces.every(f => /^url\("\/assets\//.test(f.url)));
@@ -77,10 +190,10 @@ test('color fallback, heatmap accuracy and long labels preserve card bounds', as
   assert.equal(parseColor('#00ff0080', '#ffffff'), '#00ff00');
   assert.equal(parseColor('ff0000', '#ffffff'), '#ff0000');
   assert.equal(parseColor('invalid', '#ffffff'), '#ffffff');
-  await renderShareCard({ ...stats, mode: 'я'.repeat(200), heatmap: { q: { total_attempts: 2, correct: 2 }, w: { total_attempts: 2, correct: 0 } } }, { ...colors, background: 'invalid' });
+  await renderShareCard({ ...stats, mode: 'я'.repeat(200), heatmap: { q: { total_attempts: 2, correct: 2, incorrect: 0 }, w: { total_attempts: 2, correct: 0, incorrect: 2 } } }, { ...colors, background: 'invalid' });
   assert.equal(env.calls[0][1], '#0d0f12');
-  assert.ok(env.calls.some(c => c[0] === 'key' && c[1] === 'rgb(197,203,212)' && c[2] === 48 && c[3] === 384));
-  assert.ok(env.calls.some(c => c[0] === 'key' && c[1] === 'rgb(220,141,141)' && c[2] === 76 && c[3] === 384));
+  assert.ok(env.calls.some(c => c[0] === 'rect' && c[1] === 'rgb(197,203,212)' && c[2] === 48 && c[3] === 462));
+  assert.ok(env.calls.some(c => c[0] === 'rect' && c[1] === 'rgb(220,141,141)' && c[2] === 128 && c[3] === 462));
   assert.ok(env.calls.filter(c => c[0] === 'text').every(c => c[6] > 0 && c[4] + c[6] <= 876));
 });
 
@@ -153,23 +266,24 @@ test('actual result handler prevents overlapping exports and recovers after rend
   const compiled = ts.transpileModule(functions.map(node => node.getText(ast)).join('\n'), {
     compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext },
   }).outputText;
-  let release; let renders = 0; let downloads = 0; let received;
-  const render = value => { renders++; received = value; return new Promise(resolve => { release = resolve; }); };
-  const controller = new Function('renderShareCard', 'downloadShareCard', 'stats', 'getComputedStyle', 'document', `
-    let shareState = 'idle', sessionModeType = 'custom', sessionLanguage = 'ru';
+  let release; let renders = 0; let downloads = 0; let received, receivedLabels;
+  const render = (value, _, labels) => { renders++; received = value; receivedLabels = labels; return new Promise(resolve => { release = resolve; }); };
+  const controller = new Function('renderShareCard', 'downloadShareCard', 'stats', 'getComputedStyle', 'document', 't', `
+    let shareState = 'idle', sessionModeType = 'custom', sessionLanguage = 'ru', uiLang = 'de';
     ${compiled}
     return { run: handleSharePng, state: () => shareState };
-  `)(render, () => { downloads++; }, stats, () => ({ getPropertyValue: () => '' }), { documentElement: {} });
+  `)(render, () => { downloads++; }, stats, () => ({ getPropertyValue: () => '' }), { documentElement: {} }, translate);
   const first = controller.run(); await controller.run();
   assert.equal(renders, 1); assert.equal(controller.state(), 'rendering');
   assert.equal(received.wpm, stats.wpm); assert.equal(received.language, 'ru');
+  assert.equal(receivedLabels.title, translate('de', 'share_card.symbols'), 'UI language is independent of practice language');
   release(new Blob(['png'])); await first;
   assert.equal(downloads, 1); assert.equal(controller.state(), 'idle');
-  const failure = new Function('renderShareCard', 'downloadShareCard', 'stats', 'getComputedStyle', 'document', `
-    let shareState = 'idle', sessionModeType = 'custom', sessionLanguage = 'ru';
+  const failure = new Function('renderShareCard', 'downloadShareCard', 'stats', 'getComputedStyle', 'document', 't', `
+    let shareState = 'idle', sessionModeType = 'custom', sessionLanguage = 'ru', uiLang = 'de';
     ${compiled}
     return { run: handleSharePng, state: () => shareState };
-  `)(async () => { throw new Error('font failed'); }, () => assert.fail('must not download on failure'), stats, () => ({ getPropertyValue: () => '' }), { documentElement: {} });
+  `)(async () => { throw new Error('font failed'); }, () => assert.fail('must not download on failure'), stats, () => ({ getPropertyValue: () => '' }), { documentElement: {} }, translate);
   const errors = t.mock.method(console, 'error', () => {});
   await failure.run(); assert.equal(failure.state(), 'error');
   await failure.run(); assert.equal(errors.mock.callCount(), 2, 'error state allows retry');

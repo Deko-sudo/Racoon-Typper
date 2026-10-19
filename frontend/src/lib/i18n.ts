@@ -6,6 +6,12 @@ export type UiLang = 'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  'share_card.symbols': 'Character accuracy',
+  'share_card.first_attempt': 'Correct on the first attempt (%)',
+  'share_card.empty': 'No character data',
+  'share_card.space': 'Space',
+  'share_card.shown': 'Shown {shown} of {total} characters',
+  'share_card.remaining': 'Other {count}: {attempts} first attempts · {correct} correct · {incorrect} incorrect',
   'test.input_label': 'Type the displayed text',
   'hands.title': 'Finger guide',
   'hands.hand.L': 'Left hand',
@@ -288,6 +294,12 @@ const en: Dict = {
 };
 
 const ru: Dict = {
+  'share_card.symbols': 'Точность по символам',
+  'share_card.first_attempt': 'Верно с первой попытки (%)',
+  'share_card.empty': 'Нет данных по символам',
+  'share_card.space': 'Пробел',
+  'share_card.shown': 'Показано {shown} из {total} символов',
+  'share_card.remaining': 'Остальные {count}: первых попыток {attempts} · верно {correct} · ошибок {incorrect}',
   'test.input_label': 'Введите показанный текст',
   'hands.title': 'Подсказка пальца',
   'hands.hand.L': 'Левая рука',
@@ -569,6 +581,12 @@ const ru: Dict = {
 };
 
 const de: Dict = {
+  'share_card.symbols': 'Genauigkeit nach Zeichen',
+  'share_card.first_attempt': 'Beim ersten Versuch richtig (%)',
+  'share_card.empty': 'Keine Zeichendaten',
+  'share_card.space': 'Leertaste',
+  'share_card.shown': '{shown} von {total} Zeichen angezeigt',
+  'share_card.remaining': 'Weitere {count}: {attempts} Erstversuche · {correct} richtig · {incorrect} falsch',
   'nav.dashboard': 'Übersicht', 'nav.test': 'Test', 'nav.lessons': 'Lektionen',
   'nav.weakkeys': 'Schwache Tasten', 'nav.analytics': 'Analytik', 'nav.history': 'Verlauf',
   'nav.bests': 'Bestleistungen',   'nav.texts': 'Texte', 'nav.achievements': 'Erfolge', 'nav.settings': 'Einstellungen',
@@ -586,6 +604,12 @@ const de: Dict = {
 };
 
 const uk: Dict = {
+  'share_card.symbols': 'Точність за символами',
+  'share_card.first_attempt': 'Правильно з першої спроби (%)',
+  'share_card.empty': 'Немає даних за символами',
+  'share_card.space': 'Пробіл',
+  'share_card.shown': 'Показано {shown} із {total} символів',
+  'share_card.remaining': 'Решта {count}: перших спроб {attempts} · правильно {correct} · помилок {incorrect}',
   'nav.dashboard': 'Панель', 'nav.test': 'Тест', 'nav.lessons': 'Уроки',
   'nav.weakkeys': 'Слабкі клавіші', 'nav.analytics': 'Аналітика', 'nav.history': 'Історія',
   'nav.bests': 'Рекорди',   'nav.texts': 'Тексти', 'nav.achievements': 'Досягнення', 'nav.settings': 'Налаштування',
@@ -603,6 +627,12 @@ const uk: Dict = {
 };
 
 const es: Dict = {
+  'share_card.symbols': 'Precisión por carácter',
+  'share_card.first_attempt': 'Correcto al primer intento (%)',
+  'share_card.empty': 'No hay datos de caracteres',
+  'share_card.space': 'Espacio',
+  'share_card.shown': 'Se muestran {shown} de {total} caracteres',
+  'share_card.remaining': 'Otros {count}: {attempts} primeros intentos · {correct} correctos · {incorrect} incorrectos',
   'nav.dashboard': 'Panel', 'nav.test': 'Test', 'nav.lessons': 'Lecciones',
   'nav.weakkeys': 'Teclas débiles', 'nav.analytics': 'Analítica', 'nav.history': 'Historial',
   'nav.bests': 'Récords',   'nav.texts': 'Textos', 'nav.achievements': 'Logros', 'nav.settings': 'Ajustes',
@@ -620,6 +650,12 @@ const es: Dict = {
 };
 
 const fr: Dict = {
+  'share_card.symbols': 'Précision par caractère',
+  'share_card.first_attempt': 'Correct dès la première tentative (%)',
+  'share_card.empty': 'Aucune donnée sur les caractères',
+  'share_card.space': 'Espace',
+  'share_card.shown': '{shown} caractères affichés sur {total}',
+  'share_card.remaining': 'Autres {count} : {attempts} premières tentatives · {correct} correctes · {incorrect} incorrectes',
   'nav.dashboard': 'Tableau de bord', 'nav.test': 'Test', 'nav.lessons': 'Leçons',
   'nav.weakkeys': 'Touches faibles', 'nav.analytics': 'Analytique', 'nav.history': 'Historique',
   'nav.bests': 'Records',   'nav.texts': 'Textes', 'nav.achievements': 'Succès', 'nav.settings': 'Paramètres',
@@ -637,6 +673,12 @@ const fr: Dict = {
 };
 
 const it: Dict = {
+  'share_card.symbols': 'Precisione per carattere',
+  'share_card.first_attempt': 'Corretto al primo tentativo (%)',
+  'share_card.empty': 'Nessun dato sui caratteri',
+  'share_card.space': 'Spazio',
+  'share_card.shown': 'Mostrati {shown} di {total} caratteri',
+  'share_card.remaining': 'Altri {count}: {attempts} primi tentativi · {correct} corretti · {incorrect} errati',
   'nav.dashboard': 'Cruscotto', 'nav.test': 'Test', 'nav.lessons': 'Lezioni',
   'nav.weakkeys': 'Tasti deboli', 'nav.analytics': 'Analisi', 'nav.history': 'Cronologia',
   'nav.bests': 'Record',   'nav.texts': 'Testi', 'nav.achievements': 'Risultati', 'nav.settings': 'Impostazioni',
@@ -654,6 +696,12 @@ const it: Dict = {
 };
 
 const pt: Dict = {
+  'share_card.symbols': 'Precisão por caractere',
+  'share_card.first_attempt': 'Correto na primeira tentativa (%)',
+  'share_card.empty': 'Sem dados de caracteres',
+  'share_card.space': 'Espaço',
+  'share_card.shown': 'Exibidos {shown} de {total} caracteres',
+  'share_card.remaining': 'Outros {count}: {attempts} primeiras tentativas · {correct} corretas · {incorrect} incorretas',
   'nav.dashboard': 'Painel', 'nav.test': 'Teste', 'nav.lessons': 'Lições',
   'nav.weakkeys': 'Teclas fracas', 'nav.analytics': 'Análise', 'nav.history': 'Histórico',
   'nav.bests': 'Recordes',   'nav.texts': 'Textos', 'nav.achievements': 'Conquistas', 'nav.settings': 'Configurações',
@@ -671,6 +719,12 @@ const pt: Dict = {
 };
 
 const pl: Dict = {
+  'share_card.symbols': 'Dokładność według znaków',
+  'share_card.first_attempt': 'Poprawnie za pierwszym razem (%)',
+  'share_card.empty': 'Brak danych o znakach',
+  'share_card.space': 'Spacja',
+  'share_card.shown': 'Wyświetlono {shown} z {total} znaków',
+  'share_card.remaining': 'Pozostałe {count}: {attempts} pierwszych prób · {correct} poprawnie · {incorrect} błędnie',
   'nav.dashboard': 'Pulpit', 'nav.test': 'Test', 'nav.lessons': 'Lekcje',
   'nav.weakkeys': 'Słabe klawisze', 'nav.analytics': 'Analiza', 'nav.history': 'Historia',
   'nav.bests': 'Rekordy',   'nav.texts': 'Teksty', 'nav.achievements': 'Osiągnięcia', 'nav.settings': 'Ustawienia',
@@ -688,6 +742,12 @@ const pl: Dict = {
 };
 
 const cs: Dict = {
+  'share_card.symbols': 'Přesnost podle znaků',
+  'share_card.first_attempt': 'Správně na první pokus (%)',
+  'share_card.empty': 'Žádná data o znacích',
+  'share_card.space': 'Mezera',
+  'share_card.shown': 'Zobrazeno {shown} z {total} znaků',
+  'share_card.remaining': 'Dalších {count}: {attempts} prvních pokusů · {correct} správně · {incorrect} chybně',
   'nav.dashboard': 'Nástěnka', 'nav.test': 'Test', 'nav.lessons': 'Lekce',
   'nav.weakkeys': 'Slabé klávesy', 'nav.analytics': 'Analýza', 'nav.history': 'Historie',
   'nav.bests': 'Rekordy',   'nav.texts': 'Texty', 'nav.achievements': 'Úspěchy', 'nav.settings': 'Nastavení',
@@ -705,6 +765,12 @@ const cs: Dict = {
 };
 
 const ro: Dict = {
+  'share_card.symbols': 'Precizie pe caractere',
+  'share_card.first_attempt': 'Corect la prima încercare (%)',
+  'share_card.empty': 'Nu există date despre caractere',
+  'share_card.space': 'Spațiu',
+  'share_card.shown': 'Sunt afișate {shown} din {total} caractere',
+  'share_card.remaining': 'Alte {count}: {attempts} prime încercări · {correct} corecte · {incorrect} greșite',
   'nav.dashboard': 'Tablou', 'nav.test': 'Test', 'nav.lessons': 'Lecții',
   'nav.weakkeys': 'Taste slabe', 'nav.analytics': 'Analiză', 'nav.history': 'Istoric',
   'nav.bests': 'Recorduri',   'nav.texts': 'Texte', 'nav.achievements': 'Realizări', 'nav.settings': 'Setări',
@@ -722,6 +788,12 @@ const ro: Dict = {
 };
 
 const ja: Dict = {
+  'share_card.symbols': '文字ごとの正確さ',
+  'share_card.first_attempt': '最初の入力で正解した割合（%）',
+  'share_card.empty': '文字データがありません',
+  'share_card.space': '空白',
+  'share_card.shown': '{total}文字中{shown}文字を表示',
+  'share_card.remaining': 'その他{count}文字：初回入力{attempts}回 · 正解{correct} · 誤り{incorrect}',
   'nav.dashboard': 'ダッシュボード', 'nav.test': 'テスト', 'nav.lessons': 'レッスン',
   'nav.weakkeys': '苦手キー', 'nav.analytics': '分析', 'nav.history': '履歴',
   'nav.bests': 'ベスト',   'nav.texts': 'テキスト', 'nav.achievements': '実績', 'nav.settings': '設定',
@@ -739,6 +811,12 @@ const ja: Dict = {
 };
 
 const ko: Dict = {
+  'share_card.symbols': '문자별 정확도',
+  'share_card.first_attempt': '첫 입력 정답률 (%)',
+  'share_card.empty': '문자 데이터 없음',
+  'share_card.space': '공백',
+  'share_card.shown': '{total}개 문자 중 {shown}개 표시',
+  'share_card.remaining': '나머지 {count}개: 첫 입력 {attempts}회 · 정답 {correct} · 오답 {incorrect}',
   'nav.dashboard': '대시보드', 'nav.test': '테스트', 'nav.lessons': '레슨',
   'nav.weakkeys': '약한 키', 'nav.analytics': '분석', 'nav.history': '기록',
   'nav.bests': '최고 기록',   'nav.texts': '텍스트', 'nav.achievements': '업적', 'nav.settings': '설정',
@@ -756,6 +834,12 @@ const ko: Dict = {
 };
 
 const zhHK: Dict = {
+  'share_card.symbols': '各字元準確度',
+  'share_card.first_attempt': '首次輸入正確率（%）',
+  'share_card.empty': '沒有字元資料',
+  'share_card.space': '空格',
+  'share_card.shown': '顯示{total}個字元中的{shown}個',
+  'share_card.remaining': '其餘{count}個：首次輸入{attempts}次 · 正確{correct} · 錯誤{incorrect}',
   'nav.dashboard': '儀表板', 'nav.test': '測試', 'nav.lessons': '課程',
   'nav.weakkeys': '弱鍵', 'nav.analytics': '分析', 'nav.history': '歷史',
   'nav.bests': '最佳', 'nav.texts': '文本', 'nav.settings': '設定',
@@ -773,6 +857,12 @@ const zhHK: Dict = {
 };
 
 const zhTW: Dict = {
+  'share_card.symbols': '各字元準確度',
+  'share_card.first_attempt': '首次輸入正確率（%）',
+  'share_card.empty': '沒有字元資料',
+  'share_card.space': '空白',
+  'share_card.shown': '顯示{total}個字元中的{shown}個',
+  'share_card.remaining': '其餘{count}個：首次輸入{attempts}次 · 正確{correct} · 錯誤{incorrect}',
   'nav.dashboard': '儀表板', 'nav.test': '測試', 'nav.lessons': '課程',
   'nav.weakkeys': '弱鍵', 'nav.analytics': '分析', 'nav.history': '歷史',
   'nav.bests': '最佳', 'nav.texts': '文本', 'nav.achievements': '成就', 'nav.settings': '設定',

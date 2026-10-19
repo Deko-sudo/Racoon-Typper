@@ -4,6 +4,7 @@
 import regularFontUrl from '../../../resources/fonts/DejaVuSans.ttf?url';
 import boldFontUrl from '../../../resources/fonts/DejaVuSans-Bold.ttf?url';
 import type { FinalStats } from './types/index';
+import { buildCharacterHeatmap, characterLabel } from './heatmapPresentation';
 
 export type ShareCardStats = Pick<FinalStats, 'wpm' | 'raw_wpm' | 'accuracy' | 'duration_ms' | 'heatmap'> & {
   mode: string;
@@ -13,6 +14,20 @@ export type ShareCardStats = Pick<FinalStats, 'wpm' | 'raw_wpm' | 'accuracy' | '
 export type ShareCardColors = Record<'background' | 'surface' | 'text' | 'sub' | 'accent' | 'error', string>;
 export const CARD_WIDTH = 900;
 export const CARD_HEIGHT = 470;
+export const CARD_MAX_HEIGHT = 900;
+export interface ShareCardLabels {
+  title: string;
+  legend: string;
+  empty: string;
+  space: string;
+  shown: string;
+  remaining: string;
+}
+const DEFAULT_LABELS: ShareCardLabels = {
+  title: 'Character accuracy', legend: 'Correct on the first attempt (%)',
+  empty: 'No character data', space: 'Space', shown: 'Shown {shown} of {total} characters',
+  remaining: 'Other {count}: {attempts} first attempts · {correct} correct · {incorrect} incorrect',
+};
 const FONT_FAMILY = 'RacoonShareCard';
 const TIMEOUT_MS = 10_000;
 let fontsReady: Promise<void> | undefined;
@@ -54,10 +69,13 @@ function mix(a: string, b: string, amount: number): string {
 }
 
 // Presentation only: scores and completion are supplied by the Rust backend.
-export async function renderShareCard(stats: ShareCardStats, colors: ShareCardColors): Promise<Blob> {
+export async function renderShareCard(stats: ShareCardStats, colors: ShareCardColors, labels: ShareCardLabels = DEFAULT_LABELS): Promise<Blob> {
+  const heatmap = buildCharacterHeatmap(stats.heatmap);
+  const gridY = 404, rowPitch = 68;
+  const gridBottom = gridY + Math.ceil(heatmap.tiles.length / 10) * rowPitch;
   const canvas = document.createElement('canvas');
   canvas.width = CARD_WIDTH;
-  canvas.height = CARD_HEIGHT;
+  canvas.height = Math.min(CARD_MAX_HEIGHT, Math.max(CARD_HEIGHT, gridBottom + (heatmap.remaining.symbolCount ? 64 : 28)));
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Share card canvas is unavailable');
   await loadFonts();
@@ -70,12 +88,12 @@ export async function renderShareCard(stats: ShareCardStats, colors: ShareCardCo
     error: parseColor(colors.error, '#dc8d8d'),
   };
   const text = (value: string, x: number, y: number, size: number, color: string, bold = false, width = CARD_WIDTH - 48 - x) => {
-    ctx.font = `${bold ? 700 : 400} ${size}px "${FONT_FAMILY}"`;
+    ctx.font = `${bold ? 700 : 400} ${size}px "${FONT_FAMILY}", sans-serif`;
     ctx.fillStyle = color;
     ctx.fillText(value, x, y, Math.min(width, CARD_WIDTH - 48 - x));
   };
   ctx.fillStyle = pc.background;
-  ctx.fillRect(0, 0, CARD_WIDTH, CARD_HEIGHT);
+  ctx.fillRect(0, 0, CARD_WIDTH, canvas.height);
   ctx.fillStyle = pc.accent;
   ctx.fillRect(0, 0, CARD_WIDTH, 6);
   text('RACOON TYPPER', 48, 76, 34, pc.accent, true);
@@ -84,33 +102,34 @@ export async function renderShareCard(stats: ShareCardStats, colors: ShareCardCo
   ctx.fillRect(48, 140, CARD_WIDTH - 96, 1);
   ctx.fillRect(48, 330, CARD_WIDTH - 96, 1);
   const values = [stats.wpm.toFixed(1), stats.raw_wpm.toFixed(1), `${stats.accuracy.toFixed(1)}%`, `${(stats.duration_ms / 1000).toFixed(1)}s`];
-  const labels = ['WPM', 'RAW WPM', 'ACCURACY', 'TIME'];
+  const metricLabels = ['WPM', 'RAW WPM', 'ACCURACY', 'TIME'];
   values.forEach((value, i) => {
     text(value, 48 + 216 * i, 260, 56, pc.accent, true, 192);
-    text(labels[i], 48 + 216 * i, 288, 20, pc.sub, false, 192);
+    text(metricLabels[i], 48 + 216 * i, 288, 20, pc.sub, false, 192);
   });
-  text('KEYBOARD HEATMAP', 48, 366, 16, pc.sub);
-  ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'].forEach((row, r) => {
-    [...row].forEach((key, c) => {
-      const data = stats.heatmap[key];
-      const used = data && data.total_attempts > 0;
-      ctx.fillStyle = used
-        ? mix(pc.error, pc.accent, data.correct / data.total_attempts)
-        : mix(pc.surface, pc.sub, 0.15);
-      const x = 48 + r * 14 + c * 28;
-      const y = 384 + r * 28;
-      // Preserve rounded keys using the baseline Canvas API (no roundRect).
-      ctx.beginPath();
-      ctx.moveTo(x + 5, y);
-      ctx.lineTo(x + 19, y); ctx.quadraticCurveTo(x + 24, y, x + 24, y + 5);
-      ctx.lineTo(x + 24, y + 19); ctx.quadraticCurveTo(x + 24, y + 24, x + 19, y + 24);
-      ctx.lineTo(x + 5, y + 24); ctx.quadraticCurveTo(x, y + 24, x, y + 19);
-      ctx.lineTo(x, y + 5); ctx.quadraticCurveTo(x, y, x + 5, y);
-      ctx.fill();
-      ctx.font = `400 16px "${FONT_FAMILY}"`;
-      text(key, x + (24 - ctx.measureText(key).width) / 2, y + 18, 16, used ? pc.text : pc.sub, false, 24);
-    });
+  text(labels.title, 48, 364, 18, pc.text, true);
+  text(labels.legend, 48, 388, 14, pc.sub);
+  if (!heatmap.tiles.length) text(labels.empty, 48, 430, 16, pc.sub);
+  heatmap.tiles.forEach((tile, index) => {
+    const x = 48 + (index % 10) * 80, y = gridY + Math.floor(index / 10) * rowPitch;
+    const accuracy = tile.correct / tile.total_attempts;
+    const color = mix(pc.error, pc.accent, accuracy);
+    ctx.fillStyle = pc.surface;
+    ctx.fillRect(x, y, 72, 60);
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y + 58, 72, 2);
+    const needsCodePoint = !/^[\x20-\x7e]$/.test(tile.symbol);
+    text(characterLabel(tile.symbol, labels.space), x + 6, y + (needsCodePoint ? 23 : 30), 22, pc.text, false, 60);
+    if (needsCodePoint) text(tile.codePoint, x + 6, y + 37, 10, pc.sub, false, 60);
+    text(`${(accuracy * 100).toFixed(0)}%`, x + 6, y + 53, 13, pc.text, false, 60);
   });
+  if (heatmap.remaining.symbolCount) {
+    const format = (template: string, values: Record<string, number>) =>
+      template.replace(/\{(\w+)\}/g, (match, key: string) => key in values ? String(values[key]) : match);
+    text(format(labels.shown, { shown: heatmap.tiles.length, total: heatmap.symbolCount }), 48, gridBottom + 20, 14, pc.text);
+    text(format(labels.remaining, { count: heatmap.remaining.symbolCount, attempts: heatmap.remaining.total_attempts,
+      correct: heatmap.remaining.correct, incorrect: heatmap.remaining.incorrect }), 48, gridBottom + 42, 14, pc.sub);
+  }
   const blob = await bounded(new Promise<Blob>((resolve, reject) => {
     canvas.toBlob(value => value ? resolve(value) : reject(new Error('Share card PNG encoding failed')), 'image/png');
   }), 'Share card PNG encoding timed out');

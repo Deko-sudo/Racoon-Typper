@@ -21,6 +21,23 @@ bundled DejaVu fonts. Font loading and encoding are bounded and return explicit
 errors. The result button prevents overlapping exports and permits retries.
 Download URLs are released after click dispatch rather than immediately.
 
+The result heatmap is a character grid, not a reconstruction of physical keys.
+Backend heatmap entries describe the first attempt at an expected Unicode
+scalar in the task. The previous fixed Latin keyboard omitted Cyrillic, CJK,
+diacritics, uppercase letters, spaces and punctuation. Keep the exact keys
+without case folding, normalization or transliteration, and account for every
+positive entry once. Per-character percentages present backend first-attempt
+counts; they do not redefine WPM or overall accuracy.
+
+The card stays 900 pixels wide; its height grows from 470 to at most 900 pixels.
+Show at most 60 characters ordered by frequency, then Unicode scalar value.
+For larger sets explicitly state how many are shown and sum the remaining
+character count, first attempts, correct and incorrect counts. The remainder
+must conserve the original totals. New grid labels follow the UI language,
+independently of the practice language. Non-ASCII characters also carry an
+ASCII code-point caption; spaces and combining/invisible characters have
+readable labels. No remote font or new font asset is added.
+
 Remove the unused Rust renderer and `export_result_png` from the handler,
 AppManifest, frontend IPC wrapper and capability. Keep the Rust `image`
 dependency and the separate heatmap export. Preserve the font source and
@@ -41,6 +58,9 @@ unnecessarily remove existing behavior.
 rendering inputs, color fallback, bounded failures/retry, download cleanup,
 duplicate requests and removal of the obsolete IPC/dependency chain.
 Those tests use doubles for Canvas; they do not prove rasterization.
+They cover all 15 selectable language fixtures, exact Unicode identities,
+single-count conservation, empty/invalid counts, limits around 60 characters,
+large-set overflow, explicit translations and UI/practice language separation.
 
 For real WebKitGTK rasterization, build the test-only fixture with existing Vite:
 
@@ -52,7 +72,10 @@ node scripts/build-share-card-fixture.mjs /tmp/racoon-share-card-fixture
 The latter requires an existing GTK display, system PyGObject and WebKit2 4.1.
 It creates an ephemeral context and offscreen window, uses software rendering,
 decodes the generated PNG, checks dimensions/text/Unicode/theme/heatmap pixels
-and records requested resources. It installs nothing and uses no user profile.
+and records requested resources. It also writes individual PNGs for all 15
+languages plus an overflow case. Tile surface pixels and readable contents
+are checked; inspect actual Cyrillic/CJK glyphs visually as well. It installs
+nothing and uses no user profile.
 The fixture uses the application's production CSP. It is not an ordinary
 application entrypoint and is not included in the production frontend bundle.
 
@@ -65,6 +88,9 @@ Canvas rasterization and font fallback can vary between WebViews. Exact PNG
 bytes across platforms are not promised; glyphs absent from bundled DejaVu may
 use WebView fallback. Font parsing still exists inside the system WebView; this
 change removes a particular Rust dependency, not all font-parser risk.
+An ASCII code-point caption keeps a non-ASCII character identifiable even if
+the platform lacks its glyph. It is not a promise that every OS has CJK fonts.
+The separate HTML heatmap and its key/finger mappings are outside this change.
 
 ## Rollback and remaining advisories
 

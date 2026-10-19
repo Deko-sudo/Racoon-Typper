@@ -63,6 +63,14 @@
           heatmap,
         },
         colors,
+        {
+          title: t(uiLang, 'share_card.symbols'),
+          legend: t(uiLang, 'share_card.first_attempt'),
+          empty: t(uiLang, 'share_card.empty'),
+          space: t(uiLang, 'share_card.space'),
+          shown: t(uiLang, 'share_card.shown'),
+          remaining: t(uiLang, 'share_card.remaining'),
+        },
       );
       downloadShareCard(blob, `racoon-typper-${Math.round(stats.wpm)}wpm-${Date.now()}.png`);
       shareState = 'idle';
