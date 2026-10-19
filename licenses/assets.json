@@ -773,7 +773,7 @@
     },
     {
       "path": "resources/courses/ru.toml",
-      "checksum_sha256": "dd3fdc0c6c098c34104dfbad4fa3a1d8a04a25eb139abb5360f33d93b5d8207d",
+      "checksum_sha256": "e2ebab5fe3af61d92ad850c553478c09aee1528601bb02d35c9f387c7e24a09d",
       "asset_name": "ru.toml",
       "owner": "Racoon Typper Contributors",
       "source": "Generated specifically for Racoon Typper using GLM-5.2 and GPT-5.6 (Codex) during project development; no external repository, website, dataset, book, or application was used",
