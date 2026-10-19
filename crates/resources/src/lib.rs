@@ -5,9 +5,11 @@
 pub mod courses;
 pub mod quotes;
 pub mod random;
+pub mod script;
 pub mod words;
 
 pub use courses::{course_loader, Course, CourseLoader, LessonContent, ModuleContent};
 pub use quotes::{quote_loader, Quote, QuoteLoader, QuotePack};
 pub use random::SystemRandomSource;
+pub use script::{allowed_scripts, find_foreign_characters, script_of, Script};
 pub use words::{word_pack_loader, WordPack, WordPackLoader};

@@ -105,7 +105,8 @@ impl CourseLoader {
         self.load_course(language)?.get_lesson(lesson_id)
     }
 
-    /// Валидирует курс: проверяет структуру, уникальность ID, непустые тексты.
+    /// Валидирует курс: проверяет структуру, уникальность ID, непустые тексты
+    /// и отсутствие символов из чужих письменностей.
     pub fn validate_course(&self, language: &str) -> Result<(), String> {
         let course = self
             .load_course(language)
@@ -123,6 +124,9 @@ impl CourseLoader {
             if m.lessons.is_empty() {
                 return Err(format!("Module {} has no lessons", m.id));
             }
+
+            validate_script(language, "Module", &m.id, "name", &m.name)?;
+
             for l in &m.lessons {
                 if l.id.is_empty() {
                     return Err(format!("Lesson has empty id: {}", l.name));
@@ -133,6 +137,9 @@ impl CourseLoader {
                 if l.text.is_empty() {
                     return Err(format!("Lesson {} has empty text", l.id));
                 }
+
+                validate_script(language, "Lesson", &l.id, "name", &l.name)?;
+                validate_script(language, "Lesson", &l.id, "text", &l.text)?;
             }
         }
 
@@ -143,6 +150,28 @@ impl CourseLoader {
     pub fn available_languages(&self) -> Vec<String> {
         self.courses.keys().cloned().collect()
     }
+}
+
+/// Отклоняет контент, в котором встречаются символы чужой письменности.
+fn validate_script(
+    language: &str,
+    kind: &str,
+    id: &str,
+    field: &str,
+    value: &str,
+) -> Result<(), String> {
+    let Some(ch) = crate::script::find_foreign_characters(language, value)
+        .first()
+        .copied()
+    else {
+        return Ok(());
+    };
+    let script = crate::script::script_of(ch)
+        .map(|script| script.name())
+        .unwrap_or("another script");
+    Err(format!(
+        "{kind} {id} {field} contains {ch:?} ({script}), which is not allowed for language {language}"
+    ))
 }
 
 impl Default for CourseLoader {
