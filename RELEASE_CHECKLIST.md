@@ -1,19 +1,19 @@
 # Release Checklist — Racoon Typper
 
 This checklist describes the current baseline and the gates required for a production release. Phase 0 does not authorize a public release; licensing, foundation, security, and release-engineering gates remain mandatory.
-## Unreleased Linux stability candidate — 2026-10-20
+## Unreleased Linux stability candidate — reviewed 2026-10-21
 
 Historical checked boxes below describe their dated releases, not this branch.
 The new Linux candidate uses a separate commit/hash/evidence manifest; version
 metadata is still 1.3.1 until a new release version is chosen. No historical tag
 or artifact may be replaced to publish these fixes.
 
-- [ ] Final integration commit and applicable GitHub CI results recorded.
-- [ ] Production artifact built for its stated Linux userspace; checksum recorded.
-- [ ] New-profile install/startup and nonempty data retention through restart.
-- [ ] Synthetic old-profile upgrade; current data integrity/FK checks.
-- [ ] Native keyboard/IME/accessibility checks recorded with their precise limits.
-- [ ] Dependency source/reference gates and maintenance ownership documented.
+- [x] Integration source and four successful GitHub CI jobs recorded in [candidate evidence](docs/release/linux-stability-evidence.md); later documentation commits must retain their own CI status.
+- [x] Production Ubuntu artifact built; source tree and SHA-256 recorded.
+- [x] Fresh-container apt install, two launches and nonempty data retention verified.
+- [x] Official v1.3.1 synthetic-profile upgrade; history/settings/schema retained and integrity/FK checked.
+- [x] Native Pinyin, abort/repeat, Settings restore, PNG and Orca speech-generation smoke recorded with precise limits; no full accessibility certification claimed.
+- [x] Dependency source/reference gates and maintenance ownership documented.
 - [ ] Release decision reviews remaining platform/physical-power-loss limits.
 
 Windows/macOS validation is deferred by owner and is not claimed by this

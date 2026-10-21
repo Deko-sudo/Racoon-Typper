@@ -1,6 +1,6 @@
 # Support Matrix
 
-**Last reviewed:** 2026-10-20. Scope: unreleased Linux stability candidate.
+**Last reviewed:** 2026-10-21. Scope: unreleased Linux stability candidate.
 Version metadata `1.3.1` is not a claim that historical release assets contain
 these changes. Every candidate must record its exact source commit, artifact
 hash, build OS and runtime OS in its evidence manifest.
@@ -9,7 +9,7 @@ hash, build OS and runtime OS in its evidence manifest.
 |---|---|---|
 | Arch Linux x86_64 / Omarchy Wayland | Local Rust/frontend gates; native RU/EN, repeat/abort, history, PNG/clipboard smoke | Primary development target; final artifact checks remain separate |
 | Linux X11 / WebKitGTK | Native synthetic-profile typing, restore refusal/success, PNG/image-paste and restart checks | Software-rendered test environment; does not prove all GPUs/desktops |
-| Ubuntu 24.04 x86_64 / `.deb` | Candidate source-build/install/runtime verification required; see candidate manifest | Linux candidate target; do not reuse an Arch-built binary as Ubuntu evidence |
+| Ubuntu 24.04 x86_64 / `.deb` | Production build, fresh-container apt install, two launches retaining data, synthetic v1.3.1-profile upgrade and native CJK/PNG smoke | Verified Ubuntu userspace/container path; not a full VM or hardware-GPU claim |
 | AppImage | Configured bundler and repaired restart-retention smoke | Experimental until this candidate's exact artifact passes the smoke |
 | RPM | Configured bundler | Build configuration is not an RPM install test |
 | Arch `PKGBUILD` | Recipe exists | Community recipe; source checksum/version must match a published immutable tag |
@@ -20,8 +20,14 @@ hash, build OS and runtime OS in its evidence manifest.
 A container install validates its userspace and package path, not a full desktop
 VM, hardware GPU, portal integration or all distributions. Screen-reader and
 IME event-model tests are separate from real assistive technology/input methods.
+One real Fcitx Pinyin/WebKitGTK scenario is recorded separately from the
+15-language synthetic-input matrix. Orca speech-generation evidence is a
+bounded accessibility smoke, not a complete screen-reader usability review.
 Windows/macOS do not gate a Linux-only candidate and must not be advertised as
 verified because Linux tests pass.
+
+Current source/CI, artifact hashes and exact test boundaries are recorded in
+[Linux stability evidence](docs/release/linux-stability-evidence.md).
 
 ## Toolchains and evidence
 
