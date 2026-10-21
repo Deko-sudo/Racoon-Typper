@@ -11,6 +11,21 @@ const CAPABILITY: &str = include_str!("../capabilities/main.json");
 const IPC: &str = include_str!("../../../frontend/src/lib/api/ipc.ts");
 const MAIN_RS: &str = include_str!("../src/main.rs");
 
+#[test]
+fn production_surface_is_strictly_offline() {
+    assert!(!application_manifest_commands().contains("import_text_from_url"));
+    assert!(!registered_commands().contains("import_text_from_url"));
+    assert!(!capability_permissions().contains("allow-import-text-from-url"));
+    assert!(!MAIN_RS.contains("tauri_plugin_updater"));
+    let config: serde_json::Value =
+        serde_json::from_str(include_str!("../tauri.conf.json")).expect("valid Tauri config");
+    assert!(config["plugins"].get("updater").is_none());
+    let dependencies = include_str!("../Cargo.toml");
+    assert!(!dependencies
+        .lines()
+        .any(|line| line.starts_with("reqwest =") || line.starts_with("tauri-plugin-updater =")));
+}
+
 fn lines_between<'a>(source: &'a str, start: &str, end: &str) -> &'a str {
     let start_index = source
         .find(start)
@@ -33,7 +48,7 @@ fn application_manifest_commands() -> BTreeSet<String> {
 }
 
 fn registered_commands() -> BTreeSet<String> {
-    lines_between(MAIN_RS, "tauri::generate_handler![", "]);")
+    lines_between(MAIN_RS, "tauri::generate_handler![", "])")
         .lines()
         .filter_map(|entry| {
             let entry = entry.trim();

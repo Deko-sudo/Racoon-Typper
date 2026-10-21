@@ -190,6 +190,21 @@ mod tests {
     }
 
     #[test]
+    fn russian_lessons_contain_only_russian_letters() {
+        let loader = CourseLoader::new();
+        let course = loader.load_course("ru").unwrap();
+        for lesson in course.modules.iter().flat_map(|module| &module.lessons) {
+            for letter in lesson.text.chars().filter(|c| c.is_alphabetic()) {
+                assert!(
+                    matches!(letter, 'а'..='я' | 'А'..='Я' | 'ё' | 'Ё'),
+                    "{} contains a non-Russian letter: {letter:?}",
+                    lesson.id
+                );
+            }
+        }
+    }
+
+    #[test]
     fn en_has_5_lessons_per_module() {
         let loader = CourseLoader::new();
         let course = loader.load_course("en").unwrap();

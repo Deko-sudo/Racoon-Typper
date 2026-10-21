@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { FinalStats } from '../lib/types/index';
-  import * as ipc from '../lib/api/ipc';
+  import { renderShareCard } from '../lib/shareCard';
+  import { saveResultCard, type CardExportOutcome } from '../lib/api/ipc';
   import KeyboardHeatmap from './KeyboardHeatmap.svelte';
   import { t } from '../lib/i18n';
   import type { LessonResultNavigation } from '../lib/lessonNavigation';
@@ -29,7 +30,9 @@
     uiLang?: string;
   } = $props();
 
-  let shareState = $state<'idle' | 'rendering' | 'error'>('idle');
+  let shareState = $state<'idle' | 'rendering' | 'saving' | 'done' | 'error'>('idle');
+
+  let shareOutcome = $state<CardExportOutcome | null>(null);
 
   function themeCssVar(name: string, fallback: string): string {
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -37,8 +40,9 @@
   }
 
   async function handleSharePng() {
-    if (shareState === 'rendering') return;
+    if (shareState === 'rendering' || shareState === 'saving') return;
     shareState = 'rendering';
+    shareOutcome = null;
     try {
       const colors = {
         background: themeCssVar('--color-app-background', '#0d0f12'),
@@ -51,7 +55,7 @@
       const heatmap = (stats.heatmap && typeof stats.heatmap === 'object'
         ? stats.heatmap
         : {}) as Record<string, { total_attempts: number; correct: number; incorrect: number; avg_wpm_at_key: number }>;
-      const bytes = await ipc.exportResultPng(
+      const blob = await renderShareCard(
         {
           wpm: stats.wpm,
           raw_wpm: stats.raw_wpm,
@@ -63,17 +67,20 @@
           heatmap,
         },
         colors,
+        {
+          title: t(uiLang, 'share_card.symbols'),
+          legend: t(uiLang, 'share_card.first_attempt'),
+          empty: t(uiLang, 'share_card.empty'),
+          space: t(uiLang, 'share_card.space'),
+          shown: t(uiLang, 'share_card.shown'),
+          remaining: t(uiLang, 'share_card.remaining'),
+        },
       );
-      const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `racoon-typper-${Math.round(stats.wpm)}wpm-${Date.now()}.png`;
-      a.click();
-      URL.revokeObjectURL(url);
-      shareState = 'idle';
+      shareState = 'saving';
+      shareOutcome = await saveResultCard(Array.from(new Uint8Array(await blob.arrayBuffer())));
+      shareState = 'done';
     } catch (e) {
-      console.error('share png failed:', e);
+      console.error('share png failed');
       shareState = 'error';
     }
   }
@@ -104,11 +111,24 @@
     {:else}
       <button onclick={onRestart}>{t(uiLang, 'result.restart')}</button>
     {/if}
-    <button onclick={handleSharePng} disabled={shareState === 'rendering'}>
-      {shareState === 'rendering' ? '…' : t(uiLang, 'result.share_png')}
+    <button onclick={handleSharePng} disabled={shareState === 'rendering' || shareState === 'saving'}>
+      {#if shareState === 'rendering' || shareState === 'saving'}<span class="share-spinner" aria-hidden="true"></span>{/if}
+      {t(uiLang, 'result.share_png')}
     </button>
   </div>
-  {#if shareState === 'error'}<p class="share-error">{t(uiLang, 'result.share_png_error')}</p>{/if}
+  <div class="share-status" class:has-message={shareState !== 'idle'} role="status" aria-live="polite" aria-atomic="true">
+    {#if shareState === 'rendering' || shareState === 'saving'}
+      <p>{t(uiLang, shareState === 'rendering' ? 'result.png_rendering' : 'result.png_delivering')}</p>
+      <div class="share-progress" aria-hidden="true"><span></span></div>
+    {:else if shareOutcome}
+      {#if shareOutcome.savedPath}
+        <p class="share-confirmed">✓ {t(uiLang, 'result.png_saved')} <span class="share-path">{shareOutcome.savedPath}</span></p>
+      {:else}<p class="share-error">{t(uiLang, 'result.png_save_failed')}</p>{/if}
+      {#if shareOutcome.copied}
+        <p class="share-confirmed">✓ {t(uiLang, 'result.png_copied')}</p>
+      {:else}<p class="share-error">{t(uiLang, 'result.png_copy_failed')}</p>{/if}
+    {:else if shareState === 'error'}<p class="share-error">{t(uiLang, 'result.share_png_error')}</p>{/if}
+  </div>
 </div>
 
 <style>
@@ -120,6 +140,19 @@
   .stat-label { font-size: 0.75rem; color: var(--sub); text-transform: uppercase; }
   .stats-details { display: flex; gap: 2rem; font-size: 0.875rem; color: var(--sub); }
   .result-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: .75rem; }
+  .share-status { box-sizing: border-box; width: min(100%, 42rem); padding: 1rem 1.25rem; border: 1px solid var(--color-border, var(--sub)); border-left: 3px solid var(--main); border-radius: 10px; background: var(--bg-sub); text-align: left; font-size: .85rem; line-height: 1.5; color: var(--sub); }
+  .share-status:not(.has-message) { display: none; }
+  .share-status p { margin: 0; }
+  .share-status p + p { margin-top: .75rem; }
+  .share-confirmed { color: var(--main); animation: share-arrive .25s ease-out; }
+  .share-path { display: block; margin-top: .4rem; padding: .55rem .7rem; border-radius: 5px; background: var(--bg); overflow-wrap: anywhere; user-select: text; font-size: .8rem; }
+  .share-spinner { display: inline-block; width: .75em; height: .75em; margin-right: .5em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: share-spin .8s linear infinite; }
+  .share-progress { height: 3px; margin: .7rem auto 0; max-width: 16rem; overflow: hidden; background: var(--bg-sub); }
+  .share-progress span { display: block; width: 35%; height: 100%; background: var(--main); animation: share-slide 1.2s ease-in-out infinite alternate; }
+  @keyframes share-spin { to { transform: rotate(360deg); } }
+  @keyframes share-slide { to { transform: translateX(185%); } }
+  @keyframes share-arrive { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: translateY(0); } }
+  @media (prefers-reduced-motion: reduce) { .share-spinner, .share-progress span, .share-confirmed { animation: none; } }
   .share-error { color: var(--error); font-size: 0.8rem; margin: 0; }
   button { background-color: var(--bg-sub); color: var(--main); border: 1px solid var(--main); padding: 0.5rem 2rem; font-family: inherit; font-size: 1rem; cursor: pointer; border-radius: 4px; }
   button.primary { background-color: var(--main); color: var(--color-accent-text); }

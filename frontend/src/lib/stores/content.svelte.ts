@@ -40,10 +40,12 @@ export function createContentStore(deps: ContentStoreDeps) {
   let customTextLanguage = $state<LanguageCode>('en');
   let showEditor = $state(false);
   let searchText = $state('');
+  let customLoadGeneration = 0;
 
   // Lessons
   let courseModules = $state<ModuleResponse[]>([]);
   let lessonProgress = $state<Record<string, { status: string; best_wpm: number; best_accuracy: number }>>({});
+  let lessonLoadGeneration = 0;
   let lessonLang = $state<LessonLanguage>('en');
   let currentLessonId = $state<string | null>(null);
   let lessonNavigation = $derived(lessonResultNavigation(courseModules, currentLessonId));
@@ -86,7 +88,7 @@ export function createContentStore(deps: ContentStoreDeps) {
   }
 
   async function loadCustomTexts() {
-    customTexts = await ipc.getCustomTexts(50);
+    await searchCustom(searchText);
   }
 
   function openEditor(ct: CustomText | null, fallbackLanguage: LanguageCode) {
@@ -118,18 +120,30 @@ export function createContentStore(deps: ContentStoreDeps) {
 
   async function searchCustom(q: string) {
     searchText = q;
-    if (q.trim()) {
-      customTexts = await ipc.searchCustomTexts(q, 20);
-    } else {
-      await loadCustomTexts();
+    const generation = ++customLoadGeneration;
+    try {
+      const texts = q.trim()
+        ? await ipc.searchCustomTexts(q, 20)
+        : await ipc.getCustomTexts(50);
+      if (generation === customLoadGeneration) customTexts = texts;
+    } catch (error) {
+      if (generation === customLoadGeneration) {
+        deps.setError(`Custom texts error: ${ipc.ipcErrorMessage(error)}`);
+      }
     }
   }
 
   async function loadLessons() {
+    const generation = ++lessonLoadGeneration;
+    const language = lessonLang;
+    courseModules = [];
+    lessonProgress = {};
     try {
-      const course = await ipc.getCourse(lessonLang);
+      const course = await ipc.getCourse(language);
+      if (generation !== lessonLoadGeneration || language !== lessonLang) return;
+      const progress = await ipc.getLessonProgress(language);
+      if (generation !== lessonLoadGeneration || language !== lessonLang) return;
       courseModules = course.modules;
-      const progress = await ipc.getLessonProgress(lessonLang);
       lessonProgress = Object.fromEntries(
         progress.map((lesson) => [lesson.lesson_id, {
           status: lesson.status,
@@ -138,7 +152,7 @@ export function createContentStore(deps: ContentStoreDeps) {
         }]),
       );
     } catch (e) {
-      deps.setError(`Lessons error: ${e}`);
+      if (generation === lessonLoadGeneration && language === lessonLang) deps.setError(`Lessons error: ${e}`);
     }
   }
 

@@ -66,6 +66,7 @@ impl Database {
         path: &Path,
         pre_migration: impl FnOnce(&Path),
     ) -> Result<Self, DbError> {
+        crate::backup::recover_pending_restore(path)?;
         let mut conn =
             Connection::open(path).map_err(|error| DbError::from_sqlite("open database", error))?;
         configure_connection(&conn)?;
@@ -106,6 +107,7 @@ impl Database {
                 "database is already open; close it before reopening".to_string(),
             ));
         }
+        crate::backup::recover_pending_restore(path)?;
         let mut reopened = Connection::open(path)
             .map_err(|error| DbError::from_sqlite("reopen database", error))?;
         configure_connection(&reopened)?;
@@ -193,6 +195,64 @@ impl std::ops::DerefMut for ConnGuard<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn restore_accepts_production_backups_v1_to_v8_and_rename_roundtrip() {
+        let root = std::env::temp_dir().join(format!(
+            "racoon-restore-versions-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        std::fs::create_dir(&root).unwrap();
+        let mut failures = Vec::new();
+        for version in 1..=9 {
+            let backup = root.join(format!("v{version}.db"));
+            let live = root.join(format!("live{version}.db"));
+            let mut conn = Connection::open_in_memory().unwrap();
+            embedded::migrations::runner()
+                .set_target(refinery::Target::Version(version))
+                .run(&mut conn)
+                .unwrap();
+            conn.execute("INSERT INTO custom_texts(name,text,created_at) VALUES('backup-marker','body','2026-01-01T00:00:00Z')", []).unwrap();
+            let fixture = Database {
+                conn: Mutex::new(Some(conn)),
+            };
+            crate::backup::backup_to_path(&fixture, &backup).unwrap();
+            if version == 9 {
+                Connection::open(&backup).unwrap().execute_batch("ALTER TABLE custom_texts RENAME TO temporary_name; ALTER TABLE temporary_name RENAME TO custom_texts").unwrap();
+            }
+            let bytes = std::fs::read(&backup).unwrap();
+            drop(Database::open(&live).unwrap());
+            let result = crate::backup::restore_from_path(&backup, &live);
+            println!(
+                "fixture=V{version} rename_roundtrip={} accepted={} result={result:?}",
+                version == 9,
+                result.is_ok()
+            );
+            if result.is_err() {
+                failures.push(format!("V{version}: {result:?}"));
+                continue;
+            }
+            let restored = Connection::open(&live).unwrap();
+            let level: i64 = restored
+                .query_row(
+                    "SELECT MAX(version) FROM refinery_schema_history",
+                    [],
+                    |row| row.get(0),
+                )
+                .unwrap();
+            let marker: String = restored
+                .query_row("SELECT name FROM custom_texts", [], |row| row.get(0))
+                .unwrap();
+            assert_eq!((level, marker.as_str()), (9, "backup-marker"));
+            assert_eq!(std::fs::read(&backup).unwrap(), bytes);
+        }
+        std::fs::remove_dir_all(root).unwrap();
+        assert!(failures.is_empty(), "{}", failures.join("\n"));
+    }
 
     #[test]
     fn open_in_memory_creates_tables() {

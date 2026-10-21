@@ -1,18 +1,17 @@
 # Profile Transfer and Recovery Runbook
 
-**Status:** Portable profile JSON export, preview, merge, and replace are exposed
-through the Settings UI. Database-file restore remains a data-layer API only; it
-is deliberately not exposed through a Tauri command or user interface while the
-process owns an open database connection. This runbook does not claim a completed
-cross-platform whole-file recovery smoke test.
+**Status:** Portable profile JSON export, preview, merge, and replace, as well as
+database-file restore, are exposed through Settings. Whole-file restore closes
+the application connection and coordinates replacement and recovery. This runbook
+does not claim a completed cross-platform whole-file recovery smoke test.
 
 ## Choose the right operation
 
 - Use **profile export/import** to move portable practice data between profiles or
   installations.
 - Use a **SQLite backup restore** only to recover a whole database file. It is
-  not a substitute for profile transfer and requires lifecycle coordination that
-  is not yet available in the application UI.
+  not a substitute for portable profile transfer; finish the active test first
+  and keep other database writers closed.
 
 A portable profile is JSON, not a SQLite backup. Treat both files as sensitive:
 test history, custom texts, and typed-data-derived statistics can contain private
@@ -72,17 +71,65 @@ replace if the target may have changed.
 ## Database-file recovery constraints
 
 `restore_from_path` accepts a separate regular-file backup and live database
-path. It builds and integrity-checks a sibling temporary database before
-atomically replacing the live main file, then removes stale WAL/SHM companions.
-A failed source validation or temporary copy preserves the live database.
+path. It copies the backup into a private sibling directory, applies migrations,
+checks integrity, foreign keys, the reference application schema, and the
+terminal-state trigger with recursive triggers off and on. Source validation
+does not replace the live database. Historical V1–V8 backups are migrated on the
+private copy; additional schema objects and differently quoted definitions may
+be rejected even when semantically equivalent.
 
 This API must not run while any live `Database` is open on the destination path.
-The caller must first stop application activity, close the live database, perform
-restore coordination, and only then reopen the application against the restored
-file. The current Tauri application has no restore IPC or UI to perform that
-lifecycle handoff safely. Do not attempt manual file copying of `data.db` while
-WAL mode is active; use the SQLite Online Backup-based data-layer API to create
-a consistent backup instead.
+The Settings restore command takes an exclusive lifecycle lease and the engine
+lock, rejects an active session, closes the database, performs replacement, then
+reopens and runs recovery with a fresh gate before reporting success. New
+mutations are rejected during this operation; failed recovery blocks them until
+the problem is resolved and the application restarts. Read-only reporting may
+temporarily fail while the connection is closed. External writers must also be
+closed. Do not manually copy a live WAL-mode database. Whole-file backups are
+available as retained pre-migration snapshots or through the SQLite Online
+Backup-based data-layer API; Settings JSON export is a portable profile, not a
+SQLite backup.
+
+Before replacement, the old main/WAL/SHM/journal files are copied to a private
+`data.db.restore-rollback-*` sibling directory. Each file is synced, and a
+versioned `pending` manifest records the expected file sizes. The manifest and
+parent directory are synced before detaching old companions and renaming the
+replacement. A `committed` marker is published only after syncing the installed
+file's directory entries. An error before commit attempts rollback; failure or
+an uncertain commit keeps the connection closed.
+
+On startup and reopen, filesystem recovery runs **before SQLite opens and before
+the pre-migration backup hook**. One complete pending snapshot restores the old
+main and companions, removes companions that were originally absent, syncs the
+result and records `aborted`. Recovery can be repeated after another process
+interruption. A committed or aborted snapshot never overwrites later user data.
+Malformed/ambiguous journals, symlinks and missing/truncated recovery files block
+opening; preserve the directory for manual recovery rather than deleting it.
+
+Cleanup retains the five most recently completed (committed or aborted)
+snapshots, ordered by terminal-marker modification time. It never prunes pending
+or unmarked legacy directories. Before deletion, a completed directory is
+renamed out of the recovery namespace and that rename is synced, so interrupted
+cleanup cannot create a false pending restore. Cleanup is best effort: IO errors,
+unmarked preparation directories and interrupted `.restore-trash-*` deletion can
+leave extra copies. These may contain personal text; remove only after a verified
+backup and after confirming no recovery is pending. There is no settings-file
+rollback: whole-database restore replaces SQLite data only.
+
+All restore/open/reopen operations must be serialized by the caller and use a
+closed profile. The application lifecycle lease and OS profile lock cover
+cooperating application instances; unrelated SQLite tools must remain closed.
+The protocol assumes a local filesystem honoring file/directory sync and
+same-filesystem atomic rename. Process-interruption tests do not prove physical
+power-loss durability; directory sync is currently implemented on Unix only.
+The manifest checks file presence/type/size, not cryptographic content checksums.
+
+On Linux, find them with:
+
+```bash
+find "${XDG_DATA_HOME:-$HOME/.local/share}/com.racoon.typper" \
+  -maxdepth 1 -type d -name 'data.db.restore-rollback-*' -print
+```
 
 A whole-file restore restores the state captured in that backup, including data
 outside the portable profile scope. It may therefore discard newer local writes
@@ -95,7 +142,8 @@ use an older binary as a database downgrade mechanism.
 - A compromised renderer can bypass the file-size precheck and invoke IPC
   directly; the backend still enforces its 64 MiB document limit after IPC
   deserialization.
-- No whole-file restore IPC/UI currently closes and recreates the live database
-  around a whole-file restore.
+- Whole-file restore does not guarantee physical power-loss recovery or
+  coordinate with external SQLite writers. The profile lock excludes only
+  application versions that implement it.
 - Platform-specific manual recovery and clean-install validation are not yet
   release evidence. See `SUPPORT_MATRIX.md` and `RELEASE_CHECKLIST.md`.

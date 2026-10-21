@@ -17,3 +17,12 @@
 *.woff2 binary
 *.ttf binary
 *.otf binary
+
+# Preserve the byte-identical upstream MIT license, including its final blank line.
+vendor/glib-0.18.5/LICENSE whitespace=-blank-at-eof
+vendor/glib-macros-0.18.5/LICENSE whitespace=-blank-at-eof
+vendor/gtk3-macros-0.18.2/LICENSE whitespace=-blank-at-eof
+
+# Unified patches contain space-prefixed blank context and verbatim removed lines.
+patches/glib-macros-0.18.5-syn-diagnostics.patch whitespace=-blank-at-eol
+patches/gtk3-macros-0.18.2-syn-diagnostics.patch whitespace=-blank-at-eol

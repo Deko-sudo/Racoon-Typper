@@ -30,7 +30,7 @@ Install Rust with [rustup](https://rustup.rs/) and Node.js from the supported di
 
 ```bash
 git clone https://github.com/Deko-sudo/Racoon-Typper.git
-cd racoon-typper
+cd Racoon-Typper
 npm ci --prefix frontend
 npm run check:version --prefix frontend
 npm run tauri:dev --prefix frontend
@@ -38,7 +38,8 @@ npm run tauri:dev --prefix frontend
 
 The Rust toolchain is pinned by `rust-toolchain.toml`; `rustup` installs the
 pinned version automatically. The frontend Node version is pinned by
-`frontend/.nvmrc` (use `nvm use`/`fnm use` or install Node >= 22 manually).
+`frontend/.nvmrc` (currently Node 26). CI uses Node 22; the package accepts
+Node 22.12+ on the 22.x line or Node 24+. Record the actual version in candidate evidence.
 
 ### Validation and binary build
 
@@ -71,19 +72,24 @@ The current verified Linux paths are:
 
 | Data | Location |
 |---|---|
-| SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper/data.db` |
-| Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper/settings.toml` |
+| SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/com.racoon.typper/data.db` |
+| Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/com.racoon.typper/settings.toml` |
 
 Windows and other platform-specific paths remain unverified until the lifecycle/platform phase completes.
 
 ## Uninstalling source builds
 
-Removing the checkout does not remove user data. Delete it only after exporting or backing up anything you want to keep:
+Removing an executable or checkout does not remove the profile or exported PNGs.
+Back up the current data/config directories above before deleting personal data.
+Use Settings → Clear statistics for its documented narrower operation.
 
-```bash
-rm -rf racoon-typper/
-rm -rf "${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper"
-rm -rf "${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper"
-```
+Linux also checks legacy sources whenever a current file is missing. With XDG
+variables set, those sources are `$XDG_DATA_HOME/data.db` and
+`$XDG_CONFIG_HOME/settings.toml`; otherwise they are under
+`~/.local/share/racoon-typper` and `~/.config/racoon-typper`. Sources are copied,
+not moved. Deleting only a current file can therefore import its legacy source
+again on the next startup. See [privacy](docs/data/privacy.md) before removal.
+Result PNGs remain in the OS Pictures folder / `Raccoon Typer` until deleted.
 
-Package-manager uninstall instructions will be documented with each verified package format.
+For candidate packaging, installation and rollback use the exact artifact and
+checksum described in [Linux candidate verification](docs/release/linux-candidate.md).

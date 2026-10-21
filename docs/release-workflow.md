@@ -4,7 +4,11 @@ Releases are deliberately split into verification, a draft release candidate, an
 
 ## 1. Verify the candidate
 
-The normal `CI` workflow runs on pull requests, protected branches, and tags with read-only repository permissions. It verifies Rust, frontend, licensing, and build artifacts but cannot create a release.
+The normal `CI` workflow runs on pushes/PRs targeting `main` or `master`, and
+manual dispatch, with read-only repository permissions. It verifies Rust,
+frontend and licensing; the separate release-candidate workflow builds packages.
+A tag alone does not trigger the current CI workflow. A green historical run
+does not validate a newer source tree.
 
 ## 2. Build a draft release candidate
 

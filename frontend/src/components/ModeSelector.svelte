@@ -7,6 +7,7 @@
     selectedDuration,
     selectedWordCount,
     selectedLanguage,
+    preferredLanguages = [],
     onSelectMode,
     onSelectDuration,
     onSelectWordCount,
@@ -17,6 +18,7 @@
     selectedDuration: number;
     selectedWordCount: number;
     selectedLanguage: LanguageCode;
+    preferredLanguages?: LanguageCode[];
     onSelectMode: (m: ModeName) => void;
     onSelectDuration: (d: number) => void;
     onSelectWordCount: (w: number) => void;
@@ -32,7 +34,7 @@
     ['zh-hk','繁HK'],['zh-tw','繁TW'],['ko','KO'],
   ];
 
-  const currentLabel = LANGS.find(([c]) => c === selectedLanguage)?.[1] || 'EN';
+  let currentLabel = $derived(LANGS.find(([c]) => c === selectedLanguage)?.[1] || 'EN');
 </script>
 
 <div class="mode-selector">
@@ -52,6 +54,15 @@
     <div class="preset-group">
       {#each [10, 25, 50, 100] as w}
         <button class:active={selectedWordCount === w} onclick={() => onSelectWordCount(w)}>{w}</button>
+      {/each}
+    </div>
+  {/if}
+  {#if preferredLanguages.length > 1}
+    <div class="preset-group" role="group" aria-label={t(uiLang, 'onboarding.step_practice_lang')}>
+      {#each preferredLanguages as code (code)}
+        <button class:active={selectedLanguage === code} aria-pressed={selectedLanguage === code} onclick={() => onSelectLanguage(code)}>
+          {LANGS.find(([language]) => language === code)?.[1] ?? code}
+        </button>
       {/each}
     </div>
   {/if}

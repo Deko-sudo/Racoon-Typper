@@ -73,7 +73,13 @@ pub struct Achievement {
     pub unlocked_at: Option<String>,
 }
 
+/// Accuracy floor shared by the combined speed/accuracy achievements.
+pub const COMBINED_ACHIEVEMENT_ACCURACY: f64 = 95.0;
+
 /// Проверяет достижения на основе статистики.
+///
+/// `best_accurate_wpm` is the highest WPM from one completed test meeting
+/// `COMBINED_ACHIEVEMENT_ACCURACY`, rather than an independent personal best.
 ///
 /// `now` — ISO-8601/RFC-3339 метка, проставляемая в `unlocked_at` для всех
 /// разблокированных достижений. Вызывающая сторона формирует её (обычно
@@ -83,7 +89,7 @@ pub fn check_achievements(
     total_tests: i64,
     best_wpm: f64,
     best_accuracy: f64,
-    _current_streak: i64,
+    best_accurate_wpm: f64,
     longest_streak: i64,
     lessons_completed: i64,
     now: String,
@@ -269,14 +275,14 @@ pub fn check_achievements(
         mk(
             "balanced_50_95",
             "Balanced",
-            "Reach 50 WPM with 95% accuracy",
-            best_wpm >= 50.0 && best_accuracy >= 95.0,
+            "Reach 50 WPM with 95% accuracy in one test",
+            best_accurate_wpm >= 50.0,
         ),
         mk(
             "elite_80_95",
             "Elite",
-            "Reach 80 WPM with 95% accuracy",
-            best_wpm >= 80.0 && best_accuracy >= 95.0,
+            "Reach 80 WPM with 95% accuracy in one test",
+            best_accurate_wpm >= 80.0,
         ),
         mk(
             "marathon_100_80",
@@ -661,7 +667,7 @@ mod tests {
 
     #[test]
     fn achievements_empty() {
-        let a = check_achievements(0, 0.0, 0.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
+        let a = check_achievements(0, 0.0, 0.0, 0.0, 0, 0, "2026-01-01T00:00:00Z".to_string());
         assert!(!a[0].unlocked);
         // Unlocked achievements must carry a timestamp; locked ones must not.
         assert!(a.iter().all(|x| x.unlocked == x.unlocked_at.is_some()));
@@ -669,32 +675,64 @@ mod tests {
 
     #[test]
     fn achievements_first_test() {
-        let a = check_achievements(1, 0.0, 0.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
+        let a = check_achievements(1, 0.0, 0.0, 0.0, 0, 0, "2026-01-01T00:00:00Z".to_string());
         assert!(a.iter().any(|x| x.id == "first_test" && x.unlocked));
     }
 
     #[test]
     fn achievements_wpm_50() {
-        let a = check_achievements(10, 55.0, 90.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
+        let a = check_achievements(
+            10,
+            55.0,
+            90.0,
+            0.0,
+            0,
+            0,
+            "2026-01-01T00:00:00Z".to_string(),
+        );
         assert!(a.iter().any(|x| x.id == "wpm_50" && x.unlocked));
         assert!(!a.iter().any(|x| x.id == "wpm_80" && x.unlocked));
     }
 
     #[test]
     fn achievements_acc_95() {
-        let a = check_achievements(10, 40.0, 96.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
+        let a = check_achievements(
+            10,
+            40.0,
+            96.0,
+            40.0,
+            0,
+            0,
+            "2026-01-01T00:00:00Z".to_string(),
+        );
         assert!(a.iter().any(|x| x.id == "acc_95" && x.unlocked));
     }
 
     #[test]
     fn achievements_streak_7() {
-        let a = check_achievements(10, 40.0, 90.0, 5, 7, 0, "2026-01-01T00:00:00Z".to_string());
+        let a = check_achievements(
+            10,
+            40.0,
+            90.0,
+            0.0,
+            7,
+            0,
+            "2026-01-01T00:00:00Z".to_string(),
+        );
         assert!(a.iter().any(|x| x.id == "streak_7" && x.unlocked));
     }
 
     #[test]
     fn achievements_lessons_5() {
-        let a = check_achievements(10, 40.0, 90.0, 0, 0, 5, "2026-01-01T00:00:00Z".to_string());
+        let a = check_achievements(
+            10,
+            40.0,
+            90.0,
+            0.0,
+            0,
+            5,
+            "2026-01-01T00:00:00Z".to_string(),
+        );
         assert!(a.iter().any(|x| x.id == "lessons_5" && x.unlocked));
     }
 
@@ -704,7 +742,7 @@ mod tests {
             1000,
             200.0,
             100.0,
-            100,
+            200.0,
             100,
             200,
             "2026-01-01T00:00:00Z".to_string(),
@@ -714,7 +752,7 @@ mod tests {
 
     #[test]
     fn achievements_count() {
-        let a = check_achievements(0, 0.0, 0.0, 0, 0, 0, "2026-01-01T00:00:00Z".to_string());
+        let a = check_achievements(0, 0.0, 0.0, 0.0, 0, 0, "2026-01-01T00:00:00Z".to_string());
         assert_eq!(a.len(), 52);
     }
 

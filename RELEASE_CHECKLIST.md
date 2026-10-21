@@ -1,6 +1,24 @@
 # Release Checklist — Racoon Typper
 
 This checklist describes the current baseline and the gates required for a production release. Phase 0 does not authorize a public release; licensing, foundation, security, and release-engineering gates remain mandatory.
+## Unreleased Linux stability candidate — reviewed 2026-10-21
+
+Historical checked boxes below describe their dated releases, not this branch.
+The new Linux candidate uses a separate commit/hash/evidence manifest; version
+metadata is still 1.3.1 until a new release version is chosen. No historical tag
+or artifact may be replaced to publish these fixes.
+
+- [x] Integration source and four successful GitHub CI jobs recorded in [candidate evidence](docs/release/linux-stability-evidence.md); later documentation commits must retain their own CI status.
+- [x] Production Ubuntu artifact built; source tree and SHA-256 recorded.
+- [x] Fresh-container apt install, two launches and nonempty data retention verified.
+- [x] Official v1.3.1 synthetic-profile upgrade; history/settings/schema retained and integrity/FK checked.
+- [x] Native Pinyin, abort/repeat, Settings restore, PNG and Orca speech-generation smoke recorded with precise limits; no full accessibility certification claimed.
+- [x] Dependency source/reference gates and maintenance ownership documented.
+- [ ] Release decision reviews remaining platform/physical-power-loss limits.
+
+Windows/macOS validation is deferred by owner and is not claimed by this
+Linux-only candidate. See [candidate procedure](docs/release/linux-candidate.md).
+
 ## v1.3.1 release (2026-08-25)
 
 - [x] CI-only patch release: Node 24 action refresh (`setup-node` v6.5.0, `download-artifact` v8.0.1, `gh-release` v2.6.2); no product code changes.
@@ -108,7 +126,7 @@ This checklist describes the current baseline and the gates required for a produ
 ### Security surface — Phase 5
 
 - [x] Threat-model baseline inventories current assets, trust boundaries, abuse cases, implementation evidence, tests, and residual risk for IPC, local files, custom content, diagnostics, packaging, and restore (`docs/security/THREAT_MODEL.md`, Task G).
-- [x] Tauri capabilities are generated from the 31 registered frontend commands and reduced to least privilege: the local `main` window receives only the corresponding application-command permissions, no `core:*` permission, and no remote-origin association. `crates/app/tests/capability_audit.rs` audits handler/frontend/manifest/capability equality (Task H).
+- [x] Tauri capabilities are generated from the registered frontend commands (historical count: 31) and reduced to least privilege: the local `main` window receives only the corresponding application-command permissions, no `core:*` permission, and no remote-origin association. `crates/app/tests/capability_audit.rs` audits handler/frontend/manifest/capability equality (Task H).
 - [x] Local backup-failure diagnostics are opt-in, bounded JSONL, and demonstrably redact typed content, supplied paths, and raw error payloads. The startup stderr fallback is a fixed generic message only (`crates/app/src/logging.rs`, `crates/app/src/main.rs`; Task I). Task J completes the separate comprehensive IPC error-redaction coverage.
 - [x] Hostile-input and error-disclosure regression coverage proves malformed/oversized IPC, imported content, traversal-like values, and repeated rejected requests do not bypass validation or leak sensitive data (Task J).
 - [x] GLib/GTK3 advisory-chain acceptance is documented with reachability analysis and revisit triggers; it remains monitored dependency debt, not a resolved upstream vulnerability (`docs/adr/0001-glib-gtk3-advisory.md`).

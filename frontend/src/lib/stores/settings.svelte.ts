@@ -18,6 +18,8 @@ export function createSettingsStore(deps: SettingsStoreDeps) {
   let themes = $state<ThemeInfo[]>([]);
   let activeTheme = $state('racoon_graphite');
   const appliedThemeVariables = new Set<string>();
+  let themeGeneration = 0;
+  let themeWrites: Promise<void> = Promise.resolve();
 
   let mainFontSize = $derived(`${settings?.font_size ?? 24}px`);
 
@@ -110,7 +112,13 @@ export function createSettingsStore(deps: SettingsStoreDeps) {
     return lines.join('\n');
   }
 
-  async function applyTheme(name: string) {
+  function themeCss(name: string, colors = settings?.custom_theme_colors ?? ''): Promise<string> {
+    return name === 'custom'
+      ? Promise.resolve(buildCustomThemeCss(colors))
+      : ipc.getThemeCss(name);
+  }
+
+  function paintTheme(name: string, css: string) {
     const styleEl = document.getElementById('theme-style') || (() => {
       const el = document.createElement('style');
       el.id = 'theme-style';
@@ -118,59 +126,61 @@ export function createSettingsStore(deps: SettingsStoreDeps) {
       return el;
     })();
     styleEl.setAttribute('data-theme', name);
-
-    const root = document.documentElement;
-    for (const variable of appliedThemeVariables) {
-      root.style.removeProperty(variable);
-    }
-    appliedThemeVariables.clear();
-
-    if (name === 'custom') {
-      // Кастомная тема живёт целиком на фронтенде: синтезируем CSS-переменные
-      // из сохранённого JSON (включая производные legacy-алиасы).
-      const css = buildCustomThemeCss(settings?.custom_theme_colors ?? '');
-      styleEl.textContent = css;
-      for (const match of css.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;{}]+)\s*;/g)) {
-        root.style.setProperty(match[1], match[2].trim(), 'important');
-        appliedThemeVariables.add(match[1]);
-      }
-      root.dataset.theme = name;
-      root.style.colorScheme = 'dark';
-      return;
-    }
-
-    const css = await ipc.getThemeCss(name);
     styleEl.textContent = css;
-
-    // Apply variables inline as well as through the stylesheet. This keeps
-    // theme switching reliable when component-scoped CSS is present and lets
-    // semantic aliases such as --bg resolve to the active theme tokens.
-    const variables = /(--[a-z0-9-]+)\s*:\s*([^;{}]+)\s*;/g;
-    for (const match of css.matchAll(variables)) {
-      const variable = match[1];
-      root.style.setProperty(variable, match[2].trim(), 'important');
-      appliedThemeVariables.add(variable);
+    const root = document.documentElement;
+    for (const variable of appliedThemeVariables) root.style.removeProperty(variable);
+    appliedThemeVariables.clear();
+    for (const match of css.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;{}]+)\s*;/g)) {
+      root.style.setProperty(match[1], match[2].trim(), 'important');
+      appliedThemeVariables.add(match[1]);
     }
     root.dataset.theme = name;
-    const themeInfo = themes.find((theme) => theme.name === name);
-    root.style.colorScheme = themeInfo?.is_dark ? 'dark' : 'light';
+    root.style.colorScheme = name === 'custom' || themes.find(theme => theme.name === name)?.is_dark
+      ? 'dark' : 'light';
+  }
+
+  async function applyTheme(name: string) {
+    const generation = ++themeGeneration;
+    const css = await themeCss(name);
+    if (generation === themeGeneration) paintTheme(name, css);
   }
 
   async function selectTheme(name: string) {
+    const generation = ++themeGeneration;
     try {
-      await applyTheme(name);
-      await ipc.setSetting('theme', name);
-      activeTheme = name;
-      settings = await ipc.getSettings();
-      deps.setError('');
+      const css = await themeCss(name);
+      if (generation !== themeGeneration) return;
+      // A save already sent to IPC cannot be cancelled. Serialize writes so
+      // the newest selection is persisted after it, regardless of reply order.
+      const write = themeWrites.then(async () => {
+        if (generation !== themeGeneration) return;
+        const saved = await ipc.setSetting('theme', name);
+        if (generation !== themeGeneration) return;
+        settings = saved;
+        activeTheme = saved.theme;
+        paintTheme(name, css);
+        deps.setError('');
+      });
+      themeWrites = write.catch(() => {});
+      await write;
     } catch (error) {
-      const detail = error instanceof Error
-        ? error.message
-        : typeof error === 'object' && error !== null
-          ? JSON.stringify(error)
-          : String(error);
-      deps.setError(`Theme error: ${detail}`);
-      console.error('Theme switch failed', { name, error });
+      if (generation !== themeGeneration) return;
+      // A preceding save may have committed while this choice was pending.
+      // Reconcile with the backend on a current failure, without reviving a
+      // stale choice if the user has already selected something else.
+      try {
+        await themeWrites;
+        if (generation !== themeGeneration) return;
+        const saved = await ipc.getSettings();
+        const css = await themeCss(saved.theme, saved.custom_theme_colors ?? '');
+        if (generation !== themeGeneration) return;
+        settings = saved;
+        activeTheme = saved.theme;
+        paintTheme(saved.theme, css);
+      } catch { /* Keep the last rendered theme and report the original error. */ }
+      if (generation === themeGeneration) {
+        deps.setError(`Theme error: ${ipc.ipcErrorMessage(error)}`);
+      }
     }
   }
 

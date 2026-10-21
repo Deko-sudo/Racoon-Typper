@@ -6,6 +6,9 @@ all-features = true
 
 [advisories]
 version = 2
+# Include deeply transitive soundness advisories (e.g. the GTK/GLib chain).
+unsound = "all"
+unmaintained = "all"
 
 [bans]
 multiple-versions = "warn"

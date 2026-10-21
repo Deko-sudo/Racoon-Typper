@@ -54,6 +54,9 @@ pub struct AppSettings {
     /// resources is enforced by the application layer.
     #[serde(default = "default_practice_language")]
     pub practice_language: String,
+    /// Preferred practice languages; old settings inherit their single language.
+    #[serde(default)]
+    pub practice_languages: Vec<String>,
     /// First-run onboarding has been completed or explicitly skipped.
     #[serde(default)]
     pub onboarding_completed: bool,
@@ -116,6 +119,31 @@ fn normalize_theme(theme: &str) -> String {
         | "moonlight"
         | "dawn"
         | "sage"
+        | "abyss"
+        | "catppuccin_mocha"
+        | "chestnut"
+        | "coral"
+        | "dark"
+        | "dracula"
+        | "foamy"
+        | "glacier"
+        | "gruvbox_dark"
+        | "light"
+        | "lilac"
+        | "matrix"
+        | "mint_frost"
+        | "nautilus"
+        | "nord"
+        | "obsidian"
+        | "porcelain"
+        | "rose_pine"
+        | "serika"
+        | "serika_dark"
+        | "serika_light"
+        | "solar_flare"
+        | "terra"
+        | "toxic"
+        | "volcanic"
         | "custom" => theme.to_string(),
         "racoon_dark" => "racoon_graphite".to_string(),
         "racoon_light" => "racoon_silver".to_string(),
@@ -361,6 +389,7 @@ impl Default for AppSettings {
             blind_mode_enabled: false,
             ui_language: "en".to_string(),
             practice_language: "en".to_string(),
+            practice_languages: vec!["en".to_string()],
             onboarding_completed: false,
             keyboard_layout: "qwerty".to_string(),
             vim_mode: false,
@@ -399,6 +428,10 @@ impl SettingsStore {
 
         let mut settings: AppSettings = toml::from_str(&content)
             .map_err(|e| DbError::Connection(format!("Failed to parse settings.toml: {}", e)))?;
+
+        if settings.practice_languages.is_empty() {
+            settings.practice_languages = vec![settings.practice_language.clone()];
+        }
 
         let normalized_theme = normalize_theme(&settings.theme);
         if normalized_theme != settings.theme {
@@ -563,6 +596,35 @@ impl SettingsStore {
                     ));
                 }
                 settings.practice_language = value.to_string();
+                if !settings
+                    .practice_languages
+                    .contains(&settings.practice_language)
+                {
+                    settings
+                        .practice_languages
+                        .push(settings.practice_language.clone());
+                }
+            }
+            "practice_languages" => {
+                let values = value.as_array().ok_or_else(|| {
+                    validation_error("practice_languages must be an array of language codes")
+                })?;
+                if values.len() > 32 {
+                    return Err(validation_error("too many practice languages"));
+                }
+                let mut languages = Vec::new();
+                for value in values {
+                    let language = string_value(value, key)?.to_string();
+                    if !valid_language_code(&language) || languages.contains(&language) {
+                        return Err(validation_error("invalid or duplicate practice language"));
+                    }
+                    languages.push(language);
+                }
+                settings.practice_language = languages
+                    .first()
+                    .ok_or_else(|| validation_error("select at least one practice language"))?
+                    .clone();
+                settings.practice_languages = languages;
             }
             "onboarding_completed" => {
                 settings.onboarding_completed = boolean_value(&value, key)?;
@@ -751,44 +813,29 @@ mod tests {
 
     #[test]
     fn every_current_theme_id_survives_save_and_reload() {
-        const BUILT_IN_THEME_IDS: &[&str] = &[
-            "racoon_graphite",
-            "racoon_silver",
-            "racoon_warm",
-            "racoon_high_contrast",
-            "midnight_ink",
-            "arctic_slate",
-            "lavender_dusk",
-            "plum",
-            "ocean",
-            "deep_sea",
-            "steel_blue",
-            "carbon",
-            "moonlight",
-            "racoon_forest",
-            "moss",
-            "sage",
-            "coffee",
-            "ember",
-            "burgundy",
-            "paper",
-            "sandstone",
-            "mist",
-            "dawn",
-            "amber_terminal",
-            "green_terminal",
-        ];
-
-        assert_eq!(BUILT_IN_THEME_IDS.len(), 25);
+        // Derive coverage from the shipped catalog instead of duplicating an
+        // allowlist here: newly added themes must remain selectable and persistent.
+        let catalog = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../resources/themes");
+        let mut theme_ids: Vec<String> = std::fs::read_dir(catalog)
+            .unwrap()
+            .map(|entry| {
+                let manifest = entry.unwrap().path().join("theme.json");
+                let theme: serde_json::Value =
+                    serde_json::from_slice(&std::fs::read(manifest).unwrap()).unwrap();
+                theme["name"].as_str().unwrap().to_string()
+            })
+            .collect();
+        theme_ids.sort();
+        assert!(!theme_ids.is_empty());
         let path = temp_settings_path();
         let store = SettingsStore::new(path.clone());
 
-        for theme_id in BUILT_IN_THEME_IDS {
+        for theme_id in theme_ids {
             let saved = store
-                .set("theme", toml::Value::String((*theme_id).to_string()))
-                .unwrap();
-            assert_eq!(saved.theme, *theme_id);
-            assert_eq!(store.load().unwrap().theme, *theme_id);
+                .set("theme", toml::Value::String(theme_id.clone()))
+                .unwrap_or_else(|error| panic!("shipped theme {theme_id} rejected: {error}"));
+            assert_eq!(saved.theme, theme_id);
+            assert_eq!(store.load().unwrap().theme, theme_id);
         }
 
         std::fs::remove_file(&path).ok();
@@ -889,6 +936,57 @@ mod tests {
             .is_err());
 
         std::fs::remove_file(&path).ok();
+    }
+
+    #[test]
+    fn practice_languages_persist_and_reject_invalid_arrays_without_writing() {
+        let path = temp_settings_path();
+        let store = SettingsStore::new(path.clone());
+        let selected = vec![
+            toml::Value::String("ru".into()),
+            toml::Value::String("en".into()),
+        ];
+        let settings = store
+            .set("practice_languages", toml::Value::Array(selected))
+            .unwrap();
+        assert_eq!(settings.practice_language, "ru");
+        assert_eq!(
+            SettingsStore::new(path.clone())
+                .load()
+                .unwrap()
+                .practice_languages,
+            ["ru", "en"]
+        );
+        let before = std::fs::read(&path).unwrap();
+        for invalid in [
+            toml::Value::Array(vec![]),
+            toml::Value::Array(vec![toml::Value::Integer(42)]),
+            toml::Value::Array(vec![toml::Value::String("RU".into())]),
+            toml::Value::Array(vec![toml::Value::String("en".into()); 2]),
+            toml::Value::Array(vec![toml::Value::String("en".into()); 33]),
+            toml::Value::String("ru,en".into()),
+        ] {
+            assert!(store.set("practice_languages", invalid).is_err());
+            assert_eq!(std::fs::read(&path).unwrap(), before);
+        }
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn legacy_single_practice_language_becomes_the_preferred_list() {
+        let path = temp_settings_path();
+        let settings = AppSettings {
+            practice_language: "de".into(),
+            ..AppSettings::default()
+        };
+        let mut legacy = toml::Value::try_from(settings).unwrap();
+        legacy.as_table_mut().unwrap().remove("practice_languages");
+        std::fs::write(&path, toml::to_string(&legacy).unwrap()).unwrap();
+        let store = SettingsStore::new(path.clone());
+        assert_eq!(store.load().unwrap().practice_languages, ["de"]);
+        store.set("font_size", toml::Value::Integer(28)).unwrap();
+        assert_eq!(store.load().unwrap().practice_languages, ["de"]);
+        std::fs::remove_file(path).unwrap();
     }
 
     #[test]
@@ -1106,6 +1204,7 @@ mod tests {
             blind_mode_enabled: false,
             ui_language: "ru".to_string(),
             practice_language: "de".to_string(),
+            practice_languages: vec!["de".to_string()],
             onboarding_completed: true,
             keyboard_layout: "dvorak".to_string(),
             vim_mode: true,

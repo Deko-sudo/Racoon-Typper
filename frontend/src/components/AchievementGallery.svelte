@@ -3,18 +3,20 @@
   import * as ipc from '../lib/api/ipc';
   import Icon from './Icon.svelte';
   import { t } from '../lib/i18n';
+  import { localizeAchievement } from '../lib/achievements';
+  import type { Achievement } from '../lib/types/index';
 
   let { uiLang = 'en' }: { uiLang?: string } = $props();
 
-  let achievements = $state<Array<{ id: string; name: string; description: string; unlocked: boolean }>>([]);
-  let errorMsg = $state('');
+  let achievements = $state<Achievement[]>([]);
+  let loadFailed = $state(false);
   let filter = $state<'all' | 'unlocked' | 'locked'>('all');
 
   async function loadAchievements() {
     try {
       achievements = (await ipc.getAchievements()).flat();
-    } catch (e) {
-      errorMsg = `Error: ${e}`;
+    } catch {
+      loadFailed = true;
     }
   }
 
@@ -32,14 +34,14 @@
 <div class="gallery">
   <h2>{t(uiLang, 'nav.achievements')}</h2>
 
-  {#if errorMsg}<p class="error">{errorMsg}</p>{/if}
+  {#if loadFailed}<p class="error">{t(uiLang, 'achievements.load_error')}</p>{/if}
 
   <div class="gallery-header">
     <span class="counter">{unlockedCount} / {achievements.length}</span>
     <div class="filters">
-      <button class:active={filter === 'all'} onclick={() => filter = 'all'}>All</button>
-      <button class:active={filter === 'unlocked'} onclick={() => filter = 'unlocked'}>Unlocked</button>
-      <button class:active={filter === 'locked'} onclick={() => filter = 'locked'}>Locked</button>
+      <button class:active={filter === 'all'} onclick={() => filter = 'all'}>{t(uiLang, 'achievements.all')}</button>
+      <button class:active={filter === 'unlocked'} onclick={() => filter = 'unlocked'}>{t(uiLang, 'achievements.unlocked')}</button>
+      <button class:active={filter === 'locked'} onclick={() => filter = 'locked'}>{t(uiLang, 'achievements.locked')}</button>
     </div>
   </div>
 
@@ -49,16 +51,17 @@
 
   <div class="grid">
     {#each filtered as ach (ach.id)}
+      {@const localized = localizeAchievement(uiLang, ach)}
       <div class="card" class:locked={!ach.unlocked}>
         <div class="card-icon">
           {#if ach.unlocked}<Icon name="trophy" size="2rem" />{:else}<Icon name="lock" size="2rem" />{/if}
         </div>
-        <div class="card-name">{ach.name}</div>
-        <div class="card-desc">{ach.description}</div>
+        <div class="card-name">{localized.name}</div>
+        <div class="card-desc">{localized.description}</div>
         {#if ach.unlocked}
-          <div class="card-status unlocked">Unlocked</div>
+          <div class="card-status unlocked">{t(uiLang, 'achievements.unlocked')}</div>
         {:else}
-          <div class="card-status locked">Locked</div>
+          <div class="card-status locked">{t(uiLang, 'achievements.locked')}</div>
         {/if}
       </div>
     {/each}
@@ -66,7 +69,7 @@
 
   {#if filtered.length === 0}
     <p class="empty">
-      {filter === 'all' ? t(uiLang, 'analytics.empty_achievements') : 'No achievements in this category.'}
+      {filter === 'all' ? t(uiLang, 'analytics.empty_achievements') : t(uiLang, 'achievements.empty_category')}
     </p>
   {/if}
 </div>

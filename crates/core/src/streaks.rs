@@ -68,12 +68,10 @@ impl StreakEngine {
 
     /// Проверяет, активен ли streak (последний тест был сегодня или вчера).
     pub fn is_streak_active(last_date: Option<&str>, today: &str) -> bool {
-        match last_date {
-            None => false,
-            Some(last) => {
-                let diff = Self::days_between(last, today);
-                diff <= 1
-            }
+        let last = last_date.and_then(Self::parse_date);
+        match (last, Self::parse_date(today)) {
+            (Some(last), Some(today)) => (0..=1).contains(&(today - last).num_days()),
+            _ => false,
         }
     }
 
@@ -214,6 +212,26 @@ mod tests {
     #[test]
     fn is_inactive_no_last_date() {
         assert!(!StreakEngine::is_streak_active(None, "2026-06-01"));
+    }
+
+    #[test]
+    fn audit_future_streak_is_not_active() {
+        assert!(!StreakEngine::is_streak_active(
+            Some("2026-06-03"),
+            "2026-06-01"
+        ));
+    }
+
+    #[test]
+    fn audit_malformed_streak_dates_are_not_active() {
+        assert!(!StreakEngine::is_streak_active(
+            Some("invalid"),
+            "2026-06-01"
+        ));
+        assert!(!StreakEngine::is_streak_active(
+            Some("2026-06-01"),
+            "invalid"
+        ));
     }
 
     #[test]

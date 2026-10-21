@@ -8,7 +8,7 @@
   import { createSettingsStore } from './lib/stores/settings.svelte';
   import { createContentStore } from './lib/stores/content.svelte';
   import { vimActionForKey, findMatches, VIM_VIEWS } from './lib/vimNavigation';
-  import type { ViewName } from './lib/types/index';
+  import type { LanguageCode, ViewName } from './lib/types/index';
 
   import NavigationBar from './components/NavigationBar.svelte';
   import TestView from './components/TestView.svelte';
@@ -23,6 +23,7 @@
   import DashboardView from './components/DashboardView.svelte';
   import AnalyticsView from './components/AnalyticsView.svelte';
   import AchievementGallery from './components/AchievementGallery.svelte';
+  import { localizeAchievement } from './lib/achievements';
   import PomodoroView from './components/PomodoroView.svelte';
   import CheatsheetOverlay from './components/CheatsheetOverlay.svelte';
   import VimSearchOverlay from './components/VimSearchOverlay.svelte';
@@ -83,6 +84,9 @@
     onHistoryChanged: () => void contentStore.loadHistoryTotal(),
     onAchievementsChanged: checkNewAchievements,
     onStarted: () => switchView('test'),
+    onAborted: (destination) => {
+      if (view === 'test' || view === 'weakkeys') switchView(destination);
+    },
   });
 
   const settings = $derived(settingsStore.settings);
@@ -108,7 +112,8 @@
       const after = (await ipc.getAchievements()).flat();
       for (const a of after) {
         if (a.unlocked && !preTestAchievements.find(p => p.id === a.id && p.unlocked)) {
-          notificationStore.add('SUCCESS', `${a.name} — ${a.description}`);
+          const localized = localizeAchievement(uiLang, a);
+          notificationStore.add('SUCCESS', `${localized.name} — ${localized.description}`);
         }
       }
     } catch {
@@ -212,21 +217,15 @@
 
     if (!testSession.isRunning || testSession.isComplete) return;
 
-    // View-gating: клавиши попадают в тест только на тестовых вью.
-    // WeakKeys нужна для inline-training, остальные вью не трогают сессию.
-    if (view !== 'test' && view !== 'weakkeys') return;
+    // TestView uses native input events; window keydown remains only for
+    // the existing inline weak-key trainer, avoiding duplicate test input.
+    if (view !== 'weakkeys') return;
 
     // IME-фильтр (ja/zh/ko): во время composition keydown приходит с
     // isComposing/keyCode 229 — пропускать, иначе мусор попадает в тест.
     if (e.isComposing || e.keyCode === 229) return;
 
-    // Caps Lock detection
-    if (e.getModifierState && e.getModifierState('CapsLock') !== testSession.capsLockOn) {
-      testSession.capsLockOn = e.getModifierState('CapsLock');
-      if (testSession.capsLockOn && settings?.show_capslock_warnings) {
-        notificationStore.add('WARNING', t(uiLang, 'warning.caps_title'));
-      }
-    }
+    testSession.updateCapsLock(e.getModifierState('CapsLock'));
 
     // Модификатор-комбо (Ctrl+C/V, Alt+...) — не печатные символы.
     if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -239,12 +238,7 @@
 
     e.preventDefault();
 
-    // Track last typed char for layout detection
-    if (e.key.length === 1) {
-      testSession.lastTypedChar = e.key;
-      testSession.testStartedAt ??= Date.now();
-    }
-    testSession.enqueueKey(e.key, e.code);
+    testSession.acceptTypingKey(e.key, e.code);
   }
 
   $effect(() => {
@@ -278,6 +272,9 @@
 
   function switchView(v: ViewName) {
     navigation.navigate(v);
+    if (v === 'test' && testSession.sessionState === 'idle') {
+      void testSession.startTest();
+    }
     // Уход с тестовых вью на любой другой — абандоним бегущую сессию,
     // иначе таймер доедет в фоне и запишет брошенный тест в историю
     // (и пометит урок выполненным).
@@ -343,6 +340,7 @@
     } catch (error) {
       errorMsg = `Settings load error: ${ipc.ipcErrorMessage(error)}`;
     }
+    await contentStore.loadHistoryTotal();
     // A window/hot reload restarts the renderer but the in-memory backend
     // engine keeps any prior session, so abandon it before starting fresh.
     // Safe: engine.abort() only discards a Running session.
@@ -355,34 +353,40 @@
       showOnboarding = true;
       return;
     }
+    if (settingsStore.settings) {
+      testSession.selectedLanguage = settingsStore.settings.practice_language as LanguageCode;
+      contentStore.lessonLang = settingsStore.settings.practice_language as LanguageCode;
+    }
     await testSession.startTest();
   });
 
   function applyOnboardingLanguage(result: OnboardingResult) {
-    testSession.selectedLanguage = result.practiceLanguage;
-    contentStore.lessonLang = result.practiceLanguage;
+    testSession.selectedLanguage = result.practiceLanguages[0];
+    contentStore.lessonLang = result.practiceLanguages[0];
   }
 
   async function persistOnboardingResult(result: OnboardingResult) {
-    await settingsStore.updateSetting('practice_language', result.practiceLanguage);
-    await settingsStore.updateSetting('daily_goal_type', result.goalType);
+    await ipc.setSetting('practice_languages', result.practiceLanguages);
+    await ipc.setSetting('daily_goal_type', result.goalType);
     if (result.goalType === 'time') {
-      await settingsStore.updateSetting('daily_goal_minutes', result.goalMinutes);
+      await ipc.setSetting('daily_goal_minutes', result.goalMinutes);
     } else if (result.goalType === 'wpm') {
-      await settingsStore.updateSetting('daily_goal_wpm', result.goalWpm);
+      await ipc.setSetting('daily_goal_wpm', result.goalWpm);
     } else {
-      await settingsStore.updateSetting('daily_goal_accuracy', result.goalAccuracy);
+      await ipc.setSetting('daily_goal_accuracy', result.goalAccuracy);
     }
-    await settingsStore.updateSetting('onboarding_completed', true);
+    await ipc.setSetting('onboarding_completed', true);
+    await settingsStore.loadSettings();
   }
 
   async function handleOnboardingComplete(result: OnboardingResult) {
-    showOnboarding = false;
     try {
       await persistOnboardingResult(result);
     } catch (error) {
       errorMsg = `Onboarding save error: ${ipc.ipcErrorMessage(error)}`;
+      return;
     }
+    showOnboarding = false;
     applyOnboardingLanguage(result);
     await testSession.startTest();
   }
@@ -423,7 +427,7 @@
       weekly={contentStore.weeklySummaries}
       onNavigate={(v) => switchView(v as ViewName)}
       weakKeys={contentStore.weakKeysData}
-      onStartTraining={() => void testSession.startTraining()}
+      onStartTraining={() => void testSession.startTraining(true)}
       uiLang={uiLang}
     />
   {:else if view === 'test'}
@@ -460,6 +464,8 @@
       onDurationChange={testSession.onDurationChange}
       onWordCountChange={testSession.onWordCountChange}
       onLanguageChange={testSession.onLanguageChange}
+      onTypingKey={testSession.acceptTypingKey}
+      onCapsLockChange={testSession.updateCapsLock}
       onAbort={() => void testSession.abortTest()}
       onRestart={() => void testSession.restartTest()}
       lessonNavigation={contentStore.lessonNavigation}

@@ -8,6 +8,10 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 
+[features]
+# Local UI audit transport only; disabled in ordinary desktop builds.
+browser-audit = ["tauri/test"]
+
 [dependencies]
 racoon-domain = { workspace = true }
 racoon-core = { workspace = true }
@@ -18,15 +22,12 @@ tauri = { version = "2", features = [] }
 tauri-plugin-dialog = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-clipboard-manager = "2"
-tauri-plugin-updater = "2"
-reqwest = { version = "0.12", features = ["blocking", "json", "rustls-tls"], default-features = false }
 serde = { workspace = true }
 serde_json = { workspace = true }
 toml = { workspace = true }
 chrono = "0.4"
 rusqlite = { version = "0.39", features = ["bundled"] }
 image = { version = "0.25", default-features = false, features = ["png"] }
-ab_glyph = "0.2"
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }

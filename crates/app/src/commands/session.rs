@@ -23,7 +23,7 @@ pub(crate) fn start_test(
     quote_id: Option<i64>,
     language: Option<String>,
 ) -> Result<TestSessionResponse, AppError> {
-    app_state.require_startup_recovery_ready()?;
+    let _readiness = app_state.require_startup_recovery_ready()?;
     let request = StartTestRequest {
         mode,
         text,
@@ -45,7 +45,7 @@ pub(crate) fn process_key(
     key: String,
     code: String,
 ) -> Result<EngineOutput, AppError> {
-    app_state.require_startup_recovery_ready()?;
+    let _readiness = app_state.require_startup_recovery_ready()?;
     validate_key_event(&key, &code)?;
     session_service::process_key(&engine_state, &app_state, session_id, key, code)
 }
@@ -56,7 +56,7 @@ pub(crate) fn abort_session(
     app_state: State<'_, AppState>,
     session_id: SessionId,
 ) -> Result<(), AppError> {
-    app_state.require_startup_recovery_ready()?;
+    let _readiness = app_state.require_startup_recovery_ready()?;
     session_service::abort_session(&state, &app_state, session_id)
 }
 
@@ -73,7 +73,7 @@ pub(crate) fn abandon_active_session(
     state: State<'_, Mutex<CoreEngine>>,
     app_state: State<'_, AppState>,
 ) -> Result<bool, AppError> {
-    app_state.require_startup_recovery_ready()?;
+    let _readiness = app_state.require_startup_recovery_ready()?;
     let mut engine = state.lock()?;
     let session_id = engine.current_session_id().cloned();
     let abandoned = engine.abort();
@@ -91,7 +91,7 @@ pub(crate) fn start_custom_text_test(
     app_state: State<'_, AppState>,
     custom_text_id: i64,
 ) -> Result<TestSessionResponse, AppError> {
-    app_state.require_startup_recovery_ready()?;
+    let _readiness = app_state.require_startup_recovery_ready()?;
     let mut engine = engine_state.lock()?;
     let info = session_service::start_custom_text_test(&mut engine, &app_state, custom_text_id)?;
     Ok(TestSessionResponse::from_session_info(info))
@@ -104,7 +104,7 @@ pub(crate) fn start_lesson(
     lesson_id: String,
     language: String,
 ) -> Result<TestSessionResponse, AppError> {
-    app_state.require_startup_recovery_ready()?;
+    let _readiness = app_state.require_startup_recovery_ready()?;
     let mut engine = engine_state.lock()?;
     let info = session_service::start_lesson(&mut engine, &app_state, lesson_id, language)?;
     Ok(TestSessionResponse::lesson_from_session_info(info))

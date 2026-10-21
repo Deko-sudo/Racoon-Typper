@@ -8,6 +8,8 @@
 import type { TextPackImportPlan } from './types/index';
 
 export type TextPackSourceFormatId = 'json' | 'tsv' | 'csv' | 'blocks';
+// Match racoon_data::text_pack::MAX_TEXT_PACK_BYTES before file.text() allocates.
+export const MAX_TEXT_PACK_BYTES = 4 * 1024 * 1024;
 
 export function formatForFile(fileName: string): TextPackSourceFormatId {
   const extension = fileName.toLowerCase().split('.').at(-1) ?? '';

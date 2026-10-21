@@ -3,6 +3,7 @@
   import * as ipc from '../lib/api/ipc';
   import Icon from './Icon.svelte';
   import { t } from '../lib/i18n';
+  import { localizeAchievement } from '../lib/achievements';
   import type { Achievement, ConsistencyReport, Insight } from '../lib/types/index';
 
   let { uiLang = 'en' }: { uiLang?: string } = $props();
@@ -123,12 +124,13 @@
       <h3>{t(uiLang, 'analytics.achievements')}</h3>
       <div class="achievements-grid">
         {#each achievements as ach}
+          {@const localized = localizeAchievement(uiLang, ach)}
           <div class="achievement-card" class:locked={!ach.unlocked}>
             <span class="ach-icon">
               {#if ach.unlocked}<Icon name="trophy" size="1.5rem" />{:else}<Icon name="lock" size="1.5rem" />{/if}
             </span>
-            <span class="ach-name">{ach.name}</span>
-            <span class="ach-desc">{ach.description}</span>
+            <span class="ach-name">{localized.name}</span>
+            <span class="ach-desc">{localized.description}</span>
           </div>
         {/each}
       </div>

@@ -5,14 +5,15 @@
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": "^22.12.0 || >=24.0.0"
   },
   "scripts": {
     "dev": "vite --port 1420 --strictPort",
+    "dev:browser-audit": "vite --mode browser-audit",
     "build": "vite build",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "test:profile-transfer-ui": "node --experimental-strip-types --test ../scripts/profile-transfer-ui.test.mjs",
-    "test:ui": "node --experimental-strip-types --test ../scripts/profile-transfer-ui.test.mjs ../scripts/lesson-navigation-ui.test.mjs ../scripts/theme-pack.test.mjs ../scripts/contribution-calendar.test.mjs ../scripts/vim-navigation.test.mjs ../scripts/mode-config-contract.test.mjs ../scripts/onboarding-ui.test.mjs ../scripts/keyboard-layouts.test.mjs ../scripts/text-pack-contract.test.mjs",
+    "test:ui": "node --experimental-strip-types --test ../scripts/profile-transfer-ui.test.mjs ../scripts/lesson-navigation-ui.test.mjs ../scripts/theme-pack.test.mjs ../scripts/contribution-calendar.test.mjs ../scripts/vim-navigation.test.mjs ../scripts/mode-config-contract.test.mjs ../scripts/onboarding-ui.test.mjs ../scripts/keyboard-layouts.test.mjs ../scripts/text-pack-contract.test.mjs ../scripts/text-pack-ui.test.mjs ../scripts/typing-session-ui.test.mjs ../scripts/typing-view-ui.test.mjs ../scripts/content-store-ui.test.mjs ../scripts/settings-store-ui.test.mjs ../scripts/offline-ui.test.mjs ../scripts/hand-guide-ui.test.mjs ../scripts/native-typing-input.test.mjs ../scripts/achievement-localization.test.mjs ../scripts/share-card.test.mjs",
     "preview": "vite preview",
     "check:version": "node ../scripts/check-version.mjs",
     "check:ipc-contracts": "node ../scripts/check-ipc-contracts.mjs",
@@ -23,20 +24,19 @@
     "tauri:build:binary": "node ../scripts/tauri.mjs build --ci --no-bundle"
   },
   "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^4.0.0",
+    "@sveltejs/vite-plugin-svelte": "~6.2.4",
     "@tauri-apps/cli": "^2.11.3",
     "@tsconfig/svelte": "^5.0.0",
     "svelte": "^5.0.0",
     "svelte-check": "^4.0.0",
     "tslib": "^2.6.0",
     "typescript": "^5.5.0",
-    "vite": "^5.4.0"
+    "vite": "~7.3.7"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-clipboard-manager": "^2.3.2",
     "@tauri-apps/plugin-dialog": "^2.7.2",
-    "@tauri-apps/plugin-fs": "^2.5.1",
-    "@tauri-apps/plugin-updater": "^2.0.0"
+    "@tauri-apps/plugin-fs": "^2.5.1"
   }
 }
