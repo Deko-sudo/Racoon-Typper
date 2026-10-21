@@ -1,0 +1,20 @@
+{
+  "name": "toxic",
+  "display_name": "Toxic",
+  "description": "Deep black with neon green terminal accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#060a06",
+    "surface": "#0c140c",
+    "text": "#c8e8c0",
+    "accent": "#48d848",
+    "correct": "#88e088",
+    "incorrect": "#e86848",
+    "caret": "#68e868"
+  }
+}

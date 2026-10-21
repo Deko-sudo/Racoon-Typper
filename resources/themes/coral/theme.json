@@ -1,0 +1,20 @@
+{
+  "name": "coral",
+  "display_name": "Coral",
+  "description": "Warm coral reef with soft orange-pink accents.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Warm",
+  "is_dark": false,
+  "preview": {
+    "background": "#fff0ed",
+    "surface": "#fff8f5",
+    "text": "#3d2620",
+    "accent": "#e8654a",
+    "correct": "#5a8a6a",
+    "incorrect": "#c44536",
+    "caret": "#c44536"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "dark",
+  "display_name": "Dark",
+  "description": "Minimal neutral dark theme.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#1a1a1a",
+    "surface": "#222222",
+    "text": "#e0e0e0",
+    "accent": "#cccccc",
+    "correct": "#909090",
+    "incorrect": "#ff6666",
+    "caret": "#ffffff"
+  }
+}

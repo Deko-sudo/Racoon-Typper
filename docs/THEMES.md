@@ -1,35 +1,60 @@
 # Built-in themes
 
-Racoon Typper ships 25 local, compiled-in themes. Themes contain no executable
+Racoon Typper ships 50 local, compiled-in themes. Themes contain no executable
 code, remote URLs, or runtime dependencies.
 
 | Identifier | Display name | Category | Purpose |
 |---|---|---|---|
-| `racoon_graphite` | Racoon Graphite | Racoon | Default dark graphite and soft-silver theme |
-| `racoon_silver` | Racoon Silver | Racoon | Neutral daylight theme with warm silver surfaces |
-| `racoon_warm` | Racoon Warm | Racoon | Warm charcoal theme with a restrained copper accent |
-| `racoon_high_contrast` | Racoon High Contrast | Accessibility | Maximum state separation |
-| `midnight_ink` | Midnight Ink | Dark | Deep navy-black nighttime sessions |
-| `arctic_slate` | Arctic Slate | Dark | Quiet cold gray with icy-blue accents |
-| `lavender_dusk` | Lavender Dusk | Dark | Desaturated purple evening palette |
-| `plum` | Plum | Dark | Warm subdued dark plum |
-| `ocean` | Ocean | Dark | Muted ocean and teal |
+| `abyss` | Abyss | Dark | Near-black navy with a distant starlight-blue accent |
+| `amber_terminal` | Amber Terminal | Terminal | Modern low-glare amber terminal reinterpretation |
+| `arctic_slate` | Arctic Slate | Dark | Cold neutral gray with quiet icy-blue accents |
+| `burgundy` | Burgundy | Warm | Sophisticated subdued wine red with ivory text |
+| `carbon` | Carbon | Dark | Near-monochrome dark theme, flatter than Graphite |
+| `catppuccin_mocha` | Catppuccin Mocha | Pastel | Soothing pastel dark with warm lavender |
+| `chestnut` | Chestnut | Warm | Warm brown surfaces with a soft golden accent |
+| `coffee` | Coffee | Warm | Dark coffee, walnut, and cream with a soft copper accent |
+| `coral` | Coral | Warm | Warm coral reef with soft orange-pink accents |
+| `dark` | Dark | Dark | Minimal neutral dark theme |
+| `dawn` | Dawn | Light | Soft warm daylight with a muted sunrise accent |
 | `deep_sea` | Deep Sea | Dark | Very dark blue-green low-light palette |
-| `steel_blue` | Steel Blue | Dark | Industrial steel and muted blue |
-| `carbon` | Carbon | Dark | Flat near-monochrome dark palette |
-| `moonlight` | Moonlight | Dark | Soft blue-gray nighttime palette |
-| `racoon_forest` | Racoon Forest | Nature | Deep forest green |
-| `moss` | Moss | Nature | Muted olive and moss |
-| `coffee` | Coffee | Warm | Dark coffee, walnut, and cream |
-| `ember` | Ember | Warm | Charcoal with restrained ember accents |
-| `burgundy` | Burgundy | Warm | Subdued dark wine red |
-| `paper` | Paper | Light | Soft reading-paper daylight |
-| `sandstone` | Sandstone | Light | Warm sandy daylight |
-| `mist` | Mist | Light | Cool light gray |
-| `dawn` | Dawn | Light | Warm daylight with a muted sunrise accent |
-| `sage` | Sage | Nature | Desaturated green daylight |
-| `amber_terminal` | Amber Terminal | Terminal | Modern low-glare amber terminal |
-| `green_terminal` | Green Terminal | Terminal | Modern low-glare green terminal |
+| `dracula` | Dracula | Pop | Classic vampire dark with neon pink-cyan |
+| `ember` | Ember | Warm | Charcoal with restrained ember-red and copper accents |
+| `foamy` | Foamy | Light | Tidal seafoam green light palette |
+| `glacier` | Glacier | Light | Cool pale ice-blue daylight with crisp contrast |
+| `green_terminal` | Green Terminal | Terminal | Modern low-glare green terminal palette |
+| `gruvbox_dark` | Gruvbox Dark | Retro | Retro groove dark with amber and olive |
+| `lavender_dusk` | Lavender Dusk | Dark | Elegant desaturated purple for quiet evening sessions |
+| `light` | Light | Light | Minimal neutral light theme |
+| `lilac` | Lilac | Light | Soft purple-gray light with floral undertones |
+| `matrix` | Matrix | Terminal | Pure digital rain green-on-black |
+| `midnight_ink` | Midnight Ink | Dark | Deep navy-black surfaces for long nighttime sessions |
+| `mint_frost` | Mint Frost | Light | Light mint-green with cool refreshing tones |
+| `mist` | Mist | Light | Cool light gray with a restrained neutral-blue accent |
+| `moonlight` | Moonlight | Dark | Soft blue-gray nighttime palette for low eye strain |
+| `moss` | Moss | Nature | Relaxed olive and moss tones for focused practice |
+| `nautilus` | Nautilus | Dark | Deep ocean shell with pearlescent blue-green |
+| `nord` | Nord | Cool | Arctic north-bluish color palette |
+| `obsidian` | Obsidian | Dark | Pure dark glass with electric cyan accent |
+| `ocean` | Ocean | Dark | Dark muted ocean and teal without a cyberpunk glow |
+| `paper` | Paper | Light | Soft reading-paper daylight without a pure-white canvas |
+| `plum` | Plum | Dark | Warm dark plum with a restrained rose accent |
+| `porcelain` | Porcelain | Light | Clean bright white with soft blue-gray accents |
+| `racoon_forest` | Racoon Forest | Nature | Deep forest surfaces with muted natural highlights |
+| `racoon_graphite` | Racoon Graphite | Racoon | Calm graphite surfaces with soft silver contrast |
+| `racoon_high_contrast` | Racoon High Contrast | Accessibility | Maximum contrast and clearly separated typing states |
+| `racoon_silver` | Racoon Silver | Racoon | Neutral daylight theme with warm silver surfaces |
+| `racoon_warm` | Racoon Warm | Racoon | Warm charcoal surfaces with a restrained copper accent |
+| `rose_pine` | Rosé Pine | Pastel | Soho vibes with muted rose and iris |
+| `sage` | Sage | Nature | Quiet desaturated green daylight for professional practice |
+| `sandstone` | Sandstone | Light | Subtle sandy daylight with warm, readable contrast |
+| `serika` | Serika | Light | Warm beige with dark text and golden accent |
+| `serika_dark` | Serika Dark | Dark | Dark variant of serika with golden accent |
+| `serika_light` | Serika Light | Light | Bright daylight variant of serika |
+| `solar_flare` | Solar Flare | Warm | Warm dark with golden-amber radiance |
+| `steel_blue` | Steel Blue | Dark | Industrial steel and muted blue for metallic focus |
+| `terra` | Terra | Warm | Earthen clay and ochre with warm stone surfaces |
+| `toxic` | Toxic | Dark | Deep black with neon green terminal accent |
+| `volcanic` | Volcanic | Warm | Black basalt with molten orange-red fissures |
 
 ## Runtime architecture
 

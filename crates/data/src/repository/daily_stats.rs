@@ -170,7 +170,7 @@ impl<'a> DailyStatsRepository for SqliteDailyStatsRepository<'a> {
     }
 
     fn get_last_30_days(&self) -> Result<Vec<DailyStats>, DbError> {
-        let now = chrono::Utc::now();
+        let now = chrono::Local::now();
         let from = (now - chrono::Duration::days(30))
             .format("%Y-%m-%d")
             .to_string();
@@ -190,7 +190,7 @@ mod tests {
     }
 
     fn today() -> String {
-        chrono::Utc::now().format("%Y-%m-%d").to_string()
+        chrono::Local::now().format("%Y-%m-%d").to_string()
     }
 
     #[test]

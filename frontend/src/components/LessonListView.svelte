@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ModuleResponse, LessonResponse } from '../lib/types/index';
+  import Icon from './Icon.svelte';
   import { t, UI_LANGUAGES } from '../lib/i18n';
 
   let {
@@ -46,7 +47,7 @@
           >
             <span class="lesson-name">{l.name}</span>
             <span class="lesson-status">
-              {#if getStatus(l.id) === 'completed'}✓{/if}
+              {#if getStatus(l.id) === 'completed'}<Icon name="check" size="0.875rem" />{/if}
               {#if getBestWpm(l.id) > 0}<span class="lesson-wpm">{getBestWpm(l.id).toFixed(0)} WPM</span>{/if}
             </span>
           </button>

@@ -1,0 +1,20 @@
+{
+  "name": "abyss",
+  "display_name": "Abyss",
+  "description": "Near-black navy with a distant starlight-blue accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#06080f",
+    "surface": "#0b0f1a",
+    "text": "#d4d8e8",
+    "accent": "#6d8bd6",
+    "correct": "#a3c9b4",
+    "incorrect": "#e08b8b",
+    "caret": "#8ba3e6"
+  }
+}

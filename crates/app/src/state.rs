@@ -15,6 +15,7 @@ use crate::error::AppError;
 pub struct AppState {
     pub db: Database,
     settings_path: PathBuf,
+    db_path: PathBuf,
     settings_lock: Mutex<()>,
     process_started_at: Instant,
     sound_engine: Mutex<SoundEngine>,
@@ -25,16 +26,23 @@ impl AppState {
     pub fn new(
         db: Database,
         settings_path: PathBuf,
+        db_path: PathBuf,
         startup_recovery: StartupRecoveryGate,
     ) -> Self {
         Self {
             db,
             settings_path,
+            db_path,
             settings_lock: Mutex::new(()),
             process_started_at: Instant::now(),
             sound_engine: Mutex::new(SoundEngine::new(SoundConfig::default())),
             startup_recovery,
         }
+    }
+
+    /// Path of the live database file, used by whole-file restore.
+    pub fn db_path(&self) -> &PathBuf {
+        &self.db_path
     }
 
     pub fn settings_store(&self) -> SettingsStore {
@@ -118,6 +126,7 @@ mod tests {
         let state = AppState::new(
             database,
             PathBuf::from("settings.toml"),
+            PathBuf::from("unused-db.db"),
             StartupRecoveryGate::new(),
         );
 

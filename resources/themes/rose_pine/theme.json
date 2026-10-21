@@ -1,0 +1,20 @@
+{
+  "name": "rose_pine",
+  "display_name": "Rosé Pine",
+  "description": "Soho vibes with muted rose and iris.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Pastel",
+  "is_dark": true,
+  "preview": {
+    "background": "#191724",
+    "surface": "#1f1d2e",
+    "text": "#e0def4",
+    "accent": "#c4a7e7",
+    "correct": "#9ccfd8",
+    "incorrect": "#eb6f92",
+    "caret": "#ebbcba"
+  }
+}

@@ -56,7 +56,7 @@ pub trait LessonRepository {
     fn get_lesson_progress(&self, lesson_id: &str)
         -> Result<Option<LessonProgressRecord>, DbError>;
     fn update_progress(&self, lesson_id: &str, wpm: f64, accuracy: f64) -> Result<(), DbError>;
-    fn complete_lesson(&self, lesson_id: &str, wpm: f64, accuracy: f64) -> Result<(), DbError>;
+    fn complete_lesson(&self, lesson_id: &str, wpm: f64, accuracy: f64) -> Result<bool, DbError>;
     fn get_course_progress(&self, language: &str) -> Result<CourseProgress, DbError>;
 }
 
@@ -71,13 +71,20 @@ impl<'a> SqliteLessonRepository<'a> {
 
     /// Transaction-scoped completion helper used by the recovery finalizer.
     /// The supplied timestamp comes from the immutable completion intent.
+    ///
+    /// Возвращает `true`, если попытка прошла гейт (accuracy ≥ 90% first-attempt
+    /// И WPM ≥ 20). Гейт применяется в самом SQL: best-показатели и attempts
+    /// обновляются всегда, но `status='completed'`/`completed_at` проставляются
+    /// только прошедшим гейт попыткам — и никогда не понижаются при неудачной
+    /// перепройденной попытке ранее пройденного урока.
     pub(crate) fn complete_lesson_at(
         &self,
         lesson_id: &str,
         wpm: f64,
         accuracy: f64,
         completed_at: &str,
-    ) -> Result<(), DbError> {
+    ) -> Result<bool, DbError> {
+        let passed = racoon_core::lesson_is_passed(accuracy, wpm);
         let affected = self
             .conn
             .execute(
@@ -86,10 +93,24 @@ impl<'a> SqliteLessonRepository<'a> {
                      best_accuracy = CASE WHEN ?2 > best_accuracy THEN ?2 ELSE best_accuracy END,
                      attempts = attempts + 1,
                      last_attempt_at = ?3,
-                     completed_at = ?3,
-                     status = 'completed'
+                     status = CASE
+                         WHEN ?1 >= ?5 AND ?2 >= ?6 THEN 'completed'
+                         WHEN status = 'completed' THEN status
+                         ELSE 'in_progress'
+                     END,
+                     completed_at = CASE
+                         WHEN ?1 >= ?5 AND ?2 >= ?6 THEN ?3
+                         ELSE completed_at
+                     END
                  WHERE lesson_id = ?4",
-                params![wpm, accuracy, completed_at, lesson_id],
+                params![
+                    wpm,
+                    accuracy,
+                    completed_at,
+                    lesson_id,
+                    racoon_core::LESSON_PASS_MIN_WPM,
+                    racoon_core::LESSON_PASS_MIN_ACCURACY,
+                ],
             )
             .map_err(|e| DbError::Write(e.to_string()))?;
         if affected == 0 {
@@ -97,7 +118,7 @@ impl<'a> SqliteLessonRepository<'a> {
                 "LessonProgress lesson_id={lesson_id}"
             )));
         }
-        Ok(())
+        Ok(passed)
     }
 }
 
@@ -214,7 +235,7 @@ impl<'a> LessonRepository for SqliteLessonRepository<'a> {
         Ok(())
     }
 
-    fn complete_lesson(&self, lesson_id: &str, wpm: f64, accuracy: f64) -> Result<(), DbError> {
+    fn complete_lesson(&self, lesson_id: &str, wpm: f64, accuracy: f64) -> Result<bool, DbError> {
         self.complete_lesson_at(lesson_id, wpm, accuracy, &chrono::Utc::now().to_rfc3339())
     }
 

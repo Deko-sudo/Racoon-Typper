@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '..');
 const ipc = readFileSync(resolve(root, 'frontend/src/lib/api/ipc.ts'), 'utf8');
 const main = readFileSync(resolve(root, 'crates/app/src/main.rs'), 'utf8');
-const clientCommands = new Set([...ipc.matchAll(/invoke(?:<[^>]*>)?\('([a-z_]+)'/g)].map((match) => match[1]));
+const clientCommands = new Set([...ipc.matchAll(/invoke[^(]*\('([a-z_]+)'/g)].map((match) => match[1]));
 const registeredCommands = new Set([...main.matchAll(/commands::\w+::([a-z_]+)/g)].map((match) => match[1]));
 
 const missingFromBackend = [...clientCommands].filter((command) => !registeredCommands.has(command));

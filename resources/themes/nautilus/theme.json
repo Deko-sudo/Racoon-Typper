@@ -1,0 +1,20 @@
+{
+  "name": "nautilus",
+  "display_name": "Nautilus",
+  "description": "Deep ocean shell with pearlescent blue-green.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#0c1620",
+    "surface": "#101e2a",
+    "text": "#d8e8f0",
+    "accent": "#5fb4ca",
+    "correct": "#80c4a0",
+    "incorrect": "#e08080",
+    "caret": "#b0e0ee"
+  }
+}

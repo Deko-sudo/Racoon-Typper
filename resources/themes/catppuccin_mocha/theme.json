@@ -1,0 +1,20 @@
+{
+  "name": "catppuccin_mocha",
+  "display_name": "Catppuccin Mocha",
+  "description": "Soothing pastel dark with warm lavender.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Pastel",
+  "is_dark": true,
+  "preview": {
+    "background": "#1e1e2e",
+    "surface": "#181825",
+    "text": "#cdd6f4",
+    "accent": "#cba6f7",
+    "correct": "#a6e3a1",
+    "incorrect": "#f38ba8",
+    "caret": "#f5e0dc"
+  }
+}

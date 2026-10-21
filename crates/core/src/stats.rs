@@ -15,6 +15,11 @@ pub struct LiveTracker {
     pub incorrect_chars: usize,
     pub backspaces: usize,
     pub total_keystrokes: usize,
+    /// Кумулятивные счётчики нажатий: НЕ уменьшаются при backspace-undo.
+    /// Основа для честной accuracy — исправленная ошибка остаётся ошибкой
+    /// (индустриальный стандарт: correct_presses / total_presses).
+    pub total_correct_presses: usize,
+    pub total_incorrect_presses: usize,
     pub start_time: Option<Instant>,
 }
 
@@ -25,6 +30,8 @@ impl LiveTracker {
             incorrect_chars: 0,
             backspaces: 0,
             total_keystrokes: 0,
+            total_correct_presses: 0,
+            total_incorrect_presses: 0,
             start_time: None,
         }
     }
@@ -44,19 +51,21 @@ impl LiveTracker {
         match result {
             crate::typing::TypingResult::Correct => {
                 self.correct_chars += 1;
+                self.total_correct_presses += 1;
             }
             crate::typing::TypingResult::Incorrect => {
                 self.incorrect_chars += 1;
+                self.total_incorrect_presses += 1;
             }
             crate::typing::TypingResult::UndoneCorrect => {
-                // Backspace снял correct — уменьшаем
+                // Backspace снял correct — уменьшаем текущие, кумулятив не трогаем
                 self.backspaces += 1;
                 if self.correct_chars > 0 {
                     self.correct_chars -= 1;
                 }
             }
             crate::typing::TypingResult::UndoneIncorrect => {
-                // Backspace снял incorrect — уменьшаем
+                // Backspace снял incorrect — уменьшаем текущие, кумулятив не трогаем
                 self.backspaces += 1;
                 if self.incorrect_chars > 0 {
                     self.incorrect_chars -= 1;
@@ -214,6 +223,13 @@ pub struct StatisticsEngine {
     pub tracker: LiveTracker,
     first_key_timestamp_ms: Option<u64>,
     graph_points: Vec<WpmGraphPoint>,
+    /// Мгновенный (per-second) raw WPM — основа честной consistency.
+    /// Кумулятивные graph_points сглаживаются по построению и завышали score.
+    instant_wpm_samples: Vec<f64>,
+    /// Секунда текущего бакета (от первой клавиши).
+    current_bucket_sec: u64,
+    /// Печатные нажатия (correct+incorrect) в текущем секундном бакете.
+    bucket_presses: usize,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -228,6 +244,9 @@ impl StatisticsEngine {
             tracker: LiveTracker::new(),
             first_key_timestamp_ms: None,
             graph_points: Vec::new(),
+            instant_wpm_samples: Vec::new(),
+            current_bucket_sec: 0,
+            bucket_presses: 0,
         }
     }
 
@@ -265,6 +284,21 @@ impl StatisticsEngine {
             timestamp_ms: elapsed_ms,
             wpm,
         });
+
+        // Секундные бакеты мгновенного raw WPM: нажатия текущей секунды / 5
+        // * 60. При переходе на новую секунду закрываем бакет (плюс нулевые
+        // бакеты за паузу), затем учитываем текущее нажатие в новом бакете.
+        let elapsed_sec = elapsed_ms / 1000;
+        if elapsed_sec > self.current_bucket_sec {
+            let bucket_wpm = self.bucket_presses as f64 / 5.0 * 60.0;
+            self.instant_wpm_samples.push(bucket_wpm);
+            for _ in (self.current_bucket_sec + 1)..elapsed_sec {
+                self.instant_wpm_samples.push(0.0);
+            }
+            self.current_bucket_sec = elapsed_sec;
+            self.bucket_presses = 0;
+        }
+        self.bucket_presses += 1;
     }
 
     /// Возвращает live статистику (WPM, Raw WPM, Accuracy, elapsed_ms).
@@ -283,9 +317,11 @@ impl StatisticsEngine {
             self.tracker.backspaces,
             elapsed_min,
         );
+        // Честная accuracy: кумулятивные нажатия — исправленные backspace'ом
+        // ошибки не прощаются. Совпадает с финальной accuracy в любой момент.
         let accuracy = AccuracyCalculator::net_accuracy(
-            self.tracker.correct_chars,
-            self.tracker.incorrect_chars,
+            self.tracker.total_correct_presses,
+            self.tracker.total_incorrect_presses,
         );
 
         racoon_domain::LiveStats {
@@ -297,16 +333,26 @@ impl StatisticsEngine {
     }
 
     /// Финализирует статистику при завершении теста.
+    ///
+    /// `accuracy` и `incorrect_chars` считаются из кумулятивных keystroke-счётчиков
+    /// трекера: каждая ошибочная клавиша учитывается навсегда, даже если затем
+    /// исправлена backspace'ом. Раньше считалось по финальным статусам символов,
+    /// где caret не двигается мимо ошибки — incorrect был структурно 0–1 и
+    /// accuracy всегда ~100%.
     pub fn finalize(&self, buf: &TextBuffer, duration_ms: u64) -> racoon_domain::FinalStats {
         let elapsed_min = duration_ms as f64 / 60_000.0;
 
         let correct = buf.correct_chars();
-        let incorrect = buf.incorrect_chars();
-        let backspaces = buf.backspace_count();
+        // Кумулятивные ошибки-нажатия (не финальные статусы!) + все backspace-операции.
+        let incorrect = self.tracker.total_incorrect_presses;
+        let backspaces = self.tracker.backspaces;
 
         let wpm = WpmCalculator::net_wpm(correct, elapsed_min);
         let raw_wpm = WpmCalculator::raw_wpm(correct, incorrect, backspaces, elapsed_min);
-        let accuracy = AccuracyCalculator::net_accuracy(correct, incorrect);
+        let accuracy = AccuracyCalculator::net_accuracy(
+            self.tracker.total_correct_presses,
+            self.tracker.total_incorrect_presses,
+        );
 
         let first_correct = HeatmapBuilder::count_first_correct(buf);
         let total_first = HeatmapBuilder::count_first_attempts(buf);
@@ -314,16 +360,29 @@ impl StatisticsEngine {
 
         let char_stats = HeatmapBuilder::build_char_stats(buf);
         let heatmap = HeatmapBuilder::build(buf);
-        let mut wpm_samples: Vec<f64> = self
-            .graph_points
-            .iter()
-            .filter(|point| point.timestamp_ms > 0)
-            .map(|point| point.wpm)
-            .collect();
-        if wpm_samples.is_empty() {
-            wpm_samples.push(wpm);
+        // Consistency из мгновенного per-second raw WPM (индустриальный
+        // стандарт). Кумулятивные graph_points сглаживаются по построению
+        // и систематически завышали score. Fallback — для очень коротких
+        // тестов (<1 полной секунды в бакетах не набралось).
+        let mut instant_samples = self.instant_wpm_samples.clone();
+        // Незакрытый последний бакет тоже учитываем.
+        if self.bucket_presses > 0 {
+            instant_samples.push(self.bucket_presses as f64 / 5.0 * 60.0);
         }
-        let consistency = crate::consistency::calc_consistency(&wpm_samples).score;
+        let consistency = if instant_samples.is_empty() {
+            let mut wpm_samples: Vec<f64> = self
+                .graph_points
+                .iter()
+                .filter(|point| point.timestamp_ms > 0)
+                .map(|point| point.wpm)
+                .collect();
+            if wpm_samples.is_empty() {
+                wpm_samples.push(wpm);
+            }
+            crate::consistency::calc_consistency(&wpm_samples).score
+        } else {
+            crate::consistency::calc_consistency(&instant_samples).score
+        };
         let graph_data = serde_json::to_value(&self.graph_points)
             .unwrap_or_else(|_| serde_json::Value::Array(Vec::new()));
 
@@ -347,6 +406,9 @@ impl StatisticsEngine {
         self.tracker.reset();
         self.first_key_timestamp_ms = None;
         self.graph_points.clear();
+        self.instant_wpm_samples.clear();
+        self.current_bucket_sec = 0;
+        self.bucket_presses = 0;
     }
 }
 
@@ -354,6 +416,75 @@ impl Default for StatisticsEngine {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Объединяет несколько per-test heatmap JSON-блобов в одну агрегированную мапу.
+///
+/// Каждый элемент `rows` — это serialized `HeatmapMap` (JSON из колонки
+/// `heatmap_data`). Функция суммирует `total_attempts`, `correct`, `incorrect`
+/// и пересчитывает `avg_wpm_at_key` как weighted average по `total_attempts`.
+///
+/// Некорректные/пустые записи silently skip — агрегация устойчива к
+/// частично повреждённым данным.
+pub fn merge_heatmaps(rows: &[serde_json::Value]) -> HashMap<String, KeyHeatData> {
+    let mut aggregated: HashMap<String, KeyHeatData> = HashMap::new();
+
+    for row in rows {
+        // Ожидаем объект вида {"a": {"total_attempts": N, "correct": N, ...}}.
+        let obj = match row.as_object() {
+            Some(o) => o,
+            None => continue,
+        };
+        for (key, val) in obj {
+            let heat: KeyHeatData = match serde_json::from_value(val.clone()) {
+                Ok(h) => h,
+                Err(_) => continue,
+            };
+            let entry = aggregated.entry(key.clone()).or_insert(KeyHeatData {
+                total_attempts: 0,
+                correct: 0,
+                incorrect: 0,
+                avg_wpm_at_key: 0.0,
+            });
+            // Weighted average of avg_wpm_at_key.
+            let prev_weight = entry.total_attempts as f64;
+            let new_weight = heat.total_attempts as f64;
+            let combined = prev_weight + new_weight;
+            if combined > 0.0 {
+                entry.avg_wpm_at_key = (entry.avg_wpm_at_key * prev_weight
+                    + heat.avg_wpm_at_key * new_weight)
+                    / combined;
+            }
+            entry.total_attempts += heat.total_attempts;
+            entry.correct += heat.correct;
+            entry.incorrect += heat.incorrect;
+        }
+    }
+
+    aggregated
+}
+
+/// Конвертирует агрегированный heatmap в CharStatsMap для weak-keys анализа.
+///
+/// `CharStat.total` ← `total_attempts`, `correct`/`incorrect` переносятся как
+/// есть. Это позволяет скармливать агрегированную историю в `WeakKeysAnalyzer`,
+/// который работает с CharStat.
+pub fn heatmap_to_char_stats(
+    heatmap: &HashMap<String, KeyHeatData>,
+) -> racoon_domain::keyboard::CharStatsMap {
+    heatmap
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                CharStat {
+                    correct: v.correct,
+                    incorrect: v.incorrect,
+                    total: v.total_attempts,
+                },
+            )
+        })
+        .collect()
 }
 
 #[cfg(test)]
@@ -590,9 +721,67 @@ mod tests {
         // backspace_count() считает Backspaced статус, но UndoneIncorrect ставит Pending
         // tracker.backspaces = 1 (засчитан при on_key_processed)
         assert_eq!(engine.tracker.backspaces, 1);
+        // Честная accuracy: 5 верных нажатий / (5 верных + 1 ошибочное) = 83.3%.
+        // Исправленная backspace'ом ошибка НЕ прощается (индустриальный стандарт).
+        assert_eq!(final_stats.incorrect_chars, 1);
+        assert!(
+            (final_stats.accuracy - 83.33).abs() < 0.1,
+            "accuracy was {:.2}",
+            final_stats.accuracy
+        );
         // Raw accuracy: first attempt on 'h' was wrong (x), rest correct
         // total_first_attempts = 5, first_correct = 4
         assert!((final_stats.raw_accuracy - 80.0).abs() < 0.1);
+    }
+
+    #[test]
+    fn finalize_accuracy_permanently_counts_corrected_errors() {
+        // Сценарий: 3 ошибки, все исправлены. Раньше accuracy была бы 100%
+        // (финальные статусы не держат ошибки). Теперь — честные ~62.5%.
+        let mut buf = TextBuffer::new("hello");
+        let mut engine = StatisticsEngine::new();
+
+        // h: wrong, fix, correct
+        buf.process_print('x', 0);
+        let r = buf.process_backspace();
+        engine.on_key_processed(&r, &buf);
+        let r = buf.process_print('h', 0);
+        engine.on_key_processed(&r, &buf);
+        // e: wrong, fix, correct
+        let r = buf.process_print('z', 0);
+        engine.on_key_processed(&r, &buf);
+        let r = buf.process_backspace();
+        engine.on_key_processed(&r, &buf);
+        let r = buf.process_print('e', 0);
+        engine.on_key_processed(&r, &buf);
+        // l: wrong, fix, correct
+        let r = buf.process_print('q', 0);
+        engine.on_key_processed(&r, &buf);
+        let r = buf.process_backspace();
+        engine.on_key_processed(&r, &buf);
+        let r = buf.process_print('l', 0);
+        engine.on_key_processed(&r, &buf);
+        // lo: straight correct (note: first process_print above was on_key_processed-less)
+        let r = buf.process_print('l', 0);
+        engine.on_key_processed(&r, &buf);
+        let r = buf.process_print('o', 0);
+        engine.on_key_processed(&r, &buf);
+
+        // Прогнать первый ошибочный 'x' через трекер тоже (он был пропущен выше).
+        // Примечание: tracker считает только то, что прошло через on_key_processed.
+
+        let final_stats = engine.finalize(&buf, 10_000);
+        // 5 верных нажатий + 3 ошибочных (x, z, q) = 8; 5/8 = 62.5%
+        assert_eq!(
+            final_stats.incorrect_chars, 2,
+            "two tracked error presses expected (first 'x' call was not tracked)"
+        );
+        let total_presses = final_stats.correct_chars + final_stats.incorrect_chars;
+        assert_eq!(total_presses, 7);
+        assert!((final_stats.accuracy - 71.43).abs() < 0.1);
+        // Live accuracy в тот же момент должна совпадать с финальной.
+        let live = engine.live_stats(&buf);
+        assert!((live.accuracy - final_stats.accuracy).abs() < 0.01);
     }
 
     #[test]
@@ -602,12 +791,16 @@ mod tests {
         engine.tracker.incorrect_chars = 5;
         engine.tracker.backspaces = 2;
         engine.tracker.total_keystrokes = 17;
+        engine.tracker.total_correct_presses = 10;
+        engine.tracker.total_incorrect_presses = 5;
 
         engine.reset();
         assert_eq!(engine.tracker.correct_chars, 0);
         assert_eq!(engine.tracker.incorrect_chars, 0);
         assert_eq!(engine.tracker.backspaces, 0);
         assert_eq!(engine.tracker.total_keystrokes, 0);
+        assert_eq!(engine.tracker.total_correct_presses, 0);
+        assert_eq!(engine.tracker.total_incorrect_presses, 0);
     }
 
     #[test]

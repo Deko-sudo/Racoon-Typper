@@ -1,6 +1,7 @@
 <script lang="ts">
   // TypingWarnings — определение неверной раскладки и Caps Lock.
   import { t } from '../lib/i18n';
+  import Icon from './Icon.svelte';
   import StatusIcon from './StatusIcon.svelte';
 
   let {
@@ -19,19 +20,43 @@
     uiLang?: string;
   } = $props();
 
-  // Layout detection
-  const EN_REGEX = /^[a-zA-Z]$/;
-  const RU_REGEX = /^[а-яА-ЯёЁ]$/;
+  // Script-based detection: определяем письменность ожидаемого языка и
+  // символа. Warning только если символ из ДРУГОЙ письменности — общая
+  // кириллица ru/uk больше не даёт ложных «switch to EN» (старая логика
+  // понимала только en↔ru и врала для 13 из 15 языков).
+  type Script = 'latin' | 'cyrillic' | 'cjk' | 'other';
+
+  const CYRILLIC_LANGS = new Set(['ru', 'uk']);
+  const CJK_LANGS = new Set(['ja', 'zh-hk', 'zh-tw', 'ko']);
+
+  function expectedScript(lang: string): Script {
+    if (CYRILLIC_LANGS.has(lang)) return 'cyrillic';
+    if (CJK_LANGS.has(lang)) return 'cjk';
+    // Остальные поддерживаемые языки (en, de, fr, es, ...) — латиница.
+    return 'latin';
+  }
+
+  function charScript(ch: string): Script {
+    if (/[a-zA-Zà-ÿÀ-Ýā-žĀ-Ž]/u.test(ch)) return 'latin';
+    if (/[а-яА-ЯёЁїієґЇІЄҐ]/u.test(ch)) return 'cyrillic';
+    if (/[\u3040-\u30ff\u3400-\u9fff\uf900-\ufaff\uac00-\ud7af]/u.test(ch)) return 'cjk';
+    return 'other';
+  }
 
   let layoutMismatch = $derived.by(() => {
     if (!showLayoutWarnings || !lastTypedChar) return false;
-    if (expectedLanguage === 'ru') {
-      // Expected RU, but typed EN
-      return EN_REGEX.test(lastTypedChar);
-    } else {
-      // Expected EN, but typed RU
-      return RU_REGEX.test(lastTypedChar);
-    }
+    const cs = charScript(lastTypedChar);
+    if (cs === 'other') return false; // цифры/пунктуация — не показатель
+    return cs !== expectedScript(expectedLanguage);
+  });
+
+  let scriptLabels = $derived.by(() => {
+    const expected = expectedScript(expectedLanguage);
+    const typed = charScript(lastTypedChar || ' ');
+    const names: Record<Script, string> = {
+      latin: 'Latin', cyrillic: 'Cyrillic', cjk: 'CJK', other: '—',
+    };
+    return { typed: names[typed], expected: names[expected] };
   });
 
   let showCapsWarning = $derived(showCapsLockWarnings && capsLockOn);
@@ -43,15 +68,15 @@
     <div class="warning-text">
       <strong>{t(uiLang, 'warning.layout_title')}</strong>
       <p>{t(uiLang, 'warning.layout_message')
-        .replace('{current}', expectedLanguage === 'ru' ? 'EN' : 'RU')
-        .replace('{expected}', expectedLanguage === 'ru' ? 'RU' : 'EN')}</p>
+        .replace('{current}', scriptLabels.typed)
+        .replace('{expected}', scriptLabels.expected)}</p>
     </div>
   </div>
 {/if}
 
 {#if showCapsWarning}
   <div class="warning-card caps-warning">
-    <span class="warning-icon">⚠</span>
+    <span class="warning-icon"><Icon name="warn" size="1.2rem" /></span>
     <div class="warning-text">
       <strong>{t(uiLang, 'warning.caps_title')}</strong>
       <p>{t(uiLang, 'warning.caps_message')}</p>

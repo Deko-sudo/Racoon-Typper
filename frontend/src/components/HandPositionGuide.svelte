@@ -1,19 +1,23 @@
 <script lang="ts">
   // HandPositionGuide — схема рук с подсветкой нужного пальца.
 
-  import { FINGERS, RU_FINGERS } from '../lib/keyboard';
+  import { fingerForKey } from '../lib/keyboard';
 
   let {
     nextChar = '',
     isRussian = false,
+    keyboardLayout = 'qwerty',
   }: {
     nextChar?: string;
     isRussian?: boolean;
+    keyboardLayout?: string;
   } = $props();
 
-  const fingers = $derived(isRussian ? RU_FINGERS : FINGERS);
-
-  let activeFinger = $derived(nextChar === ' ' ? 'LT' : fingers[nextChar.toLowerCase()] || '');
+  // Physical position decides the finger: the character is resolved against
+  // the active layout's key positions (Cyrillic always maps to JCUKEN), so
+  // A/Ф light up the left pinky, S/Ы the left ring, and so on. Unknown keys
+  // yield '' and leave both hands un-highlighted.
+  let activeFinger = $derived(fingerForKey(nextChar, keyboardLayout, isRussian));
 </script>
 
 <div class="hand-guide" aria-live="polite">
@@ -26,11 +30,16 @@
       </defs>
       <use href="#left-hand-shape" class="hand-fill" />
       <g clip-path="url(#left-hand-clip)">
-        <path class="highlight" class:active={activeFinger === 'LP'} d="M15 55h43v70H15Z" />
-        <path class="highlight" class:active={activeFinger === 'LR'} d="M53 18h35v104H53Z" />
-        <path class="highlight" class:active={activeFinger === 'LM'} d="M84-2h38v124H84Z" />
-        <path class="highlight" class:active={activeFinger === 'LI'} d="M117 13h38v112h-38Z" />
-        <path class="highlight" class:active={activeFinger === 'LT'} d="m142 57 51-11 5 77-46 30-19-31Z" />
+        <!-- Highlight bands: x-ranges are bounded by the inter-finger valleys
+             measured from the rendered hand path; bottoms extend to the
+             finger knuckle lines (staggered: pinky 80, ring 94, middle 98,
+             index 92, thumb 88) — the full finger fills, the palm stays
+             untouched. -->
+        <path class="highlight" class:active={activeFinger === 'LP'} d="M20 40h36v40H20Z" />
+        <path class="highlight" class:active={activeFinger === 'LR'} d="M56 14h34v80H56Z" />
+        <path class="highlight" class:active={activeFinger === 'LM'} d="M90 -4h32v102H90Z" />
+        <path class="highlight" class:active={activeFinger === 'LI'} d="M122 10h30v82H122Z" />
+        <path class="highlight" class:active={activeFinger === 'LT'} d="M150 44h48v44H150Z" />
       </g>
       <use href="#left-hand-shape" class="hand-outline" />
       <path class="palm-line" d="M54 145c22 7 58 7 82-1M139 116c-13 5-22 13-27 25" />
@@ -44,11 +53,11 @@
       <g transform="translate(200 0) scale(-1 1)">
         <use href="#right-hand-shape" class="hand-fill" />
         <g clip-path="url(#right-hand-clip)">
-          <path class="highlight" class:active={activeFinger === 'RP'} d="M15 55h43v70H15Z" />
-          <path class="highlight" class:active={activeFinger === 'RR'} d="M53 18h35v104H53Z" />
-          <path class="highlight" class:active={activeFinger === 'RM'} d="M84-2h38v124H84Z" />
-          <path class="highlight" class:active={activeFinger === 'RI'} d="M117 13h38v112h-38Z" />
-          <path class="highlight" class:active={activeFinger === 'RT'} d="m142 57 51-11 5 77-46 30-19-31Z" />
+          <path class="highlight" class:active={activeFinger === 'RP'} d="M20 40h36v40H20Z" />
+          <path class="highlight" class:active={activeFinger === 'RR'} d="M56 14h34v80H56Z" />
+          <path class="highlight" class:active={activeFinger === 'RM'} d="M90 -4h32v102H90Z" />
+          <path class="highlight" class:active={activeFinger === 'RI'} d="M122 10h30v82H122Z" />
+          <path class="highlight" class:active={activeFinger === 'RT'} d="M150 44h48v44H150Z" />
         </g>
         <use href="#right-hand-shape" class="hand-outline" />
         <path class="palm-line" d="M54 145c22 7 58 7 82-1M139 116c-13 5-22 13-27 25" />

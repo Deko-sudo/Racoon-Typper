@@ -26,6 +26,10 @@ pub struct TestRow {
     pub graph_data: Option<String>,
     pub is_pb: bool,
     pub tags: String,
+    /// Существует ли replay для этого теста. Заполняется только при выборке через
+    /// `SELECT_HISTORY_COLS` (history/best/detail). Для путей с `SELECT_TEST_COLS`
+    /// остаётся `false` — но `has_replay` нужен преимущественно в history-списке.
+    pub has_replay: bool,
 }
 
 impl From<TestRow> for TestSummary {
@@ -44,7 +48,7 @@ impl From<TestRow> for TestSummary {
             consistency: row.consistency,
             duration_ms: row.duration_ms as u64,
             is_pb: row.is_pb,
-            has_replay: false,
+            has_replay: row.has_replay,
         }
     }
 }

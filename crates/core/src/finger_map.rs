@@ -1,6 +1,7 @@
 //! Finger mapping — какая клавиша каким пальцем нажимается.
-//! QWERTY и JCUKEN раскладки.
+//! QWERTY, JCUKEN и Dvorak раскладки.
 
+use racoon_domain::keyboard::KeyboardLayout;
 use serde::{Deserialize, Serialize};
 
 /// Палец.
@@ -79,7 +80,59 @@ pub fn finger_for_key_jcuken(ch: char) -> Finger {
     }
 }
 
+/// Сопоставление клавиша → палец для Dvorak.
+///
+/// Dvorak переставляет символы, но физические позиции (а значит и пальцы)
+/// те же, что в QWERTY. Физическая раскладка Dvorak:
+///   top:    `' , . p y` | `f g c r l`
+///   home:   `a o e u i` | `d h t n s`
+///   bottom: `; q j k x` | `b m w v z`
+///   nums:   `1 2 3 4 5` | `6 7 8 9 0`
+pub fn finger_for_key_dvorak(ch: char) -> Finger {
+    match ch.to_ascii_lowercase() {
+        // Left Pinky: 1, '(top), a(home), ;(bottom)
+        '\'' | ';' | 'a' | '1' => Finger::LeftPinky,
+        // Left Ring: 2, ,(top), o(home), q(bottom)
+        ',' | 'o' | 'q' | '2' => Finger::LeftRing,
+        // Left Middle: 3, .(top), e(home), j(bottom)
+        '.' | 'e' | 'j' | '3' => Finger::LeftMiddle,
+        // Left Index: 4,5, p&y(top), u&i(home), k&x(bottom)
+        'p' | 'y' | 'u' | 'i' | 'k' | 'x' | '4' | '5' => Finger::LeftIndex,
+        // Right Index: 6,7, f&g(top), d&h(home), b&m(bottom)
+        'f' | 'g' | 'd' | 'h' | 'b' | 'm' | '6' | '7' => Finger::RightIndex,
+        // Right Middle: 8, c(top), t(home), w(bottom)
+        'c' | 't' | 'w' | '8' => Finger::RightMiddle,
+        // Right Ring: 9, r(top), n(home), v(bottom)
+        'r' | 'n' | 'v' | '9' => Finger::RightRing,
+        // Right Pinky: 0,-,=,/, l(top-end), s(home-end), z(bottom-end)
+        'l' | 's' | 'z' | '/' | '=' | '-' | '0' => Finger::RightPinky,
+        ' ' => Finger::RightThumb,
+        _ => Finger::LeftPinky,
+    }
+}
+
 /// Возвращает палец для символа в зависимости от раскладки.
+///
+/// Принимает явный [`KeyboardLayout`] — предпочтительный API. Для русского
+/// автоматически выбирается JCUKEN-карта, независимо от layout, если символ
+/// кириллический.
+pub fn finger_for_char_with_layout(ch: char, layout: KeyboardLayout) -> Finger {
+    // Кириллические символы всегда обслуживаются JCUKEN-картой.
+    if "абвгдеёжзийклмнопрстуфхцчшщъыьэюя".contains(ch.to_lowercase().next().unwrap_or(' '))
+    {
+        return finger_for_key_jcuken(ch);
+    }
+    match layout {
+        KeyboardLayout::Qwerty => finger_for_key_qwerty(ch),
+        KeyboardLayout::Jcuken => finger_for_key_jcuken(ch),
+        KeyboardLayout::Dvorak => finger_for_key_dvorak(ch),
+    }
+}
+
+/// Возвращает палец для символа (legacy API по `is_russian`).
+///
+/// Сохраняет обратную совместимость: вызовы без явного layout по-прежнему
+/// работают. Для небуквенных и латинских символов всегда используется QWERTY.
 pub fn finger_for_char(ch: char, is_russian: bool) -> Finger {
     if is_russian {
         // Проверяем, русский ли символ
@@ -100,6 +153,9 @@ pub const QWERTY_HOME_ROW: &[char] = &['a', 's', 'd', 'f', 'g', 'h', 'j', 'k', '
 /// Home Row клавиши для JCUKEN.
 pub const JCUKEN_HOME_ROW: &[char] = &['ф', 'ы', 'в', 'а', 'п', 'о', 'л', 'д', 'ж', 'э'];
 
+/// Home Row клавиши для Dvorak: `a o e u i d h t n s`.
+pub const DVORAK_HOME_ROW: &[char] = &['a', 'o', 'e', 'u', 'i', 'd', 'h', 't', 'n', 's'];
+
 /// Проверяет, находится ли символ на Home Row.
 pub fn is_home_row(ch: char, is_russian: bool) -> bool {
     let lower = ch.to_lowercase().next().unwrap_or(ch);
@@ -107,6 +163,18 @@ pub fn is_home_row(ch: char, is_russian: bool) -> bool {
         JCUKEN_HOME_ROW.contains(&lower)
     } else {
         QWERTY_HOME_ROW.contains(&lower)
+    }
+}
+
+/// Проверяет, находится ли символ на Home Row (layout-aware).
+pub fn is_home_row_with_layout(ch: char, layout: KeyboardLayout) -> bool {
+    let lower = ch.to_lowercase().next().unwrap_or(ch);
+    if "абвгдеёжзийклмнопрстуфхцчшщъыьэюя".contains(lower) {
+        return JCUKEN_HOME_ROW.contains(&lower);
+    }
+    match layout {
+        KeyboardLayout::Dvorak => DVORAK_HOME_ROW.contains(&lower),
+        _ => QWERTY_HOME_ROW.contains(&lower),
     }
 }
 
@@ -122,6 +190,13 @@ pub const JCUKEN_ROWS: &[&[&str]] = &[
     &["й", "ц", "у", "к", "е", "н", "г", "ш", "щ", "з", "х", "ъ"],
     &["ф", "ы", "в", "а", "п", "р", "о", "л", "д", "ж", "э"],
     &["я", "ч", "с", "м", "и", "т", "ь", "б", "ю"],
+];
+
+/// Dvorak строки для отображения клавиатуры.
+pub const DVORAK_ROWS: &[&[&str]] = &[
+    &["'", ",", ".", "p", "y", "f", "g", "c", "r", "l"],
+    &["a", "o", "e", "u", "i", "d", "h", "t", "n", "s"],
+    &[";", "q", "j", "k", "x", "b", "m", "w", "v", "z"],
 ];
 
 #[cfg(test)]
@@ -181,6 +256,71 @@ mod tests {
         assert_eq!(finger_for_key_jcuken('в'), Finger::LeftMiddle);
         assert_eq!(finger_for_key_jcuken('а'), Finger::LeftIndex);
         assert_eq!(finger_for_key_jcuken('о'), Finger::RightIndex);
+    }
+
+    #[test]
+    fn finger_for_dvorak_home_row() {
+        // Dvorak home row: a o e u i d h t n s
+        assert_eq!(finger_for_key_dvorak('a'), Finger::LeftPinky);
+        assert_eq!(finger_for_key_dvorak('o'), Finger::LeftRing);
+        assert_eq!(finger_for_key_dvorak('e'), Finger::LeftMiddle);
+        assert_eq!(finger_for_key_dvorak('u'), Finger::LeftIndex);
+        assert_eq!(finger_for_key_dvorak('d'), Finger::RightIndex);
+        assert_eq!(finger_for_key_dvorak('h'), Finger::RightIndex);
+        assert_eq!(finger_for_key_dvorak('t'), Finger::RightMiddle);
+        assert_eq!(finger_for_key_dvorak('n'), Finger::RightRing);
+        assert_eq!(finger_for_key_dvorak('s'), Finger::RightPinky);
+    }
+
+    #[test]
+    fn finger_for_dvorak_top_row() {
+        // Dvorak top row: ' , . p y f g c r l
+        assert_eq!(finger_for_key_dvorak('p'), Finger::LeftIndex);
+        assert_eq!(finger_for_key_dvorak('y'), Finger::LeftIndex);
+        assert_eq!(finger_for_key_dvorak('f'), Finger::RightIndex);
+        assert_eq!(finger_for_key_dvorak('g'), Finger::RightIndex);
+        assert_eq!(finger_for_key_dvorak('c'), Finger::RightMiddle);
+        assert_eq!(finger_for_key_dvorak('r'), Finger::RightRing);
+        assert_eq!(finger_for_key_dvorak('l'), Finger::RightPinky);
+    }
+
+    #[test]
+    fn finger_for_dvorak_bottom_row() {
+        // Dvorak bottom row: ; q j k x b m w v z
+        assert_eq!(finger_for_key_dvorak(';'), Finger::LeftPinky);
+        assert_eq!(finger_for_key_dvorak('q'), Finger::LeftRing);
+        assert_eq!(finger_for_key_dvorak('j'), Finger::LeftMiddle);
+        assert_eq!(finger_for_key_dvorak('k'), Finger::LeftIndex);
+        assert_eq!(finger_for_key_dvorak('b'), Finger::RightIndex);
+        assert_eq!(finger_for_key_dvorak('w'), Finger::RightMiddle);
+        assert_eq!(finger_for_key_dvorak('v'), Finger::RightRing);
+        assert_eq!(finger_for_key_dvorak('z'), Finger::RightPinky);
+    }
+
+    #[test]
+    fn finger_for_char_with_dvorak_layout() {
+        assert_eq!(
+            finger_for_char_with_layout('a', KeyboardLayout::Dvorak),
+            Finger::LeftPinky
+        );
+        assert_eq!(
+            finger_for_char_with_layout('s', KeyboardLayout::Dvorak),
+            Finger::RightPinky
+        );
+        // Cyrillic always uses JCUKEN even under Dvorak layout
+        assert_eq!(
+            finger_for_char_with_layout('ф', KeyboardLayout::Dvorak),
+            Finger::LeftPinky
+        );
+    }
+
+    #[test]
+    fn is_home_row_dvorak() {
+        assert!(is_home_row_with_layout('a', KeyboardLayout::Dvorak));
+        assert!(is_home_row_with_layout('o', KeyboardLayout::Dvorak));
+        assert!(is_home_row_with_layout('s', KeyboardLayout::Dvorak));
+        assert!(!is_home_row_with_layout('q', KeyboardLayout::Dvorak));
+        assert!(!is_home_row_with_layout('z', KeyboardLayout::Dvorak));
     }
 
     #[test]

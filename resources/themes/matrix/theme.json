@@ -1,0 +1,20 @@
+{
+  "name": "matrix",
+  "display_name": "Matrix",
+  "description": "Pure digital rain green-on-black.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Terminal",
+  "is_dark": true,
+  "preview": {
+    "background": "#000000",
+    "surface": "#0a0f0a",
+    "text": "#33ff33",
+    "accent": "#00ff00",
+    "correct": "#22dd22",
+    "incorrect": "#ff3333",
+    "caret": "#00ff41"
+  }
+}

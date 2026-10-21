@@ -1,0 +1,20 @@
+{
+  "name": "dracula",
+  "display_name": "Dracula",
+  "description": "Classic vampire dark with neon pink-cyan.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Pop",
+  "is_dark": true,
+  "preview": {
+    "background": "#282a36",
+    "surface": "#21222c",
+    "text": "#f8f8f2",
+    "accent": "#bd93f9",
+    "correct": "#50fa7b",
+    "incorrect": "#ff5555",
+    "caret": "#f8f8f2"
+  }
+}

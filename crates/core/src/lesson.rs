@@ -136,11 +136,19 @@ impl LessonSession {
     }
 
     /// Завершает урок и возвращает результат.
+    ///
+    /// `accuracy` и `incorrect_chars` считаются по **первым попыткам** каждого
+    /// символа (first-attempt): исправленная backspace'ом ошибка остаётся
+    /// ошибкой. Раньше считалось по финальным статусам — caret не двигается
+    /// мимо ошибки, поэтому к завершению урока incorrect всегда был 0 и
+    /// accuracy всегда 100%, делая порог прохождения (≥90%) мёртвым кодом.
     pub fn complete(&self) -> LessonResult {
         let elapsed = self.buffer.elapsed_ms();
         let correct = self.buffer.correct_chars();
-        let incorrect = self.buffer.incorrect_chars();
-        let total = correct + incorrect;
+        // First-attempt данные: каждая позиция считается один раз.
+        let first_correct = crate::stats::HeatmapBuilder::count_first_correct(&self.buffer);
+        let total_first = crate::stats::HeatmapBuilder::count_first_attempts(&self.buffer);
+        let incorrect = total_first.saturating_sub(first_correct);
 
         let wpm = if elapsed > 0 {
             (correct as f64 / 5.0) / (elapsed as f64 / 60000.0)
@@ -148,8 +156,8 @@ impl LessonSession {
             0.0
         };
 
-        let accuracy = if total > 0 {
-            (correct as f64 / total as f64) * 100.0
+        let accuracy = if total_first > 0 {
+            (first_correct as f64 / total_first as f64) * 100.0
         } else {
             100.0
         };
@@ -254,8 +262,20 @@ impl LessonResult {
 
     /// Проверяет, пройден ли урок (accuracy >= 90%).
     pub fn is_passed(&self, min_wpm: f64) -> bool {
-        self.accuracy >= 90.0 && self.wpm >= min_wpm
+        self.accuracy >= LESSON_PASS_MIN_ACCURACY && self.wpm >= min_wpm
     }
+}
+
+/// Порог прохождения урока: минимальная точность (first-attempt, %).
+/// Используется и core-предикатами, и persistence-гейтом (единая политика).
+pub const LESSON_PASS_MIN_ACCURACY: f64 = 90.0;
+
+/// Порог прохождения урока по умолчанию: минимальный WPM.
+pub const LESSON_PASS_MIN_WPM: f64 = 20.0;
+
+/// Пройден ли урок с учётом порогов (точность + WPM).
+pub fn lesson_is_passed(accuracy: f64, wpm: f64) -> bool {
+    accuracy >= LESSON_PASS_MIN_ACCURACY && wpm >= LESSON_PASS_MIN_WPM
 }
 
 /// Логика разблокировки следующего урока.
@@ -265,7 +285,7 @@ pub fn unlock_next_lesson(
     wpm: f64,
     min_wpm: f64,
 ) -> bool {
-    accuracy >= 90.0 && wpm >= min_wpm
+    accuracy >= LESSON_PASS_MIN_ACCURACY && wpm >= min_wpm
 }
 
 #[cfg(test)]
@@ -441,9 +461,11 @@ mod tests {
         s.process_key('o', 50); // pos 4
         let result = s.complete();
         assert_eq!(result.correct_chars, 5);
-        // incorrect_chars counts current Incorrect status, which is 0 after correction
-        // But first_typed was 'x' — the heatmap would show it
-        assert_eq!(result.incorrect_chars, 0); // corrected before advancing
+        // First-attempt семантика: первая попытка на pos 1 была 'x' (неверно),
+        // исправлена той же клавишей 'e' без backspace — ошибка остаётся.
+        assert_eq!(result.incorrect_chars, 1);
+        // 4/5 первых попыток верны = 80% — ниже порога прохождения 90%.
+        assert!((result.accuracy - 80.0).abs() < 0.01);
     }
 
     #[test]

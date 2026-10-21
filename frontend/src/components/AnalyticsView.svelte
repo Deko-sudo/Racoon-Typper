@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import * as ipc from '../lib/api/ipc';
+  import Icon from './Icon.svelte';
   import { t } from '../lib/i18n';
   import type { Achievement, ConsistencyReport, Insight } from '../lib/types/index';
 
@@ -9,8 +10,9 @@
   let achievements = $state<Achievement[]>([]);
   let insights = $state<Insight[]>([]);
   let consistency = $state<ConsistencyReport | null>(null);
-  let exportFormat = $state<'json' | 'csv'>('json');
+  let exportFormat = $state<'json' | 'csv' | 'markdown'>('json');
   let exportResult = $state('');
+  let reportResult = $state('');
   let errorMsg = $state('');
 
   async function loadData() {
@@ -33,13 +35,48 @@
 
   function downloadExport() {
     if (!exportResult) return;
-    const blob = new Blob([exportResult], { type: 'text/plain' });
+    const isMarkdown = exportFormat === 'markdown';
+    const blob = new Blob([exportResult], { type: isMarkdown ? 'text/markdown' : 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `racoon-typper-export.${exportFormat}`;
+    a.download = `racoon-typper-export.${isMarkdown ? 'md' : exportFormat}`;
     a.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function doReport() {
+    try {
+      reportResult = await ipc.exportReport();
+    } catch (e) {
+      errorMsg = `Report error: ${e}`;
+    }
+  }
+
+  function downloadReport() {
+    if (!reportResult) return;
+    const blob = new Blob([reportResult], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `racoon-typper-report-${new Date().toISOString().slice(0, 10)}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function downloadHeatmapPng() {
+    try {
+      const bytes = await ipc.exportHeatmapPng(50);
+      const blob = new Blob([new Uint8Array(bytes)], { type: 'image/png' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `racoon-typper-heatmap-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      errorMsg = `Heatmap export error: ${e}`;
+    }
   }
 
   onMount(loadData);
@@ -87,7 +124,9 @@
       <div class="achievements-grid">
         {#each achievements as ach}
           <div class="achievement-card" class:locked={!ach.unlocked}>
-            <span class="ach-icon">{ach.unlocked ? '🏆' : '🔒'}</span>
+            <span class="ach-icon">
+              {#if ach.unlocked}<Icon name="trophy" size="1.5rem" />{:else}<Icon name="lock" size="1.5rem" />{/if}
+            </span>
             <span class="ach-name">{ach.name}</span>
             <span class="ach-desc">{ach.description}</span>
           </div>
@@ -104,12 +143,21 @@
       <select bind:value={exportFormat}>
         <option value="json">JSON</option>
         <option value="csv">CSV</option>
+        <option value="markdown">{t(uiLang, 'analytics.export_markdown')}</option>
       </select>
       <button onclick={doExport}>{t(uiLang, 'analytics.generate')}</button>
       {#if exportResult}<button onclick={downloadExport}>{t(uiLang, 'analytics.download')}</button>{/if}
     </div>
     {#if exportResult}
       <pre class="export-preview">{exportResult.substring(0, 500)}{exportResult.length > 500 ? '...' : ''}</pre>
+    {/if}
+    <div class="export-controls">
+      <button onclick={doReport}>Markdown report</button>
+      {#if reportResult}<button onclick={downloadReport}>Download .md</button>{/if}
+      <button onclick={downloadHeatmapPng}>Heatmap PNG</button>
+    </div>
+    {#if reportResult}
+      <pre class="export-preview">{reportResult.substring(0, 500)}{reportResult.length > 500 ? '...' : ''}</pre>
     {/if}
   </div>
 </div>
@@ -131,7 +179,8 @@
   .achievements-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 0.5rem; }
   .achievement-card { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; padding: 1rem; background: var(--bg-sub); border-radius: 6px; border: 1px solid transparent; }
   .achievement-card.locked { opacity: 0.4; }
-  .ach-icon { font-size: 1.5rem; }
+  .ach-icon { display: flex; align-items: center; justify-content: center; height: 1.75rem; color: var(--main); }
+  .achievement-card.locked .ach-icon { color: var(--sub); }
   .ach-name { font-size: 0.75rem; color: var(--main); font-weight: bold; text-align: center; }
   .ach-desc { font-size: 0.65rem; color: var(--sub); text-align: center; }
   .export-section { margin-top: 1.5rem; }

@@ -197,6 +197,12 @@ impl From<racoon_application::SessionLifecycleError> for AppError {
     }
 }
 
+impl From<racoon_application::ReportingError> for AppError {
+    fn from(error: racoon_application::ReportingError) -> Self {
+        AppError::Internal(format!("reporting: {error}"))
+    }
+}
+
 impl From<racoon_application::SessionStartError<AppError>> for AppError {
     fn from(error: racoon_application::SessionStartError<AppError>) -> Self {
         match error {

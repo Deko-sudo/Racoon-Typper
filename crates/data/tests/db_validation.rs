@@ -475,9 +475,17 @@ fn stress_streak_calculation_365_days() {
 #[test]
 fn stress_achievements_check() {
     let start = std::time::Instant::now();
-    let achievements = racoon_core::analytics::check_achievements(100, 80.0, 98.0, 30, 30, 20);
+    let achievements = racoon_core::analytics::check_achievements(
+        100,
+        80.0,
+        98.0,
+        30,
+        30,
+        20,
+        "2026-01-01T00:00:00Z".to_string(),
+    );
     let check_time = start.elapsed();
-    assert_eq!(achievements.len(), 15);
+    assert_eq!(achievements.len(), 52);
     assert!(
         check_time.as_millis() < 10,
         "Achievements check took {:?}",

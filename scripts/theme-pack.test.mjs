@@ -20,51 +20,56 @@ const legacyAliases = new Map([
 ]);
 
 const expectedThemes = new Map([
-  ['racoon_graphite', {
-    displayName: 'Racoon Graphite',
-    description: 'Calm graphite surfaces with soft silver contrast.',
-    isDark: true,
-    category: 'Racoon',
-  }],
-  ['racoon_silver', {
-    displayName: 'Racoon Silver',
-    description: 'Neutral daylight theme with warm silver surfaces.',
-    isDark: false,
-    category: 'Racoon',
-  }],
-  ['racoon_warm', {
-    displayName: 'Racoon Warm',
-    description: 'Warm charcoal surfaces with a restrained copper accent.',
-    isDark: true,
-    category: 'Racoon',
-  }],
-  ['racoon_high_contrast', {
-    displayName: 'Racoon High Contrast',
-    description: 'Maximum contrast and clearly separated typing states.',
-    isDark: true,
-    category: 'Accessibility',
-  }],
-  ['midnight_ink', { displayName: 'Midnight Ink', description: 'Deep navy-black surfaces for long nighttime sessions.', isDark: true, category: 'Dark' }],
-  ['arctic_slate', { displayName: 'Arctic Slate', description: 'Cold neutral gray with quiet icy-blue accents.', isDark: true, category: 'Dark' }],
-  ['racoon_forest', { displayName: 'Racoon Forest', description: 'Deep forest surfaces with muted natural highlights.', isDark: true, category: 'Nature' }],
-  ['moss', { displayName: 'Moss', description: 'Relaxed olive and moss tones for focused practice.', isDark: true, category: 'Nature' }],
-  ['coffee', { displayName: 'Coffee', description: 'Dark coffee, walnut, and cream with a soft copper accent.', isDark: true, category: 'Warm' }],
-  ['paper', { displayName: 'Paper', description: 'Soft reading-paper daylight without a pure-white canvas.', isDark: false, category: 'Light' }],
-  ['sandstone', { displayName: 'Sandstone', description: 'Subtle sandy daylight with warm, readable contrast.', isDark: false, category: 'Light' }],
-  ['mist', { displayName: 'Mist', description: 'Cool light gray with a restrained neutral-blue accent.', isDark: false, category: 'Light' }],
-  ['lavender_dusk', { displayName: 'Lavender Dusk', description: 'Elegant desaturated purple for quiet evening sessions.', isDark: true, category: 'Dark' }],
-  ['plum', { displayName: 'Plum', description: 'Warm dark plum with a restrained rose accent.', isDark: true, category: 'Dark' }],
-  ['ocean', { displayName: 'Ocean', description: 'Dark muted ocean and teal without a cyberpunk glow.', isDark: true, category: 'Dark' }],
-  ['deep_sea', { displayName: 'Deep Sea', description: 'Very dark blue-green low-light palette.', isDark: true, category: 'Dark' }],
-  ['ember', { displayName: 'Ember', description: 'Charcoal with restrained ember-red and copper accents.', isDark: true, category: 'Warm' }],
-  ['burgundy', { displayName: 'Burgundy', description: 'Sophisticated subdued wine red with ivory text.', isDark: true, category: 'Warm' }],
+  ['abyss', { displayName: 'Abyss', description: 'Near-black navy with a distant starlight-blue accent.', isDark: true, category: 'Dark' }],
   ['amber_terminal', { displayName: 'Amber Terminal', description: 'Modern low-glare amber terminal reinterpretation.', isDark: true, category: 'Terminal' }],
-  ['green_terminal', { displayName: 'Green Terminal', description: 'Modern low-glare green terminal palette.', isDark: true, category: 'Terminal' }],
-  ['steel_blue', { displayName: 'Steel Blue', description: 'Industrial steel and muted blue for metallic focus.', isDark: true, category: 'Dark' }],
+  ['arctic_slate', { displayName: 'Arctic Slate', description: 'Cold neutral gray with quiet icy-blue accents.', isDark: true, category: 'Dark' }],
+  ['burgundy', { displayName: 'Burgundy', description: 'Sophisticated subdued wine red with ivory text.', isDark: true, category: 'Warm' }],
   ['carbon', { displayName: 'Carbon', description: 'Near-monochrome dark theme, flatter than Graphite.', isDark: true, category: 'Dark' }],
-  ['moonlight', { displayName: 'Moonlight', description: 'Soft blue-gray nighttime palette for low eye strain.', isDark: true, category: 'Dark' }],
+  ['catppuccin_mocha', { displayName: 'Catppuccin Mocha', description: 'Soothing pastel dark with warm lavender.', isDark: true, category: 'Pastel' }],
+  ['chestnut', { displayName: 'Chestnut', description: 'Warm brown surfaces with a soft golden accent.', isDark: true, category: 'Warm' }],
+  ['coffee', { displayName: 'Coffee', description: 'Dark coffee, walnut, and cream with a soft copper accent.', isDark: true, category: 'Warm' }],
+  ['coral', { displayName: 'Coral', description: 'Warm coral reef with soft orange-pink accents.', isDark: false, category: 'Warm' }],
+  ['dark', { displayName: 'Dark', description: 'Minimal neutral dark theme.', isDark: true, category: 'Dark' }],
   ['dawn', { displayName: 'Dawn', description: 'Soft warm daylight with a muted sunrise accent.', isDark: false, category: 'Light' }],
+  ['deep_sea', { displayName: 'Deep Sea', description: 'Very dark blue-green low-light palette.', isDark: true, category: 'Dark' }],
+  ['dracula', { displayName: 'Dracula', description: 'Classic vampire dark with neon pink-cyan.', isDark: true, category: 'Pop' }],
+  ['ember', { displayName: 'Ember', description: 'Charcoal with restrained ember-red and copper accents.', isDark: true, category: 'Warm' }],
+  ['foamy', { displayName: 'Foamy', description: 'Tidal seafoam green light palette.', isDark: false, category: 'Light' }],
+  ['glacier', { displayName: 'Glacier', description: 'Cool pale ice-blue daylight with crisp contrast.', isDark: false, category: 'Light' }],
+  ['green_terminal', { displayName: 'Green Terminal', description: 'Modern low-glare green terminal palette.', isDark: true, category: 'Terminal' }],
+  ['gruvbox_dark', { displayName: 'Gruvbox Dark', description: 'Retro groove dark with amber and olive.', isDark: true, category: 'Retro' }],
+  ['lavender_dusk', { displayName: 'Lavender Dusk', description: 'Elegant desaturated purple for quiet evening sessions.', isDark: true, category: 'Dark' }],
+  ['light', { displayName: 'Light', description: 'Minimal neutral light theme.', isDark: false, category: 'Light' }],
+  ['lilac', { displayName: 'Lilac', description: 'Soft purple-gray light with floral undertones.', isDark: false, category: 'Light' }],
+  ['matrix', { displayName: 'Matrix', description: 'Pure digital rain green-on-black.', isDark: true, category: 'Terminal' }],
+  ['midnight_ink', { displayName: 'Midnight Ink', description: 'Deep navy-black surfaces for long nighttime sessions.', isDark: true, category: 'Dark' }],
+  ['mint_frost', { displayName: 'Mint Frost', description: 'Light mint-green with cool refreshing tones.', isDark: false, category: 'Light' }],
+  ['mist', { displayName: 'Mist', description: 'Cool light gray with a restrained neutral-blue accent.', isDark: false, category: 'Light' }],
+  ['moonlight', { displayName: 'Moonlight', description: 'Soft blue-gray nighttime palette for low eye strain.', isDark: true, category: 'Dark' }],
+  ['moss', { displayName: 'Moss', description: 'Relaxed olive and moss tones for focused practice.', isDark: true, category: 'Nature' }],
+  ['nautilus', { displayName: 'Nautilus', description: 'Deep ocean shell with pearlescent blue-green.', isDark: true, category: 'Dark' }],
+  ['nord', { displayName: 'Nord', description: 'Arctic north-bluish color palette.', isDark: true, category: 'Cool' }],
+  ['obsidian', { displayName: 'Obsidian', description: 'Pure dark glass with electric cyan accent.', isDark: true, category: 'Dark' }],
+  ['ocean', { displayName: 'Ocean', description: 'Dark muted ocean and teal without a cyberpunk glow.', isDark: true, category: 'Dark' }],
+  ['paper', { displayName: 'Paper', description: 'Soft reading-paper daylight without a pure-white canvas.', isDark: false, category: 'Light' }],
+  ['plum', { displayName: 'Plum', description: 'Warm dark plum with a restrained rose accent.', isDark: true, category: 'Dark' }],
+  ['porcelain', { displayName: 'Porcelain', description: 'Clean bright white with soft blue-gray accents.', isDark: false, category: 'Light' }],
+  ['racoon_forest', { displayName: 'Racoon Forest', description: 'Deep forest surfaces with muted natural highlights.', isDark: true, category: 'Nature' }],
+  ['racoon_graphite', { displayName: 'Racoon Graphite', description: 'Calm graphite surfaces with soft silver contrast.', isDark: true, category: 'Racoon' }],
+  ['racoon_high_contrast', { displayName: 'Racoon High Contrast', description: 'Maximum contrast and clearly separated typing states.', isDark: true, category: 'Accessibility' }],
+  ['racoon_silver', { displayName: 'Racoon Silver', description: 'Neutral daylight theme with warm silver surfaces.', isDark: false, category: 'Racoon' }],
+  ['racoon_warm', { displayName: 'Racoon Warm', description: 'Warm charcoal surfaces with a restrained copper accent.', isDark: true, category: 'Racoon' }],
+  ['rose_pine', { displayName: 'Rosé Pine', description: 'Soho vibes with muted rose and iris.', isDark: true, category: 'Pastel' }],
   ['sage', { displayName: 'Sage', description: 'Quiet desaturated green daylight for professional practice.', isDark: false, category: 'Nature' }],
+  ['sandstone', { displayName: 'Sandstone', description: 'Subtle sandy daylight with warm, readable contrast.', isDark: false, category: 'Light' }],
+  ['serika', { displayName: 'Serika', description: 'Warm beige with dark text and golden accent.', isDark: false, category: 'Light' }],
+  ['serika_dark', { displayName: 'Serika Dark', description: 'Dark variant of serika with golden accent.', isDark: true, category: 'Dark' }],
+  ['serika_light', { displayName: 'Serika Light', description: 'Bright daylight variant of serika.', isDark: false, category: 'Light' }],
+  ['solar_flare', { displayName: 'Solar Flare', description: 'Warm dark with golden-amber radiance.', isDark: true, category: 'Warm' }],
+  ['steel_blue', { displayName: 'Steel Blue', description: 'Industrial steel and muted blue for metallic focus.', isDark: true, category: 'Dark' }],
+  ['terra', { displayName: 'Terra', description: 'Earthen clay and ochre with warm stone surfaces.', isDark: true, category: 'Warm' }],
+  ['toxic', { displayName: 'Toxic', description: 'Deep black with neon green terminal accent.', isDark: true, category: 'Dark' }],
+  ['volcanic', { displayName: 'Volcanic', description: 'Black basalt with molten orange-red fissures.', isDark: true, category: 'Warm' }],
 ]);
 
 const requiredTokens = [
@@ -206,7 +211,7 @@ function tokenColor(tokens, name) {
   return value;
 }
 
-test('the built-in catalog contains exactly the 25 approved Racoon themes', async () => {
+test('the built-in catalog contains exactly the 50 approved Racoon themes', async () => {
   const directories = await loadThemeDirectories();
   assert.deepEqual(directories, [...expectedThemes.keys()].sort());
 
@@ -225,7 +230,7 @@ test('the built-in catalog contains exactly the 25 approved Racoon themes', asyn
     assert.equal(JSON.stringify(metadata).includes('https://'), false);
   }
   assert.equal(new Set(metadataIdentifiers).size, expectedThemes.size);
-  assert.equal(expectedThemes.size, 25);
+  assert.equal(expectedThemes.size, 50);
 });
 
 test('theme resources and static Rust registries stay one-to-one', async () => {
@@ -247,14 +252,14 @@ test('theme resources and static Rust registries stay one-to-one', async () => {
   const cssRegistryIdentifiers = cssIdentifiers.map(({ identifier }) => identifier);
   const cssResourceIdentifiers = cssIdentifiers.map(({ resource }) => resource);
 
-  assert.equal(directories.length, 25);
-  assert.equal(new Set(directories).size, 25);
+  assert.equal(directories.length, 50);
+  assert.equal(new Set(directories).size, 50);
   assert.deepEqual(manifestIdentifiers.sort(), directories);
   assert.deepEqual([...new Set(catalogIdentifiers)].sort(), directories);
-  assert.equal(catalogIdentifiers.length, 25);
+  assert.equal(catalogIdentifiers.length, 50);
   assert.deepEqual([...new Set(cssRegistryIdentifiers)].sort(), directories);
   assert.deepEqual([...new Set(cssResourceIdentifiers)].sort(), directories);
-  assert.equal(cssIdentifiers.length, 25);
+  assert.equal(cssIdentifiers.length, 50);
   assert.deepEqual(cssRegistryIdentifiers, cssResourceIdentifiers);
 
   for (const catalogEntry of catalogEntries) {
@@ -302,6 +307,7 @@ test('solid semantic colors meet contrast targets on their actual surfaces', asy
     const { tokens } = await loadTheme(identifier);
     const background = tokenColor(tokens, '--color-app-background');
     const surface = tokenColor(tokens, '--color-surface-primary');
+    const surfaceActive = tokenColor(tokens, '--color-surface-active');
     for (const textToken of ['--color-text-primary', '--color-text-secondary']) {
       assert.ok(contrast(tokenColor(tokens, textToken), background) >= 4.5, `${identifier} ${textToken} must be WCAG AA on the app background`);
       assert.ok(contrast(tokenColor(tokens, textToken), surface) >= 4.5, `${identifier} ${textToken} must be WCAG AA on the primary surface`);
@@ -310,7 +316,7 @@ test('solid semantic colors meet contrast targets on their actual surfaces', asy
     assert.ok(contrast(tokenColor(tokens, '--color-caret'), surface) >= 3, `${identifier} caret must remain visible`);
     assert.ok(contrast(tokenColor(tokens, '--color-focus-ring'), surface) >= 3, `${identifier} focus ring must remain visible on the primary surface`);
     assert.ok(contrast(tokenColor(tokens, '--color-typing-pending'), surface) >= 4.5, `${identifier} pending text must remain readable on the typing surface`);
-    assert.ok(contrast(tokenColor(tokens, '--color-typing-current'), surface) >= 4.5, `${identifier} current character must remain readable`);
+    assert.ok(contrast(tokenColor(tokens, '--color-typing-current'), surfaceActive) >= 4.5, `${identifier} current character must remain readable on the active surface`);
     assert.ok(contrast(tokenColor(tokens, '--color-typing-incorrect'), surface) >= 4.5, `${identifier} incorrect characters must remain immediately visible`);
     assert.ok(contrast(tokenColor(tokens, '--color-accent-text'), tokenColor(tokens, '--color-accent')) >= 4.5, `${identifier} accent foreground must remain readable`);
   }
@@ -368,7 +374,13 @@ test('primary typing surfaces consume semantic typing-state tokens with explicit
       assert.match(source, new RegExp(`\\.char\\.${status}\\s*\\{[^}]*color:\\s*var\\(${token}\\)`), `${filename} must map ${status} to ${token}`);
     }
     assert.match(source, /\.char\.current\.pending\s*\{[^}]*color:\s*var\(--color-typing-current\)/, `${filename} must apply the current token only to pending current characters`);
-    assert.match(source, /\.char\.caret::before\s*\{[^}]*background:\s*var\(--color-caret\)/, `${filename} must use the semantic caret token`);
+    // TestView uses the unified smooth caret element; WeakKeysPanel keeps the
+    // per-char pseudo-element. Both must consume the semantic caret token.
+    assert.match(
+      source,
+      /(?:\.caret-element\s*\{[^}]*background:\s*var\(--color-caret\)|\.char\.caret::before\s*\{[^}]*background:\s*var\(--color-caret\))/,
+      `${filename} must use the semantic caret token`,
+    );
     assert.doesNotMatch(source, /\.char\.backspaced\s*\{[^}]*#[0-9a-f]{3,8}/i, `${filename} must not hardcode a corrected-character color`);
   }
 });

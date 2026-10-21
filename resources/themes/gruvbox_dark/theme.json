@@ -1,0 +1,20 @@
+{
+  "name": "gruvbox_dark",
+  "display_name": "Gruvbox Dark",
+  "description": "Retro groove dark with amber and olive.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Retro",
+  "is_dark": true,
+  "preview": {
+    "background": "#282828",
+    "surface": "#1d2021",
+    "text": "#ebdbb2",
+    "accent": "#fe8019",
+    "correct": "#b8bb26",
+    "incorrect": "#fb4934",
+    "caret": "#ebdbb2"
+  }
+}

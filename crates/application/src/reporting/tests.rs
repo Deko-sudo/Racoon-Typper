@@ -462,6 +462,38 @@ fn replay_pages_are_bounded_but_total_replay_length_is_not() {
 }
 
 #[test]
+fn replay_rejects_has_more_false_when_frames_still_owed() {
+    // The port claims no more frames (`has_more = false`) while `consumed` is
+    // still short of `total`. Frames would be silently dropped without this
+    // invariant, so the use case must reject the contradiction.
+    let frames = (0..5_u64).map(frame).collect::<Vec<_>>();
+    let mut port = FakeHistoryPort::empty();
+    port.replay = Ok(Some(ReplayPageSource::new(frames, false, Some(10))));
+
+    let err = GetTestReplayPage::new(&port)
+        .execute(session_id(SESSION_A), OffsetPagination::new(10, 0).unwrap())
+        .expect_err("has_more=false with frames still owed must be rejected");
+    assert_eq!(err, ReportingError::InvariantViolation);
+}
+
+#[test]
+fn replay_accepts_has_more_false_when_fully_consumed() {
+    // The symmetric valid case: the page reaches exactly `total` and the port
+    // reports no more frames. This pins the boundary the new invariant keeps
+    // valid (consumed == total, has_more == false must pass).
+    let frames = (0..10_u64).map(frame).collect::<Vec<_>>();
+    let mut port = FakeHistoryPort::empty();
+    port.replay = Ok(Some(ReplayPageSource::new(frames, false, Some(10))));
+
+    let page = GetTestReplayPage::new(&port)
+        .execute(session_id(SESSION_A), OffsetPagination::new(10, 0).unwrap())
+        .expect("fully-consumed page with has_more=false is valid");
+    assert_eq!(page.returned(), 10);
+    assert!(!page.has_more());
+    assert_eq!(page.total(), Some(10));
+}
+
+#[test]
 fn replay_distinguishes_optional_absence_from_empty_page_and_rejects_unordered_frames() {
     let absent = FakeHistoryPort::empty();
     assert_eq!(
@@ -566,6 +598,76 @@ fn daily_statistics_stay_sparse_validate_range_and_propagate_port_errors() {
         .expect("empty sparse range")
         .points()
         .is_empty());
+}
+
+#[test]
+fn weekly_summaries_group_iso_weeks_with_weighted_averages_and_empty_weeks() {
+    // 2026-07-16 is a Thursday: the current partial ISO week starts on
+    // 2026-07-13, so a three-week window covers 06-29, 07-06, and 07-13.
+    let port = FakeProgressPort {
+        daily: Ok(vec![
+            daily(day(2026, 7, 1), 10, 50.0, 90.0),
+            DailyStatisticsPoint::new(day(2026, 7, 2), 30, 30_000, 150, 65.0, 60.0, 80.0, 0, true)
+                .unwrap(),
+            DailyStatisticsPoint::new(day(2026, 7, 16), 5, 5_000, 25, 75.0, 70.0, 95.0, 0, false)
+                .unwrap(),
+        ]),
+        ..FakeProgressPort::empty()
+    };
+    let clock = FixedClock(timestamp("2026-07-16T12:00:00Z"));
+
+    let summaries = ListWeeklySummaries::new(&port, &clock).execute(3).unwrap();
+
+    assert_eq!(summaries.len(), 3);
+    let week_starts: Vec<String> = summaries
+        .iter()
+        .map(|week| week.week_start().to_string())
+        .collect();
+    assert_eq!(week_starts, ["2026-06-29", "2026-07-06", "2026-07-13"]);
+
+    // 2026-07-01 (Wednesday) and 2026-07-02 (Thursday) both fall into the
+    // ISO week starting Monday 2026-06-29.
+    assert_eq!(summaries[0].total_tests(), 40);
+    assert_eq!(summaries[0].total_duration_ms(), 40_000);
+    assert!((summaries[0].average_wpm() - 57.5).abs() < f64::EPSILON);
+    assert!((summaries[0].average_accuracy() - 82.5).abs() < f64::EPSILON);
+    assert!((summaries[0].best_wpm() - 65.0).abs() < f64::EPSILON);
+    assert_eq!(summaries[0].days_practiced(), 2);
+    assert_eq!(summaries[0].goal_met_days(), 1);
+
+    assert_eq!(summaries[1].total_tests(), 0);
+    assert_eq!(summaries[1].average_wpm(), 0.0);
+    assert_eq!(summaries[1].days_practiced(), 0);
+
+    assert_eq!(summaries[2].total_tests(), 5);
+    assert_eq!(summaries[2].days_practiced(), 1);
+    assert_eq!(summaries[2].goal_met_days(), 0);
+
+    let requested = port.daily_ranges.borrow()[0];
+    assert_eq!(requested.start().to_string(), "2026-06-29");
+    assert_eq!(requested.end().to_string(), "2026-07-16");
+}
+
+#[test]
+fn weekly_summaries_reject_unbounded_windows_and_propagate_port_errors() {
+    let empty = FakeProgressPort::empty();
+    let clock = FixedClock(timestamp("2026-07-16T12:00:00Z"));
+
+    for invalid in [0_usize, MAX_WEEKLY_SUMMARY_WEEKS + 1] {
+        assert_eq!(
+            ListWeeklySummaries::new(&empty, &clock).execute(invalid),
+            Err(ReportingError::InvalidPagination)
+        );
+    }
+
+    let unavailable = FakeProgressPort {
+        daily: Err(ReportingError::StorageUnavailable),
+        ..FakeProgressPort::empty()
+    };
+    assert_eq!(
+        ListWeeklySummaries::new(&unavailable, &clock).execute(4),
+        Err(ReportingError::StorageUnavailable)
+    );
 }
 
 #[test]

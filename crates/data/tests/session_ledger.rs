@@ -1779,11 +1779,13 @@ fn finalizer_daily_goal_met(policy: CompletionPolicySnapshot, duration_ms: u64) 
 
 #[test]
 fn session_finalizer_daily_goal_policy_preserves_zero_and_fractional_time_boundaries() {
-    assert!(finalizer_daily_goal_met(
+    // Zero/negative targets are unset goals and are never met — matching the
+    // live-completion path and the WPM/accuracy zero rules.
+    assert!(!finalizer_daily_goal_met(
         CompletionPolicySnapshot::time(0.0),
         0
     ));
-    assert!(finalizer_daily_goal_met(
+    assert!(!finalizer_daily_goal_met(
         CompletionPolicySnapshot::time(-1.0),
         0
     ));

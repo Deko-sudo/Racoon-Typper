@@ -4,12 +4,11 @@
   import { t } from './lib/i18n';
   import { createNavigationStore } from './lib/stores/navigation.svelte';
   import { createNotificationStore } from './lib/stores/notifications.svelte';
-  import type {
-    CharStatus, EngineOutput, TestSessionResponse, FinalStats, TestSummary,
-    PersonalBest, CustomText, AppSettings,
-    ThemeInfo, ViewName, ModeName, LanguageCode, ModuleResponse, SessionState,
-    DashboardStatsResponse,
-  } from './lib/types/index';
+  import { createTestSessionStore } from './lib/stores/testSession.svelte';
+  import { createSettingsStore } from './lib/stores/settings.svelte';
+  import { createContentStore } from './lib/stores/content.svelte';
+  import { vimActionForKey, findMatches, VIM_VIEWS } from './lib/vimNavigation';
+  import type { ViewName } from './lib/types/index';
 
   import NavigationBar from './components/NavigationBar.svelte';
   import TestView from './components/TestView.svelte';
@@ -24,109 +23,73 @@
   import DashboardView from './components/DashboardView.svelte';
   import AnalyticsView from './components/AnalyticsView.svelte';
   import AchievementGallery from './components/AchievementGallery.svelte';
+  import PomodoroView from './components/PomodoroView.svelte';
+  import CheatsheetOverlay from './components/CheatsheetOverlay.svelte';
+  import VimSearchOverlay from './components/VimSearchOverlay.svelte';
+  import OnboardingView from './components/OnboardingView.svelte';
+  import type { OnboardingResult } from './lib/onboarding';
 
   // Navigation
   const navigation = createNavigationStore('test');
   const view = $derived(navigation.view);
 
-  // Test state
-  let text = $state('');
-  let caretPos = $state(0);
-  let charStatuses = $state<CharStatus[]>([]);
-  let isRunning = $state(false);
-  let isComplete = $state(false);
-  let sessionState = $state<SessionState>('idle');
-  let errorMsg = $state('');
-  let liveWpm = $state(0);
-  let liveAccuracy = $state(100);
-  let elapsedMs = $state(0);
-  let finalStats = $state<FinalStats | null>(null);
-
-  // Test config
-  let selectedMode = $state<ModeName>('time');
-  let selectedDuration = $state(30);
-  let selectedWordCount = $state(25);
-  let selectedLanguage = $state<LanguageCode>('en');
-  let sessionModeType = $state('time');
-  let sessionLanguage = $state('en');
-  // Backend-issued identity used only as a stale-request correlation token.
-  // The backend creates and validates it; the frontend cannot replace it.
-  let sessionId = $state<string | null>(null);
-  let sessionDurationMs = $state(0);
-  let testStartedAt = $state<number | null>(null);
-
-  // History
-  let history = $state<TestSummary[]>([]);
-  let historyTotal = $state(0);
-
-  // Bests
-  let bests = $state<PersonalBest[]>([]);
-
-  // Custom texts
-  let customTexts = $state<CustomText[]>([]);
-  let editingText = $state<CustomText | null>(null);
-  let newName = $state('');
-  let newTextContent = $state('');
-  let customTextLanguage = $state<LanguageCode>('en');
-  let showEditor = $state(false);
-  let searchText = $state('');
-
-  // Settings
-  let settings = $state<AppSettings | null>(null);
-  let uiLang = $state('en');
-  let mainFontSize = $derived(`${settings?.font_size ?? 24}px`);
-
-  // Themes
-  let themes = $state<ThemeInfo[]>([]);
-  let activeTheme = $state('racoon_graphite');
-  const appliedThemeVariables = new Set<string>();
-
-  // Lessons
-  let courseModules = $state<ModuleResponse[]>([]);
-  let lessonProgress = $state<Record<string, { status: string; best_wpm: number; best_accuracy: number }>>({});
-  let lessonLang = $state<'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko'>('en');
-  let currentLessonId = $state<string | null>(null);
-
-  // Weak Keys
-  let weakKeysData = $state<Array<{ ch: string; error_count: number; accuracy: number; rank: number }>>([]);
-  let weakKeysCharStats = $state<Record<string, { correct: number; incorrect: number; total: number }>>({});
-
-  // Dashboard
-  let dashboardStats = $state<DashboardStatsResponse | null>(null);
-
-  // Zen mode — hide everything except text
-  let zenActive = $state(false);
-
-  // Achievement tracking — snapshot before test for auto-toast
-  let preTestAchievements = $state<Array<{ id: string; unlocked: boolean }>>([]);
-
-  // Typing warnings
-  let lastTypedChar = $state('');
-  let capsLockOn = $state(false);
-
   // Notifications
   const notificationStore = createNotificationStore();
 
-  interface QueuedKey {
-    key: string;
-    code: string;
-    sessionId: string;
-    generation: number;
-    synthetic: boolean;
-  }
-
-  let queuedKeys: QueuedKey[] = [];
-  let processingKeys = false;
-  let sessionGeneration = 0;
-  let timeCompletionQueued = false;
+  // Global presentation state
+  let errorMsg = $state('');
+  // Zen mode — hide everything except text
+  let zenActive = $state(false);
+  // Cheatsheet overlay
+  let cheatsheetOpen = $state(false);
+  // Vim '/' search: visual highlight only — the backend caret is never moved.
+  let vimSearchOpen = $state(false);
+  let searchMatches = $state(new Set<number>());
+  let searchMatchCount = $state(0);
+  // Tracks a pending single 'g' press for the 'gg' Vim scroll-to-top command.
+  let vimPendingG = $state(false);
+  // When the pending 'g' was pressed (for the 1s 'gg' expiry).
+  let vimPendingGAt = 0;
+  // Achievement tracking — snapshot before test for auto-toast
+  let preTestAchievements = $state<Array<{ id: string; unlocked: boolean }>>([]);
   let audioContext: AudioContext | null = null;
+  // First-run onboarding gate: shown once until completed or skipped.
+  let showOnboarding = $state(false);
 
-  function applySessionState(nextState: SessionState) {
-    sessionState = nextState;
-    isRunning = nextState === 'running' || nextState === 'awaiting_persistence' || nextState === 'persisting';
-    isComplete = nextState === 'persisted';
-  }
+  // Feature stores
+  const settingsStore = createSettingsStore({
+    setError: (message) => { errorMsg = message; },
+  });
+  const contentStore = createContentStore({
+    setError: (message) => { errorMsg = message; },
+  });
+  const testSession = createTestSessionStore({
+    getSettings: () => settingsStore.settings,
+    getUiLang: () => settingsStore.uiLang,
+    setError: (message) => { errorMsg = message; },
+    setZenActive: (active) => { zenActive = active; },
+    playSound: (event) => void playSound(event),
+    notify: (type, message) => notificationStore.add(type, message),
+    beforeStart: snapshotAchievements,
+    getCurrentLessonId: () => contentStore.currentLessonId,
+    setCurrentLessonId: (lessonId) => { contentStore.currentLessonId = lessonId; },
+    onLessonCompleted: (lessonId, stats) => {
+      // The backend persisted lesson completion in the same transaction as the
+      // completed test, applying the pass gate (accuracy ≥90% AND wpm ≥20).
+      // Mirror that gate locally so the UI matches the persisted status.
+      const passed = stats.accuracy >= 90 && stats.wpm >= 20;
+      contentStore.applyLessonCompletion(lessonId, passed, stats.wpm, stats.accuracy);
+    },
+    onHistoryChanged: () => void contentStore.loadHistoryTotal(),
+    onAchievementsChanged: checkNewAchievements,
+    onStarted: () => switchView('test'),
+  });
 
+  const settings = $derived(settingsStore.settings);
+  const uiLang = $derived(settingsStore.uiLang);
+  const themes = $derived(settingsStore.themes);
+  const activeTheme = $derived(settingsStore.activeTheme);
+  const mainFontSize = $derived(settingsStore.mainFontSize);
 
   async function snapshotAchievements() {
     try {
@@ -145,96 +108,11 @@
       const after = (await ipc.getAchievements()).flat();
       for (const a of after) {
         if (a.unlocked && !preTestAchievements.find(p => p.id === a.id && p.unlocked)) {
-          notificationStore.add('SUCCESS', `🏆 ${a.name} — ${a.description}`);
+          notificationStore.add('SUCCESS', `${a.name} — ${a.description}`);
         }
       }
     } catch {
       // ignore
-    }
-  }
-
-  function startTestFromResponse(resp: TestSessionResponse, lessonId: string | null = null) {
-    sessionGeneration += 1;
-    queuedKeys = [];
-    timeCompletionQueued = false;
-    sessionId = resp.session_id;
-    text = resp.text;
-    caretPos = 0;
-    applySessionState('running');
-    finalStats = null;
-    sessionModeType = resp.mode_type;
-    sessionLanguage = resp.language;
-    sessionDurationMs = resp.mode_type === 'time'
-      ? Math.max(0, Number(resp.mode_config.duration ?? 0) * 1000)
-      : 0;
-    currentLessonId = lessonId;
-    testStartedAt = null;
-    liveWpm = 0;
-    liveAccuracy = 100;
-    elapsedMs = 0;
-    charStatuses = Array.from(resp.text, (ch) => ({
-      expected: ch,
-      typed: null,
-      status: 'pending' as const,
-    }));
-  }
-
-  function clearAbortedSessionPresentation() {
-    sessionGeneration += 1;
-    queuedKeys = [];
-    timeCompletionQueued = false;
-    applySessionState('idle');
-    sessionId = null;
-    currentLessonId = null;
-    testStartedAt = null;
-    elapsedMs = 0;
-    caretPos = 0;
-    charStatuses = [];
-  }
-
-  // Replacing a running test is an explicit user action. The backend must
-  // accept the abort before any new-session request is sent; this prevents the
-  // presentation configuration from diverging from the authoritative engine.
-  // A retry-pending completion intentionally cannot be abandoned here.
-  async function abandonActiveSessionForReplacement(): Promise<boolean> {
-    if (!isRunning || isComplete) return true;
-    if (!sessionId) {
-      errorMsg = 'Abort error: the active session has no backend identity';
-      return false;
-    }
-    try {
-      await ipc.abortSession(sessionId);
-      clearAbortedSessionPresentation();
-      return true;
-    } catch (error) {
-      errorMsg = `Abort error: ${ipc.ipcErrorMessage(error)}`;
-      return false;
-    }
-  }
-
-  async function startTest() {
-    errorMsg = '';
-    finalStats = null;
-    if (settings?.zen_mode_enabled) zenActive = true;
-    try {
-      await snapshotAchievements();
-      const params: {
-        mode: string;
-        language: string;
-        duration?: number;
-        wordCount?: number;
-      } = {
-        mode: selectedMode,
-        language: selectedLanguage,
-      };
-      if (selectedMode === 'time') params.duration = selectedDuration;
-      if (selectedMode === 'words') params.wordCount = selectedWordCount;
-
-      const resp = await ipc.startTest(params);
-      startTestFromResponse(resp);
-    } catch (error) {
-      zenActive = false;
-      errorMsg = `Start test error: ${ipc.ipcErrorMessage(error)}`;
     }
   }
 
@@ -263,104 +141,6 @@
     }
   }
 
-  async function finishTest(stats: FinalStats) {
-    finalStats = stats;
-    zenActive = false;
-    testStartedAt = null;
-    elapsedMs = stats.duration_ms;
-
-    if (stats.accuracy >= 95) {
-      notificationStore.add('SUCCESS', 'Отличный результат!');
-    }
-
-    const lessonId = currentLessonId;
-    if (sessionModeType === 'lesson' && lessonId) {
-      // The backend persisted lesson completion in the same transaction as the
-      // completed test. This local update only renders that confirmed state.
-      lessonProgress = {
-        ...lessonProgress,
-        [lessonId]: {
-          status: 'completed',
-          best_wpm: Math.max(lessonProgress[lessonId]?.best_wpm ?? 0, stats.wpm),
-          best_accuracy: Math.max(lessonProgress[lessonId]?.best_accuracy ?? 0, stats.accuracy),
-        },
-      };
-      void playSound('lesson_complete');
-    }
-    currentLessonId = null;
-    await checkNewAchievements();
-  }
-
-  async function applyEngineOutput(output: EngineOutput, key: string, synthetic: boolean) {
-    applySessionState(output.session_state);
-    caretPos = output.caret_pos;
-    if (output.live_stats) {
-      liveWpm = output.live_stats.wpm;
-      liveAccuracy = output.live_stats.accuracy;
-      elapsedMs = output.live_stats.elapsed_ms;
-      testStartedAt = Date.now() - output.live_stats.elapsed_ms;
-
-      if (liveAccuracy >= 95 && output.key_result === 'correct' && Math.random() < 0.05) {
-        notificationStore.add('SUCCESS', 'Точность выше 95%');
-      }
-    }
-
-    if (output.key_result === 'correct' && caretPos > 0) {
-      charStatuses[caretPos - 1] = {
-        ...charStatuses[caretPos - 1],
-        typed: charStatuses[caretPos - 1].expected,
-        status: 'correct',
-      };
-    } else if (output.key_result === 'incorrect' && caretPos < charStatuses.length) {
-      charStatuses[caretPos] = { ...charStatuses[caretPos], typed: key, status: 'incorrect' };
-    } else if (output.key_result === 'undone_correct' && caretPos < charStatuses.length) {
-      charStatuses[caretPos] = { ...charStatuses[caretPos], typed: null, status: 'backspaced' };
-    } else if (output.key_result === 'undone_incorrect' && caretPos < charStatuses.length) {
-      charStatuses[caretPos] = { ...charStatuses[caretPos], typed: null, status: 'pending' };
-    }
-
-    if (!synthetic && output.key_result === 'incorrect') {
-      void playSound('error');
-    } else if (!synthetic && !['noop', 'test_ended'].includes(output.key_result)) {
-      void playSound('key_press');
-    }
-
-    if (output.test_complete && output.session_state === 'persisted') {
-      await finishTest(output.test_complete);
-    }
-  }
-
-  async function drainKeyQueue() {
-    if (processingKeys) return;
-    processingKeys = true;
-    try {
-      while (queuedKeys.length > 0) {
-        const queued = queuedKeys.shift();
-        if (!queued || queued.generation !== sessionGeneration) continue;
-        if (!isRunning || isComplete) continue;
-        try {
-          const output = await ipc.processKey(queued.key, queued.code, queued.sessionId);
-          if (queued.generation !== sessionGeneration) continue;
-          await applyEngineOutput(output, queued.key, queued.synthetic);
-          if (queued.synthetic && !output.test_complete) timeCompletionQueued = false;
-        } catch (error) {
-          if (queued.synthetic) timeCompletionQueued = false;
-          queuedKeys = [];
-          errorMsg = `Typing error: ${ipc.ipcErrorMessage(error)}`;
-        }
-      }
-    } finally {
-      processingKeys = false;
-      if (queuedKeys.length > 0) void drainKeyQueue();
-    }
-  }
-
-  function enqueueKey(key: string, code: string, synthetic = false) {
-    if (!sessionId) return;
-    queuedKeys.push({ key, code, sessionId, generation: sessionGeneration, synthetic });
-    void drainKeyQueue();
-  }
-
   function handleKeydown(e: KeyboardEvent) {
     const activeElement = document.activeElement;
     if (
@@ -371,58 +151,123 @@
       return;
     }
 
-    // Vim mode navigation (only when not actively typing a test)
-    if (settings?.vim_mode && !isRunning) {
-      const views: ViewName[] = ['dashboard', 'test', 'lessons', 'weakkeys', 'analytics', 'achievements', 'history', 'bests', 'custom', 'settings'];
-      const currentIdx = views.indexOf(view);
-      if (e.key === 'h' && currentIdx > 0) { e.preventDefault(); switchView(views[currentIdx - 1]); return; }
-      if (e.key === 'l' && currentIdx < views.length - 1) { e.preventDefault(); switchView(views[currentIdx + 1]); return; }
-      if (e.key === 'k') { e.preventDefault(); window.scrollBy(0, -100); return; }
-      if (e.key === 'j') { e.preventDefault(); window.scrollBy(0, 100); return; }
+    // Cheatsheet overlay: '?' toggles, Esc closes. Handled before vim-mode so
+    // the overlay never leaks keys into navigation or a running test.
+    if (cheatsheetOpen) {
+      if (e.key === 'Escape' || e.key === '?') {
+        e.preventDefault();
+        cheatsheetOpen = false;
+      }
+      return;
+    }
+    if (e.key === '?' && !testSession.isRunning) {
+      e.preventDefault();
+      cheatsheetOpen = true;
+      return;
     }
 
-    if (!isRunning || isComplete) return;
+    // Vim '/' search: opens the search bar; Esc closes it. Visual only.
+    if (vimSearchOpen) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        vimSearchOpen = false;
+        searchMatches = new Set();
+        searchMatchCount = 0;
+      }
+      return;
+    }
+    if (e.key === '/' && settings?.vim_mode && !testSession.isRunning) {
+      e.preventDefault();
+      vimSearchOpen = true;
+      return;
+    }
 
-    // Caps Lock detection
-    if (e.getModifierState && e.getModifierState('CapsLock') !== capsLockOn) {
-      capsLockOn = e.getModifierState('CapsLock');
-      if (capsLockOn && settings?.show_capslock_warnings) {
-        notificationStore.add('WARNING', 'Caps Lock включён');
+    // Vim mode navigation (only when not actively typing a test)
+    if (settings?.vim_mode && !testSession.isRunning) {
+      // 'gg' — это двойное нажатие: одиночный 'g' истекает через 1 секунду,
+      // иначе залипший pending-g срабатывает на первом 'g' следующего теста.
+      if (vimPendingG && Date.now() - vimPendingGAt > 1000) vimPendingG = false;
+      const { action, nextPendingG } = vimActionForKey(e.key, view, vimPendingG);
+      vimPendingG = nextPendingG;
+      if (vimPendingG) vimPendingGAt = Date.now();
+      switch (action.type) {
+        case 'prev_tab': {
+          const idx = VIM_VIEWS.indexOf(view as (typeof VIM_VIEWS)[number]);
+          if (idx > 0) { e.preventDefault(); switchView(VIM_VIEWS[idx - 1]); }
+          return;
+        }
+        case 'next_tab': {
+          const idx = VIM_VIEWS.indexOf(view as (typeof VIM_VIEWS)[number]);
+          if (idx >= 0 && idx < VIM_VIEWS.length - 1) { e.preventDefault(); switchView(VIM_VIEWS[idx + 1]); }
+          return;
+        }
+        case 'scroll_up': e.preventDefault(); window.scrollBy(0, -100); return;
+        case 'scroll_down': e.preventDefault(); window.scrollBy(0, 100); return;
+        case 'scroll_top': e.preventDefault(); window.scrollTo(0, 0); return;
+        case 'scroll_bottom': e.preventDefault(); window.scrollTo(0, document.body.scrollHeight); return;
+        case 'restart': e.preventDefault(); void testSession.restartTest(); return;
+        case 'none': return;
       }
     }
 
+    if (!testSession.isRunning || testSession.isComplete) return;
+
+    // View-gating: клавиши попадают в тест только на тестовых вью.
+    // WeakKeys нужна для inline-training, остальные вью не трогают сессию.
+    if (view !== 'test' && view !== 'weakkeys') return;
+
+    // IME-фильтр (ja/zh/ko): во время composition keydown приходит с
+    // isComposing/keyCode 229 — пропускать, иначе мусор попадает в тест.
+    if (e.isComposing || e.keyCode === 229) return;
+
+    // Caps Lock detection
+    if (e.getModifierState && e.getModifierState('CapsLock') !== testSession.capsLockOn) {
+      testSession.capsLockOn = e.getModifierState('CapsLock');
+      if (testSession.capsLockOn && settings?.show_capslock_warnings) {
+        notificationStore.add('WARNING', t(uiLang, 'warning.caps_title'));
+      }
+    }
+
+    // Модификатор-комбо (Ctrl+C/V, Alt+...) — не печатные символы.
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
     if (e.key === 'Shift' || e.key === 'Control' || e.key === 'Alt' || e.key === 'Meta') return;
-    if (e.key === 'Backspace' || e.key === 'Tab' || e.key === ' ' || e.key.length === 1) e.preventDefault();
+
+    // Whitelist: только печатные символы (key.length === 1) и Backspace.
+    // Раньше сюда просачивались Arrow/Delete/Home/F-клавиши, и бэкенд
+    // превращал первую букву имени клавиши в фантомный символ ('A', 'D', 'H').
+    if (e.key.length !== 1 && e.key !== 'Backspace') return;
+
+    e.preventDefault();
 
     // Track last typed char for layout detection
     if (e.key.length === 1) {
-      lastTypedChar = e.key;
-      testStartedAt ??= Date.now();
+      testSession.lastTypedChar = e.key;
+      testSession.testStartedAt ??= Date.now();
     }
-    enqueueKey(e.key, e.code);
+    testSession.enqueueKey(e.key, e.code);
   }
 
   $effect(() => {
-    const startedAt = testStartedAt;
-    const running = isRunning;
-    const complete = isComplete;
-    const mode = sessionModeType;
-    const durationMs = sessionDurationMs;
+    const startedAt = testSession.testStartedAt;
+    const running = testSession.isRunning;
+    const complete = testSession.isComplete;
+    const mode = testSession.sessionModeType;
+    const durationMs = testSession.sessionDurationMs;
     if (!running || complete || startedAt === null) return;
 
     const updateClock = () => {
       const currentElapsed = Math.max(0, Date.now() - startedAt);
-      elapsedMs = mode === 'time' && durationMs > 0
+      testSession.elapsedMs = mode === 'time' && durationMs > 0
         ? Math.min(currentElapsed, durationMs)
         : currentElapsed;
       if (
         mode === 'time'
         && durationMs > 0
         && currentElapsed >= durationMs
-        && !timeCompletionQueued
+        && !testSession.timeCompletionQueued
       ) {
-        timeCompletionQueued = true;
-        enqueueKey('', '', true);
+        testSession.timeCompletionQueued = true;
+        testSession.enqueueKey('', '', true);
       }
     };
 
@@ -431,260 +276,141 @@
     return () => window.clearInterval(interval);
   });
 
-  async function abortTest() {
-    if (!isRunning) return;
-    await abandonActiveSessionForReplacement();
-  }
-
-  async function loadHistory() {
-    const r = await ipc.getStatsHistory(20);
-    history = r.tests;
-    historyTotal = r.total;
-  }
-
-  async function loadBests() {
-    bests = await ipc.getPersonalBests();
-  }
-
-  async function loadCustomTexts() {
-    customTexts = await ipc.getCustomTexts(50);
-  }
-
-  async function loadSettings() {
-    settings = await ipc.getSettings();
-    activeTheme = settings.theme;
-    uiLang = settings.ui_language || 'en';
-    await applyTheme(activeTheme);
-  }
-
-  async function loadThemes() {
-    themes = await ipc.getThemes();
-  }
-
-  async function applyTheme(name: string) {
-    const css = await ipc.getThemeCss(name);
-    const styleEl = document.getElementById('theme-style') || (() => {
-      const el = document.createElement('style');
-      el.id = 'theme-style';
-      document.head.appendChild(el);
-      return el;
-    })();
-    styleEl.setAttribute('data-theme', name);
-    styleEl.textContent = css;
-
-    // Apply variables inline as well as through the stylesheet. This keeps
-    // theme switching reliable when component-scoped CSS is present and lets
-    // semantic aliases such as --bg resolve to the active theme tokens.
-    const root = document.documentElement;
-    for (const variable of appliedThemeVariables) {
-      root.style.removeProperty(variable);
-    }
-    appliedThemeVariables.clear();
-
-    const variables = /(--[a-z0-9-]+)\s*:\s*([^;{}]+)\s*;/g;
-    for (const match of css.matchAll(variables)) {
-      const variable = match[1];
-      root.style.setProperty(variable, match[2].trim(), 'important');
-      appliedThemeVariables.add(variable);
-    }
-    root.dataset.theme = name;
-    const themeInfo = themes.find((theme) => theme.name === name);
-    root.style.colorScheme = themeInfo?.is_dark ? 'dark' : 'light';
-  }
-
-  async function selectTheme(name: string) {
-    try {
-      await applyTheme(name);
-      await ipc.setSetting('theme', name);
-      activeTheme = name;
-      settings = await ipc.getSettings();
-      errorMsg = '';
-    } catch (error) {
-      const detail = error instanceof Error
-        ? error.message
-        : typeof error === 'object' && error !== null
-          ? JSON.stringify(error)
-          : String(error);
-      errorMsg = `Theme error: ${detail}`;
-      console.error('Theme switch failed', { name, error });
-    }
-  }
-
-  async function updateSetting(key: string, value: unknown) {
-    try {
-      await ipc.setSetting(key, value);
-      settings = await ipc.getSettings();
-    } catch (error) {
-      errorMsg = `Settings error: ${ipc.ipcErrorMessage(error)}`;
-      return;
-    }
-    if (key === 'ui_language') {
-      uiLang = (value as string) || 'en';
-    }
-  }
-
-  function openEditor(ct: CustomText | null) {
-    editingText = ct;
-    newName = ct ? ct.name : '';
-    newTextContent = ct ? ct.text : '';
-    customTextLanguage = ct?.language ?? selectedLanguage;
-    showEditor = true;
-  }
-
-  async function saveCustomText() {
-    try {
-      if (editingText) {
-        await ipc.updateCustomText(editingText.id, newName, newTextContent, customTextLanguage);
-      } else {
-        await ipc.saveCustomText(newName, newTextContent, customTextLanguage);
-      }
-      showEditor = false;
-      await loadCustomTexts();
-    } catch (err) {
-      errorMsg = `Save error: ${err}`;
-    }
-  }
-
-  async function deleteCustomText(id: number) {
-    await ipc.deleteCustomText(id);
-    await loadCustomTexts();
-  }
-
-  async function startCustomTest(id: number) {
-    try {
-      if (!(await abandonActiveSessionForReplacement())) return;
-      await snapshotAchievements();
-      const resp = await ipc.startCustomTextTest(id);
-      startTestFromResponse(resp);
-      switchView('test');
-    } catch (error) {
-      errorMsg = `Start custom text error: ${error}`;
-    }
-  }
-
-  async function searchCustom(q: string) {
-    searchText = q;
-    if (q.trim()) {
-      customTexts = await ipc.searchCustomTexts(q, 20);
-    } else {
-      await loadCustomTexts();
-    }
-  }
-
   function switchView(v: ViewName) {
     navigation.navigate(v);
-    if (v === 'history') loadHistory();
-    if (v === 'bests') loadBests();
-    if (v === 'custom') loadCustomTexts();
-    if (v === 'lessons') loadLessons();
-    if (v === 'weakkeys') loadWeakKeys();
-    if (v === 'dashboard') loadDashboard();
-  }
-
-  async function loadDashboard() {
-    try {
-      dashboardStats = await ipc.getDashboardStats();
-    } catch (e) {
-      errorMsg = `Dashboard error: ${e}`;
+    // Уход с тестовых вью на любой другой — абандоним бегущую сессию,
+    // иначе таймер доедет в фоне и запишет брошенный тест в историю
+    // (и пометит урок выполненным).
+    if (v !== 'test' && v !== 'weakkeys' && testSession.isRunning && !testSession.isComplete) {
+      void testSession.abandonActiveSessionForReplacement();
     }
+    if (v === 'history') contentStore.loadHistory();
+    if (v === 'bests') contentStore.loadBests();
+    if (v === 'custom') contentStore.loadCustomTexts();
+    if (v === 'lessons') contentStore.loadLessons();
+    if (v === 'weakkeys') contentStore.loadWeakKeys();
+    if (v === 'dashboard') contentStore.loadDashboard();
   }
 
-  async function loadWeakKeys() {
-    try {
-      const data = await ipc.analyzeWeakKeys();
-      weakKeysData = data.weak_keys || [];
-    } catch (e) {
-      errorMsg = `Weak keys error: ${e}`;
+  function applyVimSearch(query: string) {
+    const matches = findMatches(testSession.text, query);
+    searchMatches = matches;
+    searchMatchCount = matches.size > 0 ? countMatches(matches) : 0;
+  }
+
+  function countMatches(matches: Set<number>): number {
+    // Считаем непрерывные диапазоны позиций как отдельные совпадения.
+    const sorted = [...matches].sort((a, b) => a - b);
+    let count = 0;
+    let previous = -2;
+    for (const position of sorted) {
+      if (position !== previous + 1) count += 1;
+      previous = position;
     }
+    return count;
   }
 
-  async function onGenerateTraining() {
-    try {
-      if (!(await abandonActiveSessionForReplacement())) return;
-      await snapshotAchievements();
-      const generatedText = await ipc.generateWeakKeysTraining(selectedLanguage, 25);
-      const resp = await ipc.startTest({
-        mode: 'custom',
-        language: selectedLanguage,
-        text: generatedText,
-      });
-      startTestFromResponse(resp);
-    } catch (e) {
-      errorMsg = `Training error: ${e}`;
-    }
+  function closeVimSearch() {
+    vimSearchOpen = false;
+    searchMatches = new Set();
+    searchMatchCount = 0;
   }
 
-  async function loadLessons() {
-    try {
-      const course = await ipc.getCourse(lessonLang);
-      courseModules = course.modules;
-      const progress = await ipc.getLessonProgress(lessonLang);
-      lessonProgress = Object.fromEntries(
-        progress.map((lesson) => [lesson.lesson_id, {
-          status: lesson.status,
-          best_wpm: lesson.best_wpm,
-          best_accuracy: lesson.best_accuracy,
-        }]),
-      );
-    } catch (e) {
-      errorMsg = `Lessons error: ${e}`;
-    }
+  function onRepeatLesson() {
+    if (!contentStore.currentLessonId) return;
+    void testSession.startLesson(contentStore.currentLessonId, contentStore.lessonLang);
   }
 
-  async function onSelectLesson(lessonId: string, language: string) {
-    try {
-      if (!(await abandonActiveSessionForReplacement())) return;
-      await snapshotAchievements();
-      const resp = await ipc.startLesson(lessonId, language);
-      startTestFromResponse(resp, lessonId);
-      switchView('test');
-    } catch (e) {
-      errorMsg = `Start lesson error: ${e}`;
-    }
+  function onNextLesson() {
+    const next = contentStore.lessonNavigation?.nextLessonId;
+    if (!next) return;
+    void testSession.startLesson(next, contentStore.lessonLang);
   }
 
-  async function updateTestConfigurationAndRestart(update: () => void) {
-    if (!(await abandonActiveSessionForReplacement())) return;
-    update();
-    await startTest();
-  }
-
-  function onModeChange(m: ModeName) {
-    void updateTestConfigurationAndRestart(() => { selectedMode = m; });
-  }
-
-  function onDurationChange(d: number) {
-    void updateTestConfigurationAndRestart(() => { selectedDuration = d; });
-  }
-
-  function onWordCountChange(w: number) {
-    void updateTestConfigurationAndRestart(() => { selectedWordCount = w; });
-  }
-
-  function onLanguageChange(l: LanguageCode) {
-    void updateTestConfigurationAndRestart(() => { selectedLanguage = l; });
+  function onReturnToLessons() {
+    contentStore.currentLessonId = null;
+    switchView('lessons');
   }
 
   onMount(async () => {
     try {
-      await loadThemes();
+      await settingsStore.loadThemes();
     } catch (error) {
       errorMsg = `Theme catalog error: ${ipc.ipcErrorMessage(error)}`;
     }
     try {
-      await loadSettings();
+      await settingsStore.loadSettings();
     } catch (error) {
       errorMsg = `Settings load error: ${ipc.ipcErrorMessage(error)}`;
     }
-    await startTest();
+    // A window/hot reload restarts the renderer but the in-memory backend
+    // engine keeps any prior session, so abandon it before starting fresh.
+    // Safe: engine.abort() only discards a Running session.
+    try {
+      await ipc.abandonActiveSession();
+    } catch {
+      // Non-fatal — startTest below will surface a real lifecycle error.
+    }
+    if (settingsStore.settings && !settingsStore.settings.onboarding_completed) {
+      showOnboarding = true;
+      return;
+    }
+    await testSession.startTest();
   });
+
+  function applyOnboardingLanguage(result: OnboardingResult) {
+    testSession.selectedLanguage = result.practiceLanguage;
+    contentStore.lessonLang = result.practiceLanguage;
+  }
+
+  async function persistOnboardingResult(result: OnboardingResult) {
+    await settingsStore.updateSetting('practice_language', result.practiceLanguage);
+    await settingsStore.updateSetting('daily_goal_type', result.goalType);
+    if (result.goalType === 'time') {
+      await settingsStore.updateSetting('daily_goal_minutes', result.goalMinutes);
+    } else if (result.goalType === 'wpm') {
+      await settingsStore.updateSetting('daily_goal_wpm', result.goalWpm);
+    } else {
+      await settingsStore.updateSetting('daily_goal_accuracy', result.goalAccuracy);
+    }
+    await settingsStore.updateSetting('onboarding_completed', true);
+  }
+
+  async function handleOnboardingComplete(result: OnboardingResult) {
+    showOnboarding = false;
+    try {
+      await persistOnboardingResult(result);
+    } catch (error) {
+      errorMsg = `Onboarding save error: ${ipc.ipcErrorMessage(error)}`;
+    }
+    applyOnboardingLanguage(result);
+    await testSession.startTest();
+  }
+
+  async function handleOnboardingSkip() {
+    showOnboarding = false;
+    try {
+      await settingsStore.updateSetting('onboarding_completed', true);
+    } catch (error) {
+      errorMsg = `Onboarding save error: ${ipc.ipcErrorMessage(error)}`;
+    }
+    await testSession.startTest();
+  }
+
+  function handleOnboardingUiLang(lang: string) {
+    void settingsStore.updateSetting('ui_language', lang);
+  }
 </script>
 
 <svelte:window onkeydown={handleKeydown} />
 
-<main style:font-size={mainFontSize} data-session-state={sessionState}>
+<main style:font-size={mainFontSize} data-session-state={testSession.sessionState}>
   {#if !zenActive}
-    <NavigationBar {view} {historyTotal} {uiLang} onNavigate={switchView} />
+    <NavigationBar {view} historyTotal={contentStore.historyTotal} {uiLang} onNavigate={switchView} />
+  {/if}
+
+  {#if settings?.vim_mode && !testSession.isRunning}
+    <div class="vim-indicator" aria-label="Vim mode active">VIM</div>
   {/if}
 
   {#if errorMsg}
@@ -692,64 +418,92 @@
   {/if}
 
   {#if view === 'dashboard'}
-    <DashboardView stats={dashboardStats} onNavigate={(v) => switchView(v as ViewName)} uiLang={uiLang} />
+    <DashboardView
+      stats={contentStore.dashboardStats}
+      weekly={contentStore.weeklySummaries}
+      onNavigate={(v) => switchView(v as ViewName)}
+      weakKeys={contentStore.weakKeysData}
+      onStartTraining={() => void testSession.startTraining()}
+      uiLang={uiLang}
+    />
   {:else if view === 'test'}
-    {#if isRunning}
+    {#if testSession.isRunning}
       <TypingWarnings
-        expectedLanguage={sessionLanguage}
-        {lastTypedChar}
-        {capsLockOn}
-        showLayoutWarnings={true}
+        expectedLanguage={testSession.sessionLanguage}
+        lastTypedChar={testSession.lastTypedChar}
+        capsLockOn={testSession.capsLockOn}
+        showLayoutWarnings={settings?.show_layout_warnings ?? true}
         showCapsLockWarnings={settings?.show_capslock_warnings ?? true}
         {uiLang}
       />
     {/if}
     <TestView
-      {text}
-      {caretPos}
-      {charStatuses}
-      {isRunning}
-      {isComplete}
-      {liveWpm}
-      {liveAccuracy}
-      {elapsedMs}
-      {finalStats}
+      text={testSession.text}
+      caretPos={testSession.caretPos}
+      charStatuses={testSession.charStatuses}
+      erroredPositions={testSession.erroredPositions}
+      {searchMatches}
+      isRunning={testSession.isRunning}
+      isComplete={testSession.isComplete}
+      liveWpm={testSession.liveWpm}
+      liveAccuracy={testSession.liveAccuracy}
+      elapsedMs={testSession.elapsedMs}
+      finalStats={testSession.finalStats}
       {settings}
-      {selectedMode}
-      {selectedDuration}
-      {selectedWordCount}
-      {selectedLanguage}
-      {sessionModeType}
-      {sessionLanguage}
-      onModeChange={onModeChange}
-      onDurationChange={onDurationChange}
-      onWordCountChange={onWordCountChange}
-      onLanguageChange={onLanguageChange}
-      onAbort={abortTest}
-      onRestart={startTest}
+      selectedMode={testSession.selectedMode}
+      selectedDuration={testSession.selectedDuration}
+      selectedWordCount={testSession.selectedWordCount}
+      selectedLanguage={testSession.selectedLanguage}
+      sessionModeType={testSession.sessionModeType}
+      sessionLanguage={testSession.sessionLanguage}
+      onModeChange={testSession.onModeChange}
+      onDurationChange={testSession.onDurationChange}
+      onWordCountChange={testSession.onWordCountChange}
+      onLanguageChange={testSession.onLanguageChange}
+      onAbort={() => void testSession.abortTest()}
+      onRestart={() => void testSession.restartTest()}
+      lessonNavigation={contentStore.lessonNavigation}
+      {onRepeatLesson}
+      {onNextLesson}
+      {onReturnToLessons}
       uiLang={uiLang}
     />
+  {:else if view === 'pomodoro'}
+    <PomodoroView
+      {settings}
+      {uiLang}
+      onUpdateSetting={settingsStore.updateSetting}
+      onPhaseComplete={() => void playSound('lesson_complete')}
+    />
   {:else if view === 'history'}
-    <HistoryView {history} total={historyTotal} uiLang={uiLang} />
+    <HistoryView
+      history={contentStore.history}
+      total={contentStore.historyTotal}
+      page={contentStore.historyPage}
+      pageSize={20}
+      onPrevPage={contentStore.historyPrevPage}
+      onNextPage={contentStore.historyNextPage}
+      uiLang={uiLang}
+    />
   {:else if view === 'bests'}
-    <BestsView {bests} uiLang={uiLang} />
+    <BestsView bests={contentStore.bests} uiLang={uiLang} />
   {:else if view === 'custom'}
     <CustomTextsView
-      {customTexts}
-      {searchText}
-      {showEditor}
-      {newName}
-      {newTextContent}
-      newLanguage={customTextLanguage}
-      onSave={saveCustomText}
-      onDelete={deleteCustomText}
-      onStart={startCustomTest}
-      onSearch={searchCustom}
-      onOpenEditor={openEditor}
-      onCloseEditor={() => { showEditor = false; }}
-      onNameChange={(name) => { newName = name; }}
-      onTextChange={(content) => { newTextContent = content; }}
-      onLanguageChange={(language) => { customTextLanguage = language; }}
+      customTexts={contentStore.customTexts}
+      searchText={contentStore.searchText}
+      showEditor={contentStore.showEditor}
+      newName={contentStore.newName}
+      newTextContent={contentStore.newTextContent}
+      newLanguage={contentStore.customTextLanguage}
+      onSave={() => void contentStore.saveCustomText()}
+      onDelete={(id) => void contentStore.deleteCustomText(id)}
+      onStart={(id) => void testSession.startCustomTest(id)}
+      onSearch={(q) => void contentStore.searchCustom(q)}
+      onOpenEditor={(ct) => contentStore.openEditor(ct, testSession.selectedLanguage)}
+      onCloseEditor={() => { contentStore.showEditor = false; }}
+      onNameChange={(name) => { contentStore.newName = name; }}
+      onTextChange={(content) => { contentStore.newTextContent = content; }}
+      onLanguageChange={(language) => { contentStore.customTextLanguage = language; }}
       uiLang={uiLang}
     />
   {:else if view === 'settings'}
@@ -758,33 +512,34 @@
       {themes}
       {activeTheme}
       {uiLang}
-      onSelectTheme={selectTheme}
-      onUpdateSetting={updateSetting}
+      onSelectTheme={settingsStore.selectTheme}
+      onUpdateSetting={settingsStore.updateSetting}
     />
   {:else if view === 'lessons'}
     <div class="lesson-lang-selector">
       {#each [['en','EN'],['ru','RU'],['de','DE'],['uk','UK'],['cs','CS'],['pl','PL'],['ro','RO'],['it','IT'],['fr','FR'],['es','ES'],['pt','PT'],['ja','JA'],['zh-hk','繁HK'],['zh-tw','繁TW'],['ko','KO']] as [code, label]}
-        <button class:active={lessonLang === code} onclick={() => { lessonLang = code as typeof lessonLang; loadLessons(); }}>{label}</button>
+        <button class:active={contentStore.lessonLang === code} onclick={() => { contentStore.lessonLang = code as typeof contentStore.lessonLang; contentStore.loadLessons(); }}>{label}</button>
       {/each}
     </div>
     <LessonListView
-      modules={courseModules}
-      progress={lessonProgress}
-      language={lessonLang}
-      onSelectLesson={onSelectLesson}
+      modules={contentStore.courseModules}
+      progress={contentStore.lessonProgress}
+      language={contentStore.lessonLang}
+      onSelectLesson={(lessonId, language) => void testSession.startLesson(lessonId, language)}
       uiLang={uiLang}
     />
   {:else if view === 'weakkeys'}
     <WeakKeysPanel
-      weakKeys={weakKeysData}
-      charStats={weakKeysCharStats}
-      onGenerateTraining={onGenerateTraining}
+      weakKeys={contentStore.weakKeysData}
+      charStats={contentStore.weakKeysCharStats}
+      onGenerateTraining={() => void testSession.startTraining()}
       {uiLang}
-      trainingText={text}
-      trainingCharStatuses={charStatuses}
-      trainingCaretPos={caretPos}
-      trainingRunning={isRunning}
-      trainingLanguage={isRunning ? sessionLanguage : selectedLanguage}
+      trainingText={testSession.text}
+      trainingCharStatuses={testSession.charStatuses}
+      trainingCaretPos={testSession.caretPos}
+      trainingRunning={testSession.isRunning}
+      trainingLanguage={testSession.isRunning ? testSession.sessionLanguage : testSession.selectedLanguage}
+      keyboardLayout={settingsStore.settings?.keyboard_layout ?? 'qwerty'}
     />
   {:else if view === 'analytics'}
     <AnalyticsView uiLang={uiLang} />
@@ -793,7 +548,29 @@
   {/if}
 </main>
 
+{#if showOnboarding}
+  <OnboardingView
+    uiLang={uiLang}
+    onUiLangChange={handleOnboardingUiLang}
+    onComplete={(result) => void handleOnboardingComplete(result)}
+    onSkip={() => void handleOnboardingSkip()}
+  />
+{/if}
+
 <NotificationStack notifications={notificationStore.notifications} />
+
+{#if cheatsheetOpen}
+  <CheatsheetOverlay {uiLang} onClose={() => { cheatsheetOpen = false; }} />
+{/if}
+
+{#if vimSearchOpen}
+  <VimSearchOverlay
+    {uiLang}
+    matchCount={searchMatchCount}
+    onQuery={applyVimSearch}
+    onClose={closeVimSearch}
+  />
+{/if}
 
 <style>
   :root {
@@ -820,6 +597,11 @@
     font-family: 'JetBrains Mono', monospace;
   }
   .error { color: var(--error); font-size: 0.875rem; }
+  .vim-indicator {
+    position: fixed; bottom: 0.75rem; right: 0.75rem; z-index: 50;
+    padding: 0.2rem 0.6rem; font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+    color: var(--bg); background: var(--main); border-radius: 4px; opacity: 0.85;
+  }
   .lesson-lang-selector { display: flex; gap: 0.25rem; }
   .lesson-lang-selector button { background: var(--bg-sub); color: var(--sub); border: 1px solid var(--sub); padding: 0.25rem 0.75rem; font-family: inherit; font-size: 0.75rem; cursor: pointer; border-radius: 4px; }
   .lesson-lang-selector button.active { color: var(--main); border-color: var(--main); }

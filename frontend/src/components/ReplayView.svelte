@@ -207,7 +207,7 @@
 <style>
   .replay-backdrop {
     position: fixed; inset: 0; z-index: 200; display: grid; place-items: center;
-    padding: 1rem; background: rgba(0, 0, 0, 0.65);
+    padding: 1rem; background: color-mix(in srgb, var(--color-overlay) 82%, transparent);
   }
   .replay-dialog {
     width: min(900px, 100%); max-height: calc(100vh - 2rem); overflow: auto;
@@ -222,7 +222,7 @@
     font-size: 0.75rem;
   }
   button:hover:not(:disabled), button.active { border-color: var(--main); color: var(--main); }
-  button:disabled { cursor: not-allowed; opacity: 0.4; }
+  button:disabled { cursor: not-allowed; color: var(--color-text-disabled); opacity: 0.72; border-style: dashed; }
   .close-button { padding: 0.2rem 0.55rem; font-size: 1.2rem; }
   .empty { padding: 2rem; color: var(--sub); text-align: center; }
   .replay-text {
@@ -230,7 +230,7 @@
     padding: 1.5rem; border-radius: 8px; background: var(--bg-sub);
     font-size: 1.5rem; line-height: 1.8;
   }
-  .replay-char { position: relative; color: var(--sub); opacity: 0.55; }
+  .replay-char { position: relative; color: var(--color-typing-pending); }
   .replay-char.correct { color: var(--text); opacity: 1; }
   .replay-char.incorrect { color: var(--error); opacity: 1; }
   .replay-char.caret::before, .end-caret::before {
@@ -242,7 +242,7 @@
     display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.25rem;
     margin: 0.75rem 0; color: var(--sub); font-size: 0.75rem;
   }
-  .correct-result { color: #6c8; }
+  .correct-result { color: var(--color-success); }
   .error-result { color: var(--error); }
   .progress-track { height: 4px; overflow: hidden; border-radius: 2px; background: var(--bg-sub); }
   .progress-fill { height: 100%; background: var(--main); transition: width 0.08s linear; }

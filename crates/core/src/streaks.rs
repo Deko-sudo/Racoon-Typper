@@ -36,7 +36,17 @@ impl StreakEngine {
                 (new_current, new_longest, true)
             }
             Some(last) => {
-                let days_diff = Self::days_between(last, today);
+                // Битая дата (повреждённый профиль/импорт): parse failure
+                // раньше молча превращался в diff=0 («тот же день») и
+                // замораживал streak навсегда. Теперь — безопасный reset:
+                // сегодняшний тест начинает новый streak.
+                let days_diff = match (Self::parse_date(last), Self::parse_date(today)) {
+                    (Some(f), Some(t)) => (t - f).num_days(),
+                    _ => {
+                        let new_current = 1;
+                        return (new_current, longest_streak.max(new_current), true);
+                    }
+                };
 
                 if days_diff == 0 {
                     // Тот же день — streak не меняется

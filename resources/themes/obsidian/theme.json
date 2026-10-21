@@ -1,0 +1,20 @@
+{
+  "name": "obsidian",
+  "display_name": "Obsidian",
+  "description": "Pure dark glass with electric cyan accent.",
+  "version": "1.0.0",
+  "author": "Racoon Typper Contributors",
+  "license": "Apache-2.0",
+  "source": "Racoon Typper repository",
+  "category": "Dark",
+  "is_dark": true,
+  "preview": {
+    "background": "#080a0c",
+    "surface": "#10141a",
+    "text": "#dde2e8",
+    "accent": "#3ac8d8",
+    "correct": "#8acca0",
+    "incorrect": "#e88a8a",
+    "caret": "#5adde8"
+  }
+}

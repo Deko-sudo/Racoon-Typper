@@ -25,8 +25,8 @@ racoon-core = { workspace = true }
 # applied. This is the only safe way to copy a WAL-mode database; an `fs::copy`
 # of `data.db` alone loses un-checkpointed WAL contents, and a multi-file copy
 # of `data.db` + `-wal` + `-shm` is not atomic across the three files.
-rusqlite = { version = "0.31", features = ["bundled", "backup"] }
-refinery = { version = "0.8", features = ["rusqlite"] }
+rusqlite = { version = "0.39", features = ["bundled", "backup"] }
+refinery = { version = "0.9", features = ["rusqlite"] }
 chrono = "0.4"
 serde = { workspace = true }
 serde_json = { workspace = true, features = ["raw_value"] }
