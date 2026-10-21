@@ -8,6 +8,9 @@
 
 ### Fixed
 
+- Remove accidental CJK characters from the Russian course's first word lesson;
+  check every Russian lesson's letters through the embedded production loader.
+
 - Verify Linux package restart retention with an actual persisted custom-text row;
   restrict smoke cleanup to its own process session. Build an unsigned Debian
   candidate in CI on Ubuntu 24.04, with source and artifact hash evidence.

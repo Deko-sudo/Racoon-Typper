@@ -17,12 +17,19 @@ does not replace the published v1.3.1 assets, create a tag or authorize promotio
   checks. Strict `-D warnings` remains on workspace Clippy, rather than being
   inherited by upstream crates through a global action default.
 
-## Locally exercised production package
+## Initial locally exercised production package
 
 The package was built in official Ubuntu 24.04 userspace from source tree
 `bd68b6c8444faf4217242e2bea72407828437fe9` (published commit `93bb470c264f7fb53b665de0c983776dd9254769`).
 The subsequent source changes through `6b2b54e` concern CI and documentation;
 application code/resources and dependency locks are identical.
+
+The later, separately reviewed Russian-course correction replaces accidental
+`导电` characters with a Russian word in `ru_m1_l5`. A production-loader regression
+fails on the original embedded text and passes with the correction; it checks
+every Russian lesson for foreign alphabetic characters. This content-only fix
+requires a new package/manifest; the initial artifact below is retained as the
+provenance of the native UI checks, not relabelled as the corrected artifact.
 
 | Evidence | Result and boundary |
 |---|---|
@@ -50,6 +57,8 @@ tests (177 passed), formatting, strict workspace Clippy, frontend check/build,
 IPC/version, licenses, advisory scan, vendor provenance (9), macro contracts (22),
 optimized GLib regressions (3), opt-in process-crash tests (16 passed, one ignored)
 and the separately invoked ignored extended crash campaign (one passed).
+The additional Russian-course regression raises the workspace test count to
+789; the corrected content receives a new full workspace run and package build.
 
 The smoke regression was red before the profile-retention repair and all four
 smoke tests pass after it. The old script's `new, new, pkill` trace was replaced
