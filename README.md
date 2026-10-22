@@ -87,7 +87,7 @@ desktop process with a Svelte interface, embedded learning resources, and a
 local SQLite data store. **No accounts, no servers, no telemetry** — your
 typing data never leaves your machine.
 
-> **Status:** This branch is an **unreleased Linux stability candidate**.
+> **Status:** This branch is an **unreleased desktop stability candidate**.
 > Version metadata remains `1.3.1`; this does not identify the previously
 > published v1.3.1 artifact. Candidate evidence must name its exact commit and
 > artifact checksum. Historical releases and this candidate have separate
@@ -187,16 +187,18 @@ dispatch; other branches do not automatically receive these checks. See
 | Target | Status |
 | --- | --- |
 | **Linux x86_64** (Arch, Ubuntu 24.04) | ✅ Verified development target |
-| `.deb`, `.rpm`, `.AppImage` | ⚙️ CI build targets — experimental, not yet supported releases |
-| Windows x86_64 (NSIS) | ⚙️ CI build target — not yet supported |
+| `.deb`, `.rpm`, `.AppImage` | ⚙️ Candidate build/install/restart evidence; AppImage uses extraction in containers, kernel FUSE separate |
+| Windows x86_64 (NSIS) | ⚙️ Native candidate CI; hardware input/DPI/PNG/paste acceptance pending |
 | Arch `PKGBUILD` | 📄 Community recipe — not a supported release |
 | Flatpak | 🚧 Manifest present, pending redesign |
-| macOS · Linux ARM | ❌ Unsupported (no config) |
+| macOS Intel / Apple Silicon | ⚙️ Native candidate CI on both architectures; manual acceptance/signing/notarization pending |
+| Linux ARM | ❌ Unsupported |
 
 The [Releases page](https://github.com/Deko-sudo/Racoon-Typper/releases) contains
 historical artifacts. Changes on this branch are not included there until a
 new candidate passes its own build/install/runtime gates and is promoted.
-See [Linux candidate verification](docs/release/linux-candidate.md).
+See [desktop candidate evidence](docs/release/desktop-stability-evidence.md) and
+[Linux candidate verification](docs/release/linux-candidate.md).
 
 ## 📁 Repository layout
 
