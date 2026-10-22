@@ -6,7 +6,7 @@ if [[ ${GITHUB_ACTIONS:-} != true || ${RUNNER_ENVIRONMENT:-} != github-hosted ||
   echo 'Use only on a fresh GitHub-hosted macOS runner, never a personal desktop.' >&2
   exit 1
 fi
-test "$#" -eq 1
+[[ $# -eq 1 || ( $# -eq 2 && $2 == --ui-probe ) ]]
 test -f "$1"
 workspace=$(mktemp -d)
 mounted=false
@@ -24,5 +24,12 @@ test -n "$app"
 ditto "$app" "$workspace/candidate.app"
 hdiutil detach "$workspace/volume"
 mounted=false
+probe_arguments=()
+evidence_directory=candidate-evidence/macos-runtime
+if [[ ${2:-} == --ui-probe ]]; then
+  swiftc scripts/macos-ui-probe.swift -o "$workspace/ui-probe"
+  probe_arguments=(--ui-probe "$workspace/ui-probe")
+  evidence_directory=candidate-evidence/macos-ui
+fi
 python3 scripts/desktop-runtime-smoke.py --executable "$workspace/candidate.app/Contents/MacOS/racoon-app" \
-  --window-probe "$workspace/window-probe" --evidence candidate-evidence/macos-runtime
+  --window-probe "$workspace/window-probe" --evidence "$evidence_directory" "${probe_arguments[@]}"

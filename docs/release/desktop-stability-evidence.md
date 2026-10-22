@@ -43,12 +43,14 @@ build, platform/IPC/version contracts, license/source/advisory gates and smoke
 harness tests. Linux candidate CI builds all three package formats, verifies
 Debian/AppImage restart retention and installs RPM in a pinned Fedora container.
 
-The optional Windows native UI investigation is a separate outcome: UIA controls,
-OS-injected EN text, repeat/abort, PNG file and OS image clipboard. A missing
+The optional native UI investigations are separate outcomes: Windows UIA/SendInput
+or macOS AX/CGEvent controls, OS-injected EN text, repeat/abort, PNG file and OS
+image clipboard. A missing
 controller/window/control, blocked input, missing results or failed PNG delivery
 is not a passed UI check. No OS permissions or protections are disabled. Its
 logs/images and experiment outcome accompany the installer artifacts. macOS
-controller trust is queried without requesting Accessibility permission.
+controller trust is checked without requesting Accessibility permission; a
+trusted controller can attempt the AX probe without changing OS permissions.
 
 Physical Windows/macOS RU/EN/layout switching, fast caret movement and resize/DPI,
 PNG pixels/image paste and OS launch/security prompts remain manual. Signing,

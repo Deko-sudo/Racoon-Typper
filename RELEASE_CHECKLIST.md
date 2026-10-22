@@ -22,7 +22,7 @@ or artifact may be replaced to publish these fixes.
 - [ ] Release decision reviews remaining platform/physical-power-loss limits.
 
 Windows/macOS native CI is recorded in [desktop evidence](docs/release/desktop-stability-evidence.md).
-Window/SQLite smoke does not prove interactive acceptance. The optional native UI
+Window/SQLite smoke does not prove interactive acceptance. The optional Windows/macOS UI
 experiment is reported separately and never silently turns a missing UI check
 into a pass. No merge/tag/release is authorized by these checked boxes.
 

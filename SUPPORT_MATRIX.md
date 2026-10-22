@@ -48,5 +48,5 @@ through restart/upgrade, applicable restore tests and an uninstall/rollback plan
 See [candidate procedure](docs/release/linux-candidate.md) and
 [release checklist](RELEASE_CHECKLIST.md). Canonical CI targets `main`/`master`
 PRs/pushes; the separate desktop candidate workflow accepts PRs to any base.
-Branch existence is not proof of CI success. The optional Windows UIA/SendInput
+Branch existence is not proof of CI success. The optional native Windows/macOS UI
 experiment records its own outcome and cannot replace the manual acceptance gate.

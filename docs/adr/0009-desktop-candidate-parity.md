@@ -45,8 +45,10 @@ An optional, separately reported Windows UIA/SendInput investigation uses only a
 fresh hosted runner, an EN custom-text fixture and OS input events. It must verify
 two exact persisted results independently; its own failure cannot produce a UI
 pass. PNG file and OS image clipboard checks are narrower than hardware layouts,
-pixel/DPI review or pasting into another application. macOS accessibility trust
-is queried without prompting, requesting permission or changing OS protections.
+pixel/DPI review or pasting into another application. A corresponding macOS
+AX/CGEvent probe uses the same independent result checks when its controller is
+already trusted. Accessibility trust is queried without prompting, requesting
+permission or changing OS protections; untrusted access remains a failed probe.
 Required package/startup gates remain strict if the optional experiment is blocked.
 
 Keep Windows/macOS experimental until hardware checks cover RU/EN restart,

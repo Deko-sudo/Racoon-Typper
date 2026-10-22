@@ -93,6 +93,20 @@ jobs:
         run: |
           mkdir -p candidate-evidence
           swift -e 'import ApplicationServices; print("AXIsProcessTrusted=\(AXIsProcessTrusted()); no permission requested or security changes made")' > candidate-evidence/accessibility-availability.txt
+      - name: Investigate native macOS AX input, repeat, abort and PNG delivery
+        if: runner.os == 'macOS'
+        id: macos-native-ui
+        continue-on-error: true # permission/environment investigation, not hardware certification
+        run: |
+          dmg=$(find target/${{ matrix.target }}/release/bundle/dmg -type f -name '*.dmg' -print -quit)
+          bash scripts/macos-dmg-smoke.sh "$dmg" --ui-probe
+      - name: Record macOS UI experiment boundary
+        if: runner.os == 'macOS' && always()
+        env:
+          NATIVE_UI_OUTCOME: ${{ steps.macos-native-ui.outcome }}
+        run: |
+          mkdir -p candidate-evidence
+          echo "macOS UI experiment: $NATIVE_UI_OUTCOME; manual hardware/DPI/paste gate remains pending" > candidate-evidence/native-ui-experiment.txt
       - name: Record native UI experiment boundary
         if: runner.os == 'Windows' && always()
         env:

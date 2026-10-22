@@ -124,7 +124,7 @@ if __name__ == "__main__":
     parser.add_argument("--executable", required=True, type=Path)
     parser.add_argument("--evidence", required=True, type=Path)
     parser.add_argument("--window-probe", type=Path)
-    parser.add_argument("--ui-probe", type=Path, help="Optional Windows UIA/SendInput investigation; failures are not a UI pass")
+    parser.add_argument("--ui-probe", type=Path, help="Optional native UI investigation; failures are not a UI pass")
     args = parser.parse_args()
     # Refuse use on a personal desktop, even when no profile exists yet.
     if os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted":
@@ -133,11 +133,12 @@ if __name__ == "__main__":
         parser.error("macOS requires a compiled --window-probe")
     interact = None
     if args.ui_probe:
-        if sys.platform != "win32":
-            parser.error("--ui-probe currently requires Windows")
         checks.MARKER = ("Desktop package persistence probe", "asdf", "en")
         def interact(pid):
-            subprocess.run(["powershell.exe", "-NoProfile", "-File", str(args.ui_probe.resolve()),
-                            "-AppProcessId", str(pid), "-Evidence", str(args.evidence.resolve())], check=True, timeout=150)
+            probe = str(args.ui_probe.resolve())
+            evidence = str(args.evidence.resolve())
+            command = (["powershell.exe", "-NoProfile", "-File", probe, "-AppProcessId", str(pid), "-Evidence", evidence]
+                       if sys.platform == "win32" else [probe, str(pid), evidence])
+            subprocess.run(command, check=True, timeout=150)
     print(json.dumps(run_smoke([str(args.executable.resolve())], profile_directory(), args.evidence,
                                lambda pid: visible_window(pid, args.window_probe), interact=interact)))
