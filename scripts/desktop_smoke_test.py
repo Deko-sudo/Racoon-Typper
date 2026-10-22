@@ -119,9 +119,16 @@ class DesktopSmokeTests(unittest.TestCase):
         self.assertIn('never a personal profile', result.stderr)
         self.assertFalse(self.profile.exists())
 
-    @unittest.skipUnless(shutil.which('bash'), 'bash is needed to test the macOS wrapper refusal')
+    @unittest.skipUnless(os.name != 'nt' and shutil.which('bash'), 'macOS wrapper guard runs on POSIX; Windows tests the NSIS guard')
     def test_dmg_wrapper_refuses_personal_desktops_before_mounting(self):
         result = subprocess.run(['bash', str(SCRIPT.with_name('macos-dmg-smoke.sh')), 'missing.dmg'],
+                                env=dict(os.environ, GITHUB_ACTIONS='false'), capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('never a personal desktop', result.stderr)
+
+    @unittest.skipUnless(os.name == 'nt', 'NSIS wrapper guard requires Windows PowerShell')
+    def test_nsis_wrapper_refuses_personal_desktops_before_installing(self):
+        result = subprocess.run(['pwsh', '-NoProfile', '-File', str(SCRIPT.with_name('windows-nsis-smoke.ps1')), '-Installer', 'missing.exe'],
                                 env=dict(os.environ, GITHUB_ACTIONS='false'), capture_output=True, text=True)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('never a personal desktop', result.stderr)
