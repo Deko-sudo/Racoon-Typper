@@ -529,9 +529,9 @@ mod tests {
 
     fn test_app_state() -> AppState {
         let settings_path = std::env::temp_dir().join(format!(
-            "racoon-durable-store-{}-{}.toml",
+            "racoon-durable-store-{}-{:?}.toml",
             std::process::id(),
-            std::thread::current().name().unwrap_or("test")
+            std::thread::current().id()
         ));
         let _ = std::fs::remove_file(&settings_path);
         AppState::new(

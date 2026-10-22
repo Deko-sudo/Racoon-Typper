@@ -61,6 +61,11 @@ directory sync. The file-sync regression checks byte preservation and rejects
 missing files without creating them. This does not add a Windows directory-sync
 or physical power-loss guarantee.
 
+The next Windows run compiled with strict Clippy and found nine test failures:
+fixtures used Rust test-thread names containing `::` as filenames. Replace those
+test-only suffixes with debug thread IDs, valid on Windows too. Keep the tests
+enabled and preserve production settings-path validation.
+
 References: [Tauri configuration](https://v2.tauri.app/reference/config/),
 [WebView2 installation](https://v2.tauri.app/distribute/windows-installer/),
 [WebView versions](https://v2.tauri.app/reference/webview-versions/).
