@@ -12,12 +12,11 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: desktop-candidate-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   desktop:
+    concurrency:
+      group: desktop-package-${{ github.event.pull_request.number || github.ref }}-${{ matrix.target }}
+      cancel-in-progress: true
     strategy:
       fail-fast: false
       matrix:
@@ -136,6 +135,9 @@ jobs:
 
   macos-ui:
     if: github.event_name == 'workflow_dispatch' && inputs.investigate_macos_ui
+    concurrency:
+      group: desktop-ui-research-${{ github.ref }}-${{ matrix.target }}
+      cancel-in-progress: true
     # A controller/runner failure must not discard packages from the strict job.
     needs: desktop
     continue-on-error: true # research only; inspect this job's actual conclusion

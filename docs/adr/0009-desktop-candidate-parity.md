@@ -62,6 +62,8 @@ After a second shutdown on each architecture, automatic PRs retain only the
 strict package jobs and the proven Windows UI probe. The unfinished macOS UI
 investigation requires an explicit workflow-dispatch input, defaulting to off.
 It remains a manual acceptance gap, not a waived or passed product test.
+Concurrency is scoped per package/research job, so a lost research runner cannot
+hold the workflow-wide slot and prevent a later package validation from starting.
 
 Keep Windows/macOS experimental until hardware checks cover RU/EN restart,
 abort, moving/resizing/high DPI, PNG contents, Pictures-folder delivery, image
