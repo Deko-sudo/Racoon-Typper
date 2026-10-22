@@ -3,6 +3,11 @@ name: Windows and macOS candidates
 on:
   pull_request:
   workflow_dispatch:
+    inputs:
+      investigate_macos_ui:
+        description: Run the unfinished macOS UI investigation on disposable runners
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -130,6 +135,7 @@ jobs:
           retention-days: 14
 
   macos-ui:
+    if: github.event_name == 'workflow_dispatch' && inputs.investigate_macos_ui
     # A controller/runner failure must not discard packages from the strict job.
     needs: desktop
     continue-on-error: true # research only; inspect this job's actual conclusion

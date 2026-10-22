@@ -52,6 +52,8 @@ logs/images accompany the installer; macOS UI runs separately after installers
 are uploaded, with its own evidence artifact and actual job conclusion. macOS
 controller trust is checked without requesting Accessibility permission; a
 trusted controller can attempt the AX probe without changing OS permissions.
+The unfinished macOS UI investigation is opt-in through the manual workflow
+input; automatic PR checks retain the strict package jobs and Windows UI probe.
 
 On source `aca065a`, [native CI 39705967608](https://github.com/Deko-sudo/Racoon-Typper/actions/runs/39705967608)
 passed all three build/install/startup jobs. Windows additionally completed two

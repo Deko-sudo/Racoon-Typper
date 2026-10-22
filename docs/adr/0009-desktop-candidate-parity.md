@@ -58,6 +58,10 @@ This preserves package evidence if the controller or runner terminates. CGEvent
 Unicode input is addressed to the owned application PID, with cleared modifiers,
 instead of the global HID event stream. No cause is inferred merely from a
 runner shutdown during an earlier experiment.
+After a second shutdown on each architecture, automatic PRs retain only the
+strict package jobs and the proven Windows UI probe. The unfinished macOS UI
+investigation requires an explicit workflow-dispatch input, defaulting to off.
+It remains a manual acceptance gap, not a waived or passed product test.
 
 Keep Windows/macOS experimental until hardware checks cover RU/EN restart,
 abort, moving/resizing/high DPI, PNG contents, Pictures-folder delivery, image
