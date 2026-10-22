@@ -150,6 +150,7 @@ fn restore_with_steps(
     let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed);
     let stage = sibling_temp_path(live_db_path, &format!("restore-rollback-{sequence}"));
     let mut builder = fs::DirBuilder::new();
+    builder.recursive(false);
     #[cfg(unix)]
     {
         use std::os::unix::fs::DirBuilderExt;
@@ -194,9 +195,13 @@ fn restore_companion(path: &Path, suffix: &str) -> PathBuf {
     PathBuf::from(name)
 }
 fn sync_file(path: &Path) -> Result<(), DbError> {
-    File::open(path)
-        .and_then(|file| file.sync_all())
-        .map_err(restore_fail)
+    // Windows FlushFileBuffers requires GENERIC_WRITE. Unix also calls this
+    // helper for directories, so retain the read-only handle on those systems.
+    #[cfg(windows)]
+    let file = File::options().write(true).open(path);
+    #[cfg(not(windows))]
+    let file = File::open(path);
+    file.and_then(|file| file.sync_all()).map_err(restore_fail)
 }
 
 /// Token boundaries, quoted identifiers and literal bytes are significant.
@@ -485,6 +490,7 @@ fn publish_backup(source: &Connection, destination: &Path) -> Result<PathBuf, Db
     let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed);
     let stage = sibling_temp_path(destination, &format!("backup-{sequence}"));
     let mut builder = fs::DirBuilder::new();
+    builder.recursive(false);
     #[cfg(unix)]
     {
         use std::os::unix::fs::DirBuilderExt;
@@ -550,6 +556,24 @@ fn sibling_temp_path(target: &Path, suffix: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sync_file_flushes_existing_bytes_without_creating_or_truncating_files() {
+        let root = std::env::temp_dir().join(format!("restore-sync-{}", std::process::id()));
+        fs::create_dir(&root).unwrap();
+        let path = root.join("snapshot.db");
+        fs::write(&path, b"preserve all snapshot bytes").unwrap();
+        let result = sync_file(&path);
+        let bytes = fs::read(&path).unwrap();
+        let missing = root.join("missing.db");
+        let missing_result = sync_file(&missing);
+        let created = missing.exists();
+        fs::remove_dir_all(root).unwrap();
+        assert!(result.is_ok(), "existing file sync failed: {result:?}");
+        assert_eq!(bytes, b"preserve all snapshot bytes");
+        assert!(missing_result.is_err());
+        assert!(!created);
+    }
 
     #[test]
     fn schema_comparison_preserves_literals_and_quote_boundaries() {

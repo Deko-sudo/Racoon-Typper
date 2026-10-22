@@ -6,7 +6,9 @@
 //! Sync ordering assumes a local filesystem honoring file/directory fsync and
 //! same-filesystem rename. This does not promise physical power-loss durability.
 
-use super::{restore_companion, restore_fail, sync_file, DEFAULT_KEEP};
+#[cfg(unix)]
+use super::sync_file;
+use super::{restore_companion, restore_fail, DEFAULT_KEEP};
 use crate::DbError;
 use serde::{Deserialize, Serialize};
 use std::fs::{self, File, OpenOptions};

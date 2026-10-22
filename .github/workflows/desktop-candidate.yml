@@ -1,0 +1,110 @@
+name: Windows and macOS candidates
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-candidate-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: windows-2022
+            target: x86_64-pc-windows-msvc
+            python: python
+          - runner: macos-15
+            target: aarch64-apple-darwin
+            python: python3
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+            python: python3
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      CARGO_TERM_COLOR: always
+      CARGO_BUILD_JOBS: 2
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: 1.96.0
+          rustflags: ""
+          target: ${{ matrix.target }}
+          components: clippy
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci --prefix frontend
+      - name: Verify shared UI, IPC, configuration and PNG contracts
+        run: |
+          node scripts/check-version.mjs
+          node scripts/check-ipc-contracts.mjs
+          node --test scripts/platform-config.test.mjs
+          npm run check --prefix frontend
+          npm run test:ui --prefix frontend
+      - name: Test native command adapters including PNG delivery and profile locking
+        run: |
+          cargo clippy --locked --workspace --all-targets -- -D warnings
+          cargo test --locked --workspace
+      - name: Test smoke failure paths without touching the application profile
+        run: ${{ matrix.python }} -m unittest discover -s scripts -p desktop_smoke_test.py -v
+      - name: Build current production source using the platform override
+        run: npm run tauri:build:ci --prefix frontend -- --target ${{ matrix.target }}
+      - name: Install NSIS and verify window and database restart retention
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem target/${{ matrix.target }}/release/bundle/nsis/*.exe | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $installer) { throw 'NSIS artifact not found' }
+          ./scripts/windows-nsis-smoke.ps1 -Installer $installer
+      - name: Mount DMG, copy app and verify window and database restart retention
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          dmg=$(find target/${{ matrix.target }}/release/bundle/dmg -type f -name '*.dmg' -print -quit)
+          test -n "$dmg"
+          bash scripts/macos-dmg-smoke.sh "$dmg"
+      - name: Record exact source and artifact checksums
+        env:
+          CANDIDATE_TARGET: ${{ matrix.target }}
+        run: |
+          mkdir -p candidate-evidence
+          git rev-parse HEAD > candidate-evidence/source-commit.txt
+          git rev-parse 'HEAD^{tree}' > candidate-evidence/source-tree.txt
+          rustc --version > candidate-evidence/toolchains.txt
+          node --version >> candidate-evidence/toolchains.txt
+          ${{ matrix.python }} - <<'PY'
+          import hashlib, json, os, platform
+          from pathlib import Path
+          root = Path('target') / os.environ['CANDIDATE_TARGET'] / 'release/bundle'
+          artifacts = {str(p): hashlib.sha256(p.read_bytes()).hexdigest() for p in root.rglob('*') if p.is_file() and p.suffix in ('.exe', '.dmg')}
+          if not artifacts: raise SystemExit('No installer artifacts to record')
+          record = dict(target=os.environ['CANDIDATE_TARGET'], build_os=platform.platform(), artifacts=artifacts, published=False, developer_signed=False, notarized=False, manually_verified=False)
+          Path('candidate-evidence/artifacts.json').write_text(json.dumps(record, indent=2)+'\n', encoding='utf-8')
+          PY
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: desktop-candidate-${{ matrix.target }}
+          path: |
+            candidate-evidence/**
+            target/${{ matrix.target }}/release/bundle/nsis/*.exe
+            target/${{ matrix.target }}/release/bundle/dmg/*.dmg
+          if-no-files-found: warn # an earlier compile failure has no package; its job stays failed
+          retention-days: 14

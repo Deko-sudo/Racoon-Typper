@@ -60,6 +60,27 @@ npm run tauri:build --prefix frontend
 
 It may require platform-specific bundler tools. Installer support is only established by the release smoke tests described in [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md).
 
+### Windows and macOS candidates
+
+Build **the current reviewed source commit** on the target OS; old published
+tags/assets do not acquire later fixes. Install Tauri's platform prerequisites
+(Windows C++ tools and WebView2, or macOS Xcode command-line tools), then use
+the same commands above. Tauri automatically merges `tauri.windows.conf.json`
+or `tauri.macos.conf.json` with the common configuration.
+
+Windows produces NSIS with the offline WebView2 installer embedded (a larger
+download; installation retains the existing administrator/per-machine scope).
+macOS produces `.app` and DMG; the configured minimum is 13.3. Build separately
+on Intel and Apple Silicon. That minimum is a compatibility setting, not a
+verified support promise. The candidate workflow produces both architectures.
+No updater is included. Build/package tooling still needs network access.
+
+The candidate workflow uploads packages and exact source/artifact hashes to
+GitHub Actions, without publishing a release. Unsigned/unnotarized candidates
+may be blocked by OS security checks. Do not disable OS protections; public
+distribution requires the appropriate signing/notarization decision and manual
+checks from [ADR 0009](docs/adr/0009-desktop-candidate-parity.md).
+
 ## Release artifacts
 
 When a verified release exists, download artifacts from [GitHub Releases](https://github.com/Deko-sudo/Racoon-Typper/releases) and verify the published checksums. AppImage, Debian, RPM, Arch, Flatpak, and Windows installation instructions will be enabled only after the corresponding artifact passes the support matrix.

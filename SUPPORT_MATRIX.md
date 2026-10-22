@@ -13,8 +13,8 @@ hash, build OS and runtime OS in its evidence manifest.
 | AppImage | Configured bundler and repaired restart-retention smoke | Experimental until this candidate's exact artifact passes the smoke |
 | RPM | Configured bundler | Build configuration is not an RPM install test |
 | Arch `PKGBUILD` | Recipe exists | Community recipe; source checksum/version must match a published immutable tag |
-| Windows x86_64 / NSIS | Historical CI records exist; current candidate not manually checked | Deferred by owner; no new support claim |
-| macOS | No current candidate validation | Deferred; unsupported by this Linux candidate |
+| Windows x86_64 / NSIS | Current-source candidate workflow and offline WebView2 installer configured; results must be recorded per commit | Experimental until native CI and manual DPI/input/PNG/clipboard gates pass |
+| macOS Intel / Apple Silicon, `.app` / DMG | Platform overrides and native candidate workflow configured; minimum bundle OS 13.3 | Experimental; no hardware, Developer ID or notarization claim |
 | Linux ARM, Flatpak | No verified candidate install/runtime | Unsupported / pending separate work |
 
 A container install validates its userspace and package path, not a full desktop
@@ -25,6 +25,12 @@ One real Fcitx Pinyin/WebKitGTK scenario is recorded separately from the
 bounded accessibility smoke, not a complete screen-reader usability review.
 Windows/macOS do not gate a Linux-only candidate and must not be advertised as
 verified because Linux tests pass.
+
+The separate `Windows and macOS candidates` workflow builds the current PR head,
+not an older release tag. It uploads unsigned/unpromoted NSIS/DMG candidates,
+source hashes and startup/restart evidence. Native window existence is not a
+rendering, typing, screenshot or clipboard test. Follow
+[desktop candidate parity](docs/adr/0009-desktop-candidate-parity.md) for limits.
 
 Current source/CI, artifact hashes and exact test boundaries are recorded in
 [Linux stability evidence](docs/release/linux-stability-evidence.md).

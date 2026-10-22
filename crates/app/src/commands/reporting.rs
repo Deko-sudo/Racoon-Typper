@@ -485,9 +485,9 @@ mod tests {
         AppState::new(
             Database::open_in_memory().expect("database"),
             std::env::temp_dir().join(format!(
-                "racoon-reporting-tests-{}-{}.toml",
+                "racoon-reporting-tests-{}-{:?}.toml",
                 std::process::id(),
-                std::thread::current().name().unwrap_or("test")
+                std::thread::current().id()
             )),
             PathBuf::from("unused.db"),
             StartupRecoveryGate::new(),

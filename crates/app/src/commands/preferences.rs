@@ -568,9 +568,9 @@ mod tests {
     #[test]
     fn practice_language_setting_accepts_bundled_courses_and_rejects_unknown_codes() {
         let settings_path = std::env::temp_dir().join(format!(
-            "racoon-settings-practice-lang-{}-{}.toml",
+            "racoon-settings-practice-lang-{}-{:?}.toml",
             std::process::id(),
-            std::thread::current().name().unwrap_or("test")
+            std::thread::current().id()
         ));
         let _ = std::fs::remove_file(&settings_path);
         let state = app_state(StartupRecoveryGate::new(), settings_path.clone());
@@ -632,9 +632,9 @@ mod tests {
     #[test]
     fn set_setting_command_is_gated_before_ready_and_succeeds_after_ready() {
         let settings_path = std::env::temp_dir().join(format!(
-            "racoon-settings-gate-{}-{}.toml",
+            "racoon-settings-gate-{}-{:?}.toml",
             std::process::id(),
-            std::thread::current().name().unwrap_or("test")
+            std::thread::current().id()
         ));
         let _ = std::fs::remove_file(&settings_path);
         let gate = StartupRecoveryGate::new();

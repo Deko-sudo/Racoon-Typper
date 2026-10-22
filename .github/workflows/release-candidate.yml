@@ -94,7 +94,7 @@ jobs:
 
   build-windows:
     needs: validate-tag
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -118,7 +118,7 @@ jobs:
 
   windows-installer-smoke:
     needs: [validate-tag, build-windows]
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
