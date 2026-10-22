@@ -22,7 +22,10 @@ export default defineConfig(({ mode }) => ({
   },
   envPrefix: ['VITE_', 'TAURI_'],
   build: {
-    target: 'esnext',
+    // WKWebView follows macOS, unlike evergreen Windows WebView2. Keep both
+    // release packages on a declared syntax floor rather than latest syntax.
+    target: ['safari16.4', 'edge111'],
+    cssTarget: ['safari16.4', 'edge111'],
     outDir: 'dist',
   },
 }));

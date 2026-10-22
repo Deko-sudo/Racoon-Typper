@@ -3,6 +3,7 @@
 # Copyright 2026 Racoon Typper Contributors
 """Isolated Linux startup/restart smoke; no claim of typed-input or GUI coverage."""
 import argparse
+from contextlib import closing
 import json
 import os
 from pathlib import Path
@@ -17,14 +18,14 @@ MARKER = ("Linux package persistence probe", "фыва asdf", "ru")
 
 def database_ready(path):
     try:
-        with sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True, timeout=0.2) as db:
+        with closing(sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True, timeout=0.2)) as db:
             return db.execute("SELECT count(*) FROM refinery_schema_history").fetchone()[0] == 9
     except sqlite3.Error:
         return False
 
 
 def check_database(path):
-    with sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True) as db:
+    with closing(sqlite3.connect(f"{path.as_uri()}?mode=ro", uri=True)) as db:
         if db.execute("PRAGMA integrity_check").fetchall() != [("ok",)]:
             raise RuntimeError("SQLite integrity check failed")
         if db.execute("PRAGMA foreign_key_check").fetchall():

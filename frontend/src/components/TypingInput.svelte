@@ -81,5 +81,5 @@
 <style>
   /* A real editable target keeps the WebView input context/layout in sync.
      It covers the text card, so clicking the text restores native focus. */
-  .typing-input { position:absolute; inset:0; z-index:2; width:100%; height:100%; padding:0; border:0; resize:none; opacity:0; cursor:text; }
+  .typing-input { position:absolute; inset:0; z-index:2; width:100%; height:100%; padding:0; border:0; resize:none; opacity:0; color:transparent; caret-color:transparent; cursor:text; }
 </style>
