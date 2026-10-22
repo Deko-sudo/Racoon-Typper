@@ -50,6 +50,17 @@ Gatekeeper, SmartScreen or the WebView sandbox to make a smoke pass.
 Rollback: revert this focused commit, leaving the Linux stability baseline and
 profiles intact. No migrations, dependency locks or data formats change.
 
+## Windows findings from native CI
+
+Strict Clippy on Windows exposed a Unix-only import and two directory builders
+whose mutable access previously existed only under `cfg(unix)`. Scope the
+import and explicitly retain non-recursive staging-directory creation; do not
+waive the lint gate. File sync needs a writable handle on Windows because
+`FlushFileBuffers` requires `GENERIC_WRITE`; keep read-only handles for Unix
+directory sync. The file-sync regression checks byte preservation and rejects
+missing files without creating them. This does not add a Windows directory-sync
+or physical power-loss guarantee.
+
 References: [Tauri configuration](https://v2.tauri.app/reference/config/),
 [WebView2 installation](https://v2.tauri.app/distribute/windows-installer/),
 [WebView versions](https://v2.tauri.app/reference/webview-versions/).

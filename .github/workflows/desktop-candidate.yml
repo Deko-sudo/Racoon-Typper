@@ -102,5 +102,5 @@ jobs:
             candidate-evidence/**
             target/${{ matrix.target }}/release/bundle/nsis/*.exe
             target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-          if-no-files-found: error
+          if-no-files-found: warn # an earlier compile failure has no package; its job stays failed
           retention-days: 14
