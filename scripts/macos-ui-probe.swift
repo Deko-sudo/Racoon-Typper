@@ -17,6 +17,9 @@ guard arguments.count == 3, let pid = Int32(arguments[1]),
 }
 let evidence = URL(fileURLWithPath: arguments[2], isDirectory: true)
 let app = AXUIElementCreateApplication(pid)
+func phase(_ message: String) {
+    print("UI probe pid=\(getpid()) app=\(pid): \(message)"); fflush(stdout)
+}
 func attribute(_ element: AXUIElement, _ name: CFString) -> CFTypeRef? {
     var value: CFTypeRef?
     return AXUIElementCopyAttributeValue(element, name, &value) == .success ? value : nil
@@ -46,10 +49,12 @@ func waitFor(_ name: String) throws -> AXUIElement {
     throw ProbeError(description: "AX control unavailable: \(name)")
 }
 func press(_ name: String) throws {
+    phase("press \(name)")
     try require(AXUIElementPerformAction(try waitFor(name), kAXPressAction as CFString) == .success,
                 "AX press failed: \(name)")
 }
 func typeTest() throws {
+    phase("focus typing target")
     let input = try waitFor("Type the displayed text")
     try require(AXUIElementSetAttributeValue(app, kAXFrontmostAttribute as CFString, kCFBooleanTrue) == .success,
                 "Cannot bring application to foreground")
@@ -61,9 +66,11 @@ func typeTest() throws {
             throw ProbeError(description: "Cannot create CGEvent")
         }
         var value = unit
+        down.flags = []; up.flags = []
         down.keyboardSetUnicodeString(stringLength: 1, unicodeString: &value)
         up.keyboardSetUnicodeString(stringLength: 1, unicodeString: &value)
-        down.post(tap: .cghidEventTap); up.post(tap: .cghidEventTap)
+        phase("send Unicode unit \(unit) to owned application")
+        down.postToPid(pid); up.postToPid(pid)
         Thread.sleep(forTimeInterval: 0.2)
     }
     _ = try waitFor("Test Complete")
@@ -73,6 +80,7 @@ func pngFiles(_ directory: URL) -> [URL] {
         .filter { $0.pathExtension == "png" }
 }
 do {
+    phase("check existing Accessibility trust")
     try require(AXIsProcessTrusted(), "Accessibility controller is not trusted; no permission requested")
     try press("Texts"); try press("Start"); try typeTest()
     try press("Restart"); try typeTest()
@@ -102,6 +110,7 @@ do {
     try data.write(to: evidence.appendingPathComponent("clipboard.png"))
     try press("Restart"); _ = try waitFor("Type the displayed text")
     try press("Abort"); _ = try waitFor("Start")
+    phase("completed; recording result")
     let result: [String: Any] = ["status": "passed", "input": "OS CGEvent Unicode asdf, twice",
         "abort": "returned to custom text list", "png_file": file.lastPathComponent,
         "clipboard_image_dimensions": [bitmap.pixelsWide, bitmap.pixelsHigh],

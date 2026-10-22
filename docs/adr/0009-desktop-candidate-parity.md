@@ -51,6 +51,14 @@ already trusted. Accessibility trust is queried without prompting, requesting
 permission or changing OS protections; untrusted access remains a failed probe.
 Required package/startup gates remain strict if the optional experiment is blocked.
 
+macOS UI investigation runs on a separate disposable runner after the strict
+build uploads its installer and source/checksums. It verifies those hashes before
+launching and reports its actual conclusion separately, including failures.
+This preserves package evidence if the controller or runner terminates. CGEvent
+Unicode input is addressed to the owned application PID, with cleared modifiers,
+instead of the global HID event stream. No cause is inferred merely from a
+runner shutdown during an earlier experiment.
+
 Keep Windows/macOS experimental until hardware checks cover RU/EN restart,
 abort, moving/resizing/high DPI, PNG contents, Pictures-folder delivery, image
 paste and OS launch/security prompts. macOS DMGs are not Developer-ID signed or

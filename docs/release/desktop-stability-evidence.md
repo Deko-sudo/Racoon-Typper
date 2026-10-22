@@ -47,10 +47,21 @@ The optional native UI investigations are separate outcomes: Windows UIA/SendInp
 or macOS AX/CGEvent controls, OS-injected EN text, repeat/abort, PNG file and OS
 image clipboard. A missing
 controller/window/control, blocked input, missing results or failed PNG delivery
-is not a passed UI check. No OS permissions or protections are disabled. Its
-logs/images and experiment outcome accompany the installer artifacts. macOS
+is not a passed UI check. No OS permissions or protections are disabled. Windows
+logs/images accompany the installer; macOS UI runs separately after installers
+are uploaded, with its own evidence artifact and actual job conclusion. macOS
 controller trust is checked without requesting Accessibility permission; a
 trusted controller can attempt the AX probe without changing OS permissions.
+
+On source `aca065a`, [native CI 39705967608](https://github.com/Deko-sudo/Racoon-Typper/actions/runs/39705967608)
+passed all three build/install/startup jobs. Windows additionally completed two
+OS-injected EN tests, repeat/abort, PNG file and image-clipboard delivery; SQLite
+result verification was independent of the UI controller. A later macOS UI
+attempt on `a5e83cf` lost both runners after build and baseline smoke had passed
+([run 39708220024](https://github.com/Deko-sudo/Racoon-Typper/actions/runs/39708220024)).
+That termination supplies no UI pass or established product/controller root cause.
+The strict [canonical CI 39708220546](https://github.com/Deko-sudo/Racoon-Typper/actions/runs/39708220546)
+passed all four jobs, including Linux deb/RPM/AppImage installation smoke.
 
 Physical Windows/macOS RU/EN/layout switching, fast caret movement and resize/DPI,
 PNG pixels/image paste and OS launch/security prompts remain manual. Signing,
