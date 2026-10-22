@@ -298,7 +298,12 @@ impl StatisticsEngine {
             self.current_bucket_sec = elapsed_sec;
             self.bucket_presses = 0;
         }
-        self.bucket_presses += 1;
+        if matches!(
+            result,
+            crate::typing::TypingResult::Correct | crate::typing::TypingResult::Incorrect
+        ) {
+            self.bucket_presses += 1;
+        }
     }
 
     /// Возвращает live статистику (WPM, Raw WPM, Accuracy, elapsed_ms).
@@ -313,7 +318,7 @@ impl StatisticsEngine {
         let wpm = WpmCalculator::net_wpm(self.tracker.correct_chars, elapsed_min);
         let raw_wpm = WpmCalculator::raw_wpm(
             self.tracker.correct_chars,
-            self.tracker.incorrect_chars,
+            self.tracker.total_incorrect_presses,
             self.tracker.backspaces,
             elapsed_min,
         );
@@ -365,8 +370,16 @@ impl StatisticsEngine {
         // и систематически завышали score. Fallback — для очень коротких
         // тестов (<1 полной секунды в бакетах не набралось).
         let mut instant_samples = self.instant_wpm_samples.clone();
-        // Незакрытый последний бакет тоже учитываем.
-        if self.bucket_presses > 0 {
+        // Close full seconds through completion, including silence after the
+        // final key. A partial final bucket is excluded: treating its few
+        // presses as a whole second penalizes an otherwise steady cadence.
+        let completed_seconds = duration_ms / 1000;
+        if completed_seconds > self.current_bucket_sec {
+            instant_samples.push(self.bucket_presses as f64 / 5.0 * 60.0);
+            instant_samples.extend(((self.current_bucket_sec + 1)..completed_seconds).map(|_| 0.0));
+        }
+        // Sub-second tests have no complete bucket to compare.
+        if instant_samples.is_empty() && self.bucket_presses > 0 {
             instant_samples.push(self.bucket_presses as f64 / 5.0 * 60.0);
         }
         let consistency = if instant_samples.is_empty() {

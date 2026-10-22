@@ -19,7 +19,7 @@ export type OnboardingGoalType = 'time' | 'wpm' | 'accuracy';
 import type { LanguageCode } from './types/index';
 
 export interface OnboardingResult {
-  practiceLanguage: LanguageCode;
+  practiceLanguages: LanguageCode[];
   goalType: OnboardingGoalType;
   goalMinutes: number;
   goalWpm: number;
@@ -42,17 +42,29 @@ export function clampGoalValue(
 }
 
 export function buildOnboardingResult(
-  practiceLanguage: LanguageCode,
+  practiceLanguages: LanguageCode[],
   goalType: OnboardingGoalType,
   rawMinutes: number,
   rawWpm: number,
   rawAccuracy: number,
 ): OnboardingResult {
+  if (practiceLanguages.length === 0) {
+    throw new Error('Select at least one practice language');
+  }
   return {
-    practiceLanguage,
+    practiceLanguages: [...new Set(practiceLanguages)],
     goalType,
     goalMinutes: clampGoalValue('time', rawMinutes),
     goalWpm: clampGoalValue('wpm', rawWpm),
     goalAccuracy: clampGoalValue('accuracy', rawAccuracy),
   };
+}
+
+export function togglePracticeLanguage(
+  languages: LanguageCode[],
+  language: LanguageCode,
+): LanguageCode[] {
+  return languages.includes(language)
+    ? languages.filter((selected) => selected !== language)
+    : [...languages, language];
 }

@@ -1,10 +1,37 @@
 // i18n translations for Racoon Typper UI
+import { achievementMessages } from './achievementMessages';
 
 export type UiLang = 'en' | 'ru' | 'de' | 'uk' | 'cs' | 'pl' | 'ro' | 'it' | 'fr' | 'es' | 'pt' | 'ja' | 'zh-hk' | 'zh-tw' | 'ko';
 
 type Dict = Record<string, string>;
 
 const en: Dict = {
+  "result.share_png": "Save PNG",
+  "result.share_png_error": "Unable to confirm PNG export. Check Pictures and try again.",
+  "result.png_rendering": "Preparing image…",
+  "result.png_delivering": "Saving image and copying to clipboard…",
+  "result.png_saved": "Saved to:",
+  "result.png_copied": "Image copied. Paste with Ctrl+V (⌘V on macOS).",
+  "result.png_save_failed": "Could not save to Pictures / Raccoon Typer. Check folder permissions and retry.",
+  "result.png_copy_failed": "Could not copy the image. Press PNG to retry.",
+  'share_card.symbols': 'Character accuracy',
+  'share_card.first_attempt': 'Correct on the first attempt (%)',
+  'share_card.empty': 'No character data',
+  'share_card.space': 'Space',
+  'share_card.shown': 'Shown {shown} of {total} characters',
+  'share_card.remaining': 'Other {count}: {attempts} first attempts · {correct} correct · {incorrect} incorrect',
+  'test.input_label': 'Type the displayed text',
+  'hands.title': 'Finger guide',
+  'hands.hand.L': 'Left hand',
+  'hands.hand.R': 'Right hand',
+  'hands.finger.P': 'Little finger',
+  'hands.finger.R': 'Ring finger',
+  'hands.finger.M': 'Middle finger',
+  'hands.finger.I': 'Index finger',
+  'hands.finger.T': 'Thumb',
+  'hands.space': 'Space',
+  'hands.no_hint': 'No finger hint for this key',
+
   'nav.dashboard': 'Dashboard',
   'nav.test': 'Test',
   'nav.pomodoro': 'Pomodoro',
@@ -92,7 +119,7 @@ const en: Dict = {
   'test.typing_title': 'Typing text',
   'test.blind_active': 'Blind',
   'warning.layout_title': 'Wrong keyboard layout',
-  'warning.layout_message': 'The {current} layout is active. Switch to {expected}.',
+  'warning.layout_message': 'The last input is {current}; this text requires {expected}. Check your system keyboard layout.',
   'warning.caps_title': 'Caps Lock is on',
   'warning.caps_message': 'Caps Lock can reduce typing accuracy.',
   // Notification toasts (user-facing messages)
@@ -118,8 +145,6 @@ const en: Dict = {
   'result.correct': 'Correct', 'result.incorrect': 'Incorrect',
   'result.backspaces': 'Backspaces', 'result.duration': 'Duration',
   'result.restart': 'Restart',
-  'result.share_png': 'Share PNG',
-  'result.share_png_error': 'Failed to render the share card.',
   'result.next_lesson': 'Next lesson',
   'result.repeat_lesson': 'Repeat lesson',
   'result.back_to_lessons': 'Back to lessons',
@@ -143,7 +168,8 @@ const en: Dict = {
   'onboarding.welcome_title': 'Welcome to Racoon Typper',
   'onboarding.subtitle': "Let's set up three things — you can change them later in Settings.",
   'onboarding.step_ui_lang': 'Interface language',
-  'onboarding.step_practice_lang': 'Practice language',
+  'onboarding.step_practice_lang': 'Practice languages',
+  'onboarding.practice_languages_hint': 'Choose one or more languages. Start with the first selected language and switch between them during practice.',
   'onboarding.step_goal': 'Daily goal',
   'onboarding.goal_minutes': 'Minutes per day',
   'onboarding.skip': 'Skip',
@@ -156,6 +182,8 @@ const en: Dict = {
   'textpack.export': 'Export pack',
   'textpack.exported': 'Pack downloaded.',
   'textpack.choose_file': 'Choose a pack file first.',
+  'textpack.file_error_empty': 'Text pack file is empty.',
+  'textpack.file_error_too_large': 'Text pack file exceeds the 4 MiB limit.',
   'textpack.merge': 'Merge (skip existing names)',
   'textpack.replace': 'Replace this language',
   'textpack.replace_ack': 'I understand: all texts in the pack language will be deleted.',
@@ -211,8 +239,6 @@ const en: Dict = {
   'custom.used': 'Used',
   'custom.import_file': 'Import .txt',
   'custom.import_clipboard': 'Paste',
-  'custom.import_url': 'Import URL',
-  'custom.import_url_prompt': 'Enter the URL of the text to import (HTTPS only):',
   'custom.import_error_empty': 'The imported text is empty.',
   'custom.import_error_failed': 'Import failed:',
   // Lessons
@@ -274,6 +300,32 @@ const en: Dict = {
 };
 
 const ru: Dict = {
+  "result.share_png": "Сохранить PNG",
+  "result.share_png_error": "Не удалось подтвердить экспорт PNG. Проверьте папку изображений и повторите.",
+  "result.png_rendering": "Готовим изображение…",
+  "result.png_delivering": "Сохраняем и копируем в буфер обмена…",
+  "result.png_saved": "Сохранено в:",
+  "result.png_copied": "Изображение скопировано. Вставьте через Ctrl+V (⌘V на macOS).",
+  "result.png_save_failed": "Не удалось сохранить в Изображения / Raccoon Typer. Проверьте права на папку и повторите.",
+  "result.png_copy_failed": "Не удалось скопировать изображение. Нажмите PNG для повтора.",
+  'share_card.symbols': 'Точность по символам',
+  'share_card.first_attempt': 'Верно с первой попытки (%)',
+  'share_card.empty': 'Нет данных по символам',
+  'share_card.space': 'Пробел',
+  'share_card.shown': 'Показано {shown} из {total} символов',
+  'share_card.remaining': 'Остальные {count}: первых попыток {attempts} · верно {correct} · ошибок {incorrect}',
+  'test.input_label': 'Введите показанный текст',
+  'hands.title': 'Подсказка пальца',
+  'hands.hand.L': 'Левая рука',
+  'hands.hand.R': 'Правая рука',
+  'hands.finger.P': 'Мизинец',
+  'hands.finger.R': 'Безымянный',
+  'hands.finger.M': 'Средний',
+  'hands.finger.I': 'Указательный',
+  'hands.finger.T': 'Большой',
+  'hands.space': 'Пробел',
+  'hands.no_hint': 'Для этой клавиши нет подсказки',
+
   'nav.dashboard': 'Панель',
   'nav.test': 'Тест',
   'nav.pomodoro': 'Помодоро',
@@ -361,7 +413,7 @@ const ru: Dict = {
   'test.typing_title': 'Текст для ввода',
   'test.blind_active': 'Слепая',
   'warning.layout_title': 'Неверная раскладка',
-  'warning.layout_message': 'Сейчас активна {current} раскладка. Переключитесь на {expected}.',
+  'warning.layout_message': 'Последний введённый символ: {current}. Для текста требуется {expected}. Проверьте системную раскладку.',
   'warning.caps_title': 'Caps Lock включён',
   'warning.caps_message': 'Caps Lock может снизить точность ввода.',
   'notification.great_result': 'Отличный результат!',
@@ -386,8 +438,6 @@ const ru: Dict = {
   'result.correct': 'Верно', 'result.incorrect': 'Ошибок',
   'result.backspaces': 'Стираний', 'result.duration': 'Длительность',
   'result.restart': 'Заново',
-  'result.share_png': 'Поделиться PNG',
-  'result.share_png_error': 'Не удалось создать карточку результата.',
   'result.next_lesson': 'Следующий урок',
   'result.repeat_lesson': 'Повторить урок',
   'result.back_to_lessons': 'К списку уроков',
@@ -411,7 +461,8 @@ const ru: Dict = {
   'onboarding.welcome_title': 'Добро пожаловать в Racoon Typper',
   'onboarding.subtitle': 'Настроим три вещи — потом всё можно изменить в Настройках.',
   'onboarding.step_ui_lang': 'Язык интерфейса',
-  'onboarding.step_practice_lang': 'Язык практики',
+  'onboarding.step_practice_lang': 'Языки практики',
+  'onboarding.practice_languages_hint': 'Выберите один или несколько языков. Начнём с первого выбранного — между языками можно переключаться во время практики.',
   'onboarding.step_goal': 'Дневная цель',
   'onboarding.goal_minutes': 'Минут в день',
   'onboarding.skip': 'Пропустить',
@@ -424,6 +475,8 @@ const ru: Dict = {
   'textpack.export': 'Экспорт пакета',
   'textpack.exported': 'Пакет скачан.',
   'textpack.choose_file': 'Сначала выберите файл пакета.',
+  'textpack.file_error_empty': 'Файл пакета текстов пуст.',
+  'textpack.file_error_too_large': 'Размер пакета текстов превышает лимит 4 МиБ.',
   'textpack.merge': 'Объединить (пропускать существующие)',
   'textpack.replace': 'Заменить этот язык',
   'textpack.replace_ack': 'Я понимаю: все тексты языка пакета будут удалены.',
@@ -479,8 +532,6 @@ const ru: Dict = {
   'custom.used': 'Использован',
   'custom.import_file': 'Импорт .txt',
   'custom.import_clipboard': 'Вставить',
-  'custom.import_url': 'Из URL',
-  'custom.import_url_prompt': 'Введите URL текста для импорта (только HTTPS):',
   'custom.import_error_empty': 'Импортированный текст пуст.',
   'custom.import_error_failed': 'Ошибка импорта:',
   // Lessons
@@ -542,6 +593,20 @@ const ru: Dict = {
 };
 
 const de: Dict = {
+  "result.share_png": "PNG speichern",
+  "result.share_png_error": "PNG-Export nicht bestätigt. Bilderordner prüfen und erneut versuchen.",
+  "result.png_rendering": "Bild wird vorbereitet…",
+  "result.png_delivering": "Bild wird gespeichert und kopiert…",
+  "result.png_saved": "Gespeichert unter:",
+  "result.png_copied": "Bild kopiert. Mit Strg+V einfügen (⌘V unter macOS).",
+  "result.png_save_failed": "Speichern in Bilder / Raccoon Typer fehlgeschlagen. Ordnerrechte prüfen und erneut versuchen.",
+  "result.png_copy_failed": "Bild konnte nicht kopiert werden. Zum Wiederholen PNG drücken.",
+  'share_card.symbols': 'Genauigkeit nach Zeichen',
+  'share_card.first_attempt': 'Beim ersten Versuch richtig (%)',
+  'share_card.empty': 'Keine Zeichendaten',
+  'share_card.space': 'Leertaste',
+  'share_card.shown': '{shown} von {total} Zeichen angezeigt',
+  'share_card.remaining': 'Weitere {count}: {attempts} Erstversuche · {correct} richtig · {incorrect} falsch',
   'nav.dashboard': 'Übersicht', 'nav.test': 'Test', 'nav.lessons': 'Lektionen',
   'nav.weakkeys': 'Schwache Tasten', 'nav.analytics': 'Analytik', 'nav.history': 'Verlauf',
   'nav.bests': 'Bestleistungen',   'nav.texts': 'Texte', 'nav.achievements': 'Erfolge', 'nav.settings': 'Einstellungen',
@@ -559,6 +624,20 @@ const de: Dict = {
 };
 
 const uk: Dict = {
+  "result.share_png": "Зберегти PNG",
+  "result.share_png_error": "Не вдалося підтвердити експорт PNG. Перевірте папку зображень і повторіть.",
+  "result.png_rendering": "Готуємо зображення…",
+  "result.png_delivering": "Зберігаємо та копіюємо до буфера обміну…",
+  "result.png_saved": "Збережено в:",
+  "result.png_copied": "Зображення скопійовано. Вставте через Ctrl+V (⌘V на macOS).",
+  "result.png_save_failed": "Не вдалося зберегти в Зображення / Raccoon Typer. Перевірте права на папку та повторіть.",
+  "result.png_copy_failed": "Не вдалося скопіювати зображення. Натисніть PNG для повтору.",
+  'share_card.symbols': 'Точність за символами',
+  'share_card.first_attempt': 'Правильно з першої спроби (%)',
+  'share_card.empty': 'Немає даних за символами',
+  'share_card.space': 'Пробіл',
+  'share_card.shown': 'Показано {shown} із {total} символів',
+  'share_card.remaining': 'Решта {count}: перших спроб {attempts} · правильно {correct} · помилок {incorrect}',
   'nav.dashboard': 'Панель', 'nav.test': 'Тест', 'nav.lessons': 'Уроки',
   'nav.weakkeys': 'Слабкі клавіші', 'nav.analytics': 'Аналітика', 'nav.history': 'Історія',
   'nav.bests': 'Рекорди',   'nav.texts': 'Тексти', 'nav.achievements': 'Досягнення', 'nav.settings': 'Налаштування',
@@ -576,6 +655,20 @@ const uk: Dict = {
 };
 
 const es: Dict = {
+  "result.share_png": "Guardar PNG",
+  "result.share_png_error": "No se confirmó la exportación PNG. Revisa la carpeta Imágenes e inténtalo de nuevo.",
+  "result.png_rendering": "Preparando imagen…",
+  "result.png_delivering": "Guardando y copiando al portapapeles…",
+  "result.png_saved": "Guardado en:",
+  "result.png_copied": "Imagen copiada. Pega con Ctrl+V (⌘V en macOS).",
+  "result.png_save_failed": "No se pudo guardar en Imágenes / Raccoon Typer. Revisa los permisos y reintenta.",
+  "result.png_copy_failed": "No se pudo copiar la imagen. Pulsa PNG para reintentar.",
+  'share_card.symbols': 'Precisión por carácter',
+  'share_card.first_attempt': 'Correcto al primer intento (%)',
+  'share_card.empty': 'No hay datos de caracteres',
+  'share_card.space': 'Espacio',
+  'share_card.shown': 'Se muestran {shown} de {total} caracteres',
+  'share_card.remaining': 'Otros {count}: {attempts} primeros intentos · {correct} correctos · {incorrect} incorrectos',
   'nav.dashboard': 'Panel', 'nav.test': 'Test', 'nav.lessons': 'Lecciones',
   'nav.weakkeys': 'Teclas débiles', 'nav.analytics': 'Analítica', 'nav.history': 'Historial',
   'nav.bests': 'Récords',   'nav.texts': 'Textos', 'nav.achievements': 'Logros', 'nav.settings': 'Ajustes',
@@ -593,6 +686,20 @@ const es: Dict = {
 };
 
 const fr: Dict = {
+  "result.share_png": "Enregistrer PNG",
+  "result.share_png_error": "Export PNG non confirmé. Vérifiez le dossier Images et réessayez.",
+  "result.png_rendering": "Préparation de l’image…",
+  "result.png_delivering": "Enregistrement et copie dans le presse-papiers…",
+  "result.png_saved": "Enregistré dans :",
+  "result.png_copied": "Image copiée. Collez avec Ctrl+V (⌘V sur macOS).",
+  "result.png_save_failed": "Échec de l’enregistrement dans Images / Raccoon Typer. Vérifiez les droits et réessayez.",
+  "result.png_copy_failed": "Impossible de copier l’image. Appuyez sur PNG pour réessayer.",
+  'share_card.symbols': 'Précision par caractère',
+  'share_card.first_attempt': 'Correct dès la première tentative (%)',
+  'share_card.empty': 'Aucune donnée sur les caractères',
+  'share_card.space': 'Espace',
+  'share_card.shown': '{shown} caractères affichés sur {total}',
+  'share_card.remaining': 'Autres {count} : {attempts} premières tentatives · {correct} correctes · {incorrect} incorrectes',
   'nav.dashboard': 'Tableau de bord', 'nav.test': 'Test', 'nav.lessons': 'Leçons',
   'nav.weakkeys': 'Touches faibles', 'nav.analytics': 'Analytique', 'nav.history': 'Historique',
   'nav.bests': 'Records',   'nav.texts': 'Textes', 'nav.achievements': 'Succès', 'nav.settings': 'Paramètres',
@@ -610,6 +717,20 @@ const fr: Dict = {
 };
 
 const it: Dict = {
+  "result.share_png": "Salva PNG",
+  "result.share_png_error": "Esportazione PNG non confermata. Controlla la cartella Immagini e riprova.",
+  "result.png_rendering": "Preparazione immagine…",
+  "result.png_delivering": "Salvataggio e copia negli appunti…",
+  "result.png_saved": "Salvato in:",
+  "result.png_copied": "Immagine copiata. Incolla con Ctrl+V (⌘V su macOS).",
+  "result.png_save_failed": "Impossibile salvare in Immagini / Raccoon Typer. Controlla i permessi e riprova.",
+  "result.png_copy_failed": "Impossibile copiare l’immagine. Premi PNG per riprovare.",
+  'share_card.symbols': 'Precisione per carattere',
+  'share_card.first_attempt': 'Corretto al primo tentativo (%)',
+  'share_card.empty': 'Nessun dato sui caratteri',
+  'share_card.space': 'Spazio',
+  'share_card.shown': 'Mostrati {shown} di {total} caratteri',
+  'share_card.remaining': 'Altri {count}: {attempts} primi tentativi · {correct} corretti · {incorrect} errati',
   'nav.dashboard': 'Cruscotto', 'nav.test': 'Test', 'nav.lessons': 'Lezioni',
   'nav.weakkeys': 'Tasti deboli', 'nav.analytics': 'Analisi', 'nav.history': 'Cronologia',
   'nav.bests': 'Record',   'nav.texts': 'Testi', 'nav.achievements': 'Risultati', 'nav.settings': 'Impostazioni',
@@ -627,6 +748,20 @@ const it: Dict = {
 };
 
 const pt: Dict = {
+  "result.share_png": "Guardar PNG",
+  "result.share_png_error": "Não foi possível confirmar a exportação PNG. Verifique a pasta Imagens e tente novamente.",
+  "result.png_rendering": "A preparar imagem…",
+  "result.png_delivering": "A guardar e copiar para a área de transferência…",
+  "result.png_saved": "Guardado em:",
+  "result.png_copied": "Imagem copiada. Cole com Ctrl+V (⌘V no macOS).",
+  "result.png_save_failed": "Não foi possível guardar em Imagens / Raccoon Typer. Verifique as permissões e tente novamente.",
+  "result.png_copy_failed": "Não foi possível copiar a imagem. Prima PNG para tentar novamente.",
+  'share_card.symbols': 'Precisão por caractere',
+  'share_card.first_attempt': 'Correto na primeira tentativa (%)',
+  'share_card.empty': 'Sem dados de caracteres',
+  'share_card.space': 'Espaço',
+  'share_card.shown': 'Exibidos {shown} de {total} caracteres',
+  'share_card.remaining': 'Outros {count}: {attempts} primeiras tentativas · {correct} corretas · {incorrect} incorretas',
   'nav.dashboard': 'Painel', 'nav.test': 'Teste', 'nav.lessons': 'Lições',
   'nav.weakkeys': 'Teclas fracas', 'nav.analytics': 'Análise', 'nav.history': 'Histórico',
   'nav.bests': 'Recordes',   'nav.texts': 'Textos', 'nav.achievements': 'Conquistas', 'nav.settings': 'Configurações',
@@ -644,6 +779,20 @@ const pt: Dict = {
 };
 
 const pl: Dict = {
+  "result.share_png": "Zapisz PNG",
+  "result.share_png_error": "Nie potwierdzono eksportu PNG. Sprawdź folder obrazów i spróbuj ponownie.",
+  "result.png_rendering": "Przygotowywanie obrazu…",
+  "result.png_delivering": "Zapisywanie i kopiowanie do schowka…",
+  "result.png_saved": "Zapisano w:",
+  "result.png_copied": "Obraz skopiowany. Wklej przez Ctrl+V (⌘V w macOS).",
+  "result.png_save_failed": "Nie można zapisać w Obrazy / Raccoon Typer. Sprawdź uprawnienia i ponów próbę.",
+  "result.png_copy_failed": "Nie można skopiować obrazu. Naciśnij PNG, aby ponowić.",
+  'share_card.symbols': 'Dokładność według znaków',
+  'share_card.first_attempt': 'Poprawnie za pierwszym razem (%)',
+  'share_card.empty': 'Brak danych o znakach',
+  'share_card.space': 'Spacja',
+  'share_card.shown': 'Wyświetlono {shown} z {total} znaków',
+  'share_card.remaining': 'Pozostałe {count}: {attempts} pierwszych prób · {correct} poprawnie · {incorrect} błędnie',
   'nav.dashboard': 'Pulpit', 'nav.test': 'Test', 'nav.lessons': 'Lekcje',
   'nav.weakkeys': 'Słabe klawisze', 'nav.analytics': 'Analiza', 'nav.history': 'Historia',
   'nav.bests': 'Rekordy',   'nav.texts': 'Teksty', 'nav.achievements': 'Osiągnięcia', 'nav.settings': 'Ustawienia',
@@ -661,6 +810,20 @@ const pl: Dict = {
 };
 
 const cs: Dict = {
+  "result.share_png": "Uložit PNG",
+  "result.share_png_error": "Export PNG nebyl potvrzen. Zkontrolujte složku Obrázky a zkuste to znovu.",
+  "result.png_rendering": "Připravuji obrázek…",
+  "result.png_delivering": "Ukládám a kopíruji do schránky…",
+  "result.png_saved": "Uloženo do:",
+  "result.png_copied": "Obrázek zkopírován. Vložte pomocí Ctrl+V (⌘V na macOS).",
+  "result.png_save_failed": "Nelze uložit do Obrázky / Raccoon Typer. Zkontrolujte oprávnění a zkuste to znovu.",
+  "result.png_copy_failed": "Obrázek nelze zkopírovat. Zkuste znovu tlačítkem PNG.",
+  'share_card.symbols': 'Přesnost podle znaků',
+  'share_card.first_attempt': 'Správně na první pokus (%)',
+  'share_card.empty': 'Žádná data o znacích',
+  'share_card.space': 'Mezera',
+  'share_card.shown': 'Zobrazeno {shown} z {total} znaků',
+  'share_card.remaining': 'Dalších {count}: {attempts} prvních pokusů · {correct} správně · {incorrect} chybně',
   'nav.dashboard': 'Nástěnka', 'nav.test': 'Test', 'nav.lessons': 'Lekce',
   'nav.weakkeys': 'Slabé klávesy', 'nav.analytics': 'Analýza', 'nav.history': 'Historie',
   'nav.bests': 'Rekordy',   'nav.texts': 'Texty', 'nav.achievements': 'Úspěchy', 'nav.settings': 'Nastavení',
@@ -678,6 +841,20 @@ const cs: Dict = {
 };
 
 const ro: Dict = {
+  "result.share_png": "Salvează PNG",
+  "result.share_png_error": "Exportul PNG nu a fost confirmat. Verifică folderul de imagini și reîncearcă.",
+  "result.png_rendering": "Se pregătește imaginea…",
+  "result.png_delivering": "Se salvează și se copiază în clipboard…",
+  "result.png_saved": "Salvat în:",
+  "result.png_copied": "Imagine copiată. Lipește cu Ctrl+V (⌘V pe macOS).",
+  "result.png_save_failed": "Nu s-a putut salva în Imagini / Raccoon Typer. Verifică permisiunile și reîncearcă.",
+  "result.png_copy_failed": "Imaginea nu a putut fi copiată. Apasă PNG pentru a reîncerca.",
+  'share_card.symbols': 'Precizie pe caractere',
+  'share_card.first_attempt': 'Corect la prima încercare (%)',
+  'share_card.empty': 'Nu există date despre caractere',
+  'share_card.space': 'Spațiu',
+  'share_card.shown': 'Sunt afișate {shown} din {total} caractere',
+  'share_card.remaining': 'Alte {count}: {attempts} prime încercări · {correct} corecte · {incorrect} greșite',
   'nav.dashboard': 'Tablou', 'nav.test': 'Test', 'nav.lessons': 'Lecții',
   'nav.weakkeys': 'Taste slabe', 'nav.analytics': 'Analiză', 'nav.history': 'Istoric',
   'nav.bests': 'Recorduri',   'nav.texts': 'Texte', 'nav.achievements': 'Realizări', 'nav.settings': 'Setări',
@@ -695,6 +872,20 @@ const ro: Dict = {
 };
 
 const ja: Dict = {
+  "result.share_png": "PNGを保存",
+  "result.share_png_error": "PNGの書き出しを確認できません。画像フォルダーを確認して再試行してください。",
+  "result.png_rendering": "画像を準備中…",
+  "result.png_delivering": "保存してクリップボードにコピー中…",
+  "result.png_saved": "保存先:",
+  "result.png_copied": "画像をコピーしました。Ctrl+V（macOSでは⌘V）で貼り付けできます。",
+  "result.png_save_failed": "画像 / Raccoon Typer に保存できません。フォルダーの権限を確認して再試行してください。",
+  "result.png_copy_failed": "画像をコピーできません。PNGを押して再試行してください。",
+  'share_card.symbols': '文字ごとの正確さ',
+  'share_card.first_attempt': '最初の入力で正解した割合（%）',
+  'share_card.empty': '文字データがありません',
+  'share_card.space': '空白',
+  'share_card.shown': '{total}文字中{shown}文字を表示',
+  'share_card.remaining': 'その他{count}文字：初回入力{attempts}回 · 正解{correct} · 誤り{incorrect}',
   'nav.dashboard': 'ダッシュボード', 'nav.test': 'テスト', 'nav.lessons': 'レッスン',
   'nav.weakkeys': '苦手キー', 'nav.analytics': '分析', 'nav.history': '履歴',
   'nav.bests': 'ベスト',   'nav.texts': 'テキスト', 'nav.achievements': '実績', 'nav.settings': '設定',
@@ -712,6 +903,20 @@ const ja: Dict = {
 };
 
 const ko: Dict = {
+  "result.share_png": "PNG 저장",
+  "result.share_png_error": "PNG 내보내기를 확인할 수 없습니다. 사진 폴더를 확인하고 다시 시도하세요.",
+  "result.png_rendering": "이미지 준비 중…",
+  "result.png_delivering": "저장하고 클립보드에 복사 중…",
+  "result.png_saved": "저장 위치:",
+  "result.png_copied": "이미지가 복사되었습니다. Ctrl+V(macOS는 ⌘V)로 붙여넣으세요.",
+  "result.png_save_failed": "사진 / Raccoon Typer에 저장할 수 없습니다. 폴더 권한을 확인하고 다시 시도하세요.",
+  "result.png_copy_failed": "이미지를 복사할 수 없습니다. PNG를 눌러 다시 시도하세요.",
+  'share_card.symbols': '문자별 정확도',
+  'share_card.first_attempt': '첫 입력 정답률 (%)',
+  'share_card.empty': '문자 데이터 없음',
+  'share_card.space': '공백',
+  'share_card.shown': '{total}개 문자 중 {shown}개 표시',
+  'share_card.remaining': '나머지 {count}개: 첫 입력 {attempts}회 · 정답 {correct} · 오답 {incorrect}',
   'nav.dashboard': '대시보드', 'nav.test': '테스트', 'nav.lessons': '레슨',
   'nav.weakkeys': '약한 키', 'nav.analytics': '분석', 'nav.history': '기록',
   'nav.bests': '최고 기록',   'nav.texts': '텍스트', 'nav.achievements': '업적', 'nav.settings': '설정',
@@ -729,6 +934,20 @@ const ko: Dict = {
 };
 
 const zhHK: Dict = {
+  "result.share_png": "儲存PNG",
+  "result.share_png_error": "未能確認PNG匯出。請檢查圖片資料夾後重試。",
+  "result.png_rendering": "正在準備圖片…",
+  "result.png_delivering": "正在儲存並複製到剪貼簿…",
+  "result.png_saved": "已儲存至：",
+  "result.png_copied": "圖片已複製。按Ctrl+V貼上（macOS使用⌘V）。",
+  "result.png_save_failed": "無法儲存至圖片 / Raccoon Typer。請檢查資料夾權限後重試。",
+  "result.png_copy_failed": "無法複製圖片。請按PNG重試。",
+  'share_card.symbols': '各字元準確度',
+  'share_card.first_attempt': '首次輸入正確率（%）',
+  'share_card.empty': '沒有字元資料',
+  'share_card.space': '空格',
+  'share_card.shown': '顯示{total}個字元中的{shown}個',
+  'share_card.remaining': '其餘{count}個：首次輸入{attempts}次 · 正確{correct} · 錯誤{incorrect}',
   'nav.dashboard': '儀表板', 'nav.test': '測試', 'nav.lessons': '課程',
   'nav.weakkeys': '弱鍵', 'nav.analytics': '分析', 'nav.history': '歷史',
   'nav.bests': '最佳', 'nav.texts': '文本', 'nav.settings': '設定',
@@ -746,6 +965,20 @@ const zhHK: Dict = {
 };
 
 const zhTW: Dict = {
+  "result.share_png": "儲存PNG",
+  "result.share_png_error": "無法確認PNG匯出。請檢查圖片資料夾後重試。",
+  "result.png_rendering": "正在準備圖片…",
+  "result.png_delivering": "正在儲存並複製到剪貼簿…",
+  "result.png_saved": "已儲存至：",
+  "result.png_copied": "圖片已複製。按Ctrl+V貼上（macOS使用⌘V）。",
+  "result.png_save_failed": "無法儲存至圖片 / Raccoon Typer。請檢查資料夾權限後重試。",
+  "result.png_copy_failed": "無法複製圖片。請按PNG重試。",
+  'share_card.symbols': '各字元準確度',
+  'share_card.first_attempt': '首次輸入正確率（%）',
+  'share_card.empty': '沒有字元資料',
+  'share_card.space': '空白',
+  'share_card.shown': '顯示{total}個字元中的{shown}個',
+  'share_card.remaining': '其餘{count}個：首次輸入{attempts}次 · 正確{correct} · 錯誤{incorrect}',
   'nav.dashboard': '儀表板', 'nav.test': '測試', 'nav.lessons': '課程',
   'nav.weakkeys': '弱鍵', 'nav.analytics': '分析', 'nav.history': '歷史',
   'nav.bests': '最佳', 'nav.texts': '文本', 'nav.achievements': '成就', 'nav.settings': '設定',
@@ -768,7 +1001,7 @@ const dictionaries: Record<string, Dict> = {
 
 export function t(lang: string, key: string): string {
   const dict = dictionaries[lang] || en;
-  return dict[key] || en[key] || key;
+  return dict[key] || achievementMessages[lang]?.[key] || en[key] || achievementMessages.en[key] || key;
 }
 
 export const UI_LANGUAGES: [string, string][] = [

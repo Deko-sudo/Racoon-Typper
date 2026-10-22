@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { CharStatus, AppSettings } from '../lib/types/index';
+  import TypingInput from './TypingInput.svelte';
   import ModeSelector from './ModeSelector.svelte';
   import ResultOverlay from './ResultOverlay.svelte';
   import KeyboardTrainer from './KeyboardTrainer.svelte';
@@ -33,6 +34,8 @@
     onWordCountChange,
     onLanguageChange,
     onAbort,
+    onTypingKey,
+    onCapsLockChange,
     onRestart,
     lessonNavigation,
     onRepeatLesson,
@@ -63,6 +66,8 @@
     onWordCountChange: (w: number) => void;
     onLanguageChange: (l: LanguageCode) => void;
     onAbort: () => void;
+    onTypingKey?: (key: string, code: string) => void;
+    onCapsLockChange?: (enabled: boolean) => void;
     onRestart: () => void;
     lessonNavigation: LessonResultNavigation | null;
     onRepeatLesson: () => void;
@@ -76,7 +81,7 @@
   let viewportChars = $derived(charStatuses.slice(viewportStart, viewportEnd));
   let viewportOffset = $derived(caretPos - viewportStart);
   let progress = $derived(charStatuses.length === 0 ? 0 : (caretPos / charStatuses.length) * 100);
-  let nextChar = $derived(isRunning && !isComplete && caretPos < text.length ? text[caretPos] : '');
+  let nextChar = $derived(isRunning && !isComplete ? charStatuses[caretPos]?.expected ?? '' : '');
   let isRussian = $derived(sessionLanguage === 'ru');
 
   // Нормализация стиля каретки: legacy-значения (underline/solid/block) из
@@ -125,6 +130,9 @@
     const display = textDisplayEl;
     const caret = caretEl;
     if (!display || !caret || !showCaret) return;
+    // Once the viewport scrolls, the relative caret index stays constant.
+    // Its glyph still moves when the slice or wrapping changes.
+    void viewportChars;
     const index = caretCharIndex;
     const style = normalizedCaretStyle;
     const after = caretAfter;
@@ -136,11 +144,10 @@
       if (!target) return;
       const em = fontSize;
       let widthPx: number;
-      let offsetPx: number;
       switch (style) {
-        case 'thick': widthPx = 0.24 * em; offsetPx = 0.46 * em; break;
-        case 'bubble': widthPx = 0.34 * em; offsetPx = 0.6 * em; break;
-        default: widthPx = 0.12 * em; offsetPx = 0.3 * em;
+        case 'thick': widthPx = 0.24 * em; break;
+        case 'bubble': widthPx = 0.34 * em; break;
+        default: widthPx = 0.12 * em;
       }
       const charLeft = target.offsetLeft;
       const charTop = target.offsetTop;
@@ -151,15 +158,25 @@
       // it. Size the caret to the glyph box and center it vertically, or the
       // thin bar pokes above the ascenders and below the baseline.
       const glyphHeight = Math.min(charHeight, 1.18 * em);
-      caretLeft = after ? charLeft + charWidth + offsetPx : charLeft - offsetPx;
+      // Center on the insertion boundary, rather than displacing the caret
+      // into the previous/next glyph by a style-dependent character offset.
+      caretLeft = charLeft + (after ? charWidth : 0) - widthPx / 2;
       caretTop = charTop + (charHeight - glyphHeight) / 2;
       caretWidth = widthPx;
       caretHeight = style === 'bubble' ? Math.max(0, glyphHeight - 0.04 * em) : glyphHeight;
       caretSettled = true;
     };
 
-    const raf = requestAnimationFrame(measure);
-    return () => cancelAnimationFrame(raf);
+    let raf = requestAnimationFrame(measure);
+    const observer = new ResizeObserver(() => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(measure);
+    });
+    observer.observe(display);
+    return () => {
+      observer.disconnect();
+      cancelAnimationFrame(raf);
+    };
   });
 
   function charClass(char: CharStatus, idx: number): string {
@@ -190,6 +207,7 @@
     {selectedDuration}
     {selectedWordCount}
     {selectedLanguage}
+    preferredLanguages={settings?.practice_languages ?? []}
     onSelectMode={onModeChange}
     onSelectDuration={onDurationChange}
     onSelectWordCount={onWordCountChange}
@@ -206,9 +224,13 @@
   <section class="typing-card" aria-label={t(uiLang, 'test.typing_title')}>
     <header class="typing-header">
       <div><p class="typing-eyebrow">{t(uiLang, 'test.typing_label')}</p><h3>{t(uiLang, 'test.typing_title')}</h3></div>
-      <div class="typing-progress"><span>{caretPos}/{text.length}</span><div class="progress-track"><div class="progress-fill" style:width={`${progress}%`}></div></div></div>
+      <div class="typing-progress"><span>{caretPos}/{charStatuses.length}</span><div class="progress-track"><div class="progress-fill" style:width={`${progress}%`}></div></div></div>
     </header>
-    <div class="text-viewport"><div
+    <div class="text-viewport">
+      {#if isRunning && !isComplete && onTypingKey}
+        <TypingInput onKey={onTypingKey} {onCapsLockChange} {uiLang} />
+      {/if}
+      <div
       class="text-display caret-{normalizedCaretStyle}"
       class:blind={settings?.blind_mode_enabled && isRunning}
       style:--typing-font-size={`${settings?.font_size ?? 24}px`}
@@ -245,11 +267,11 @@
   </div>
 
   {#if settings?.show_keyboard_trainer && isRunning}
-    <KeyboardTrainer {nextChar} {isRussian} />
+    <KeyboardTrainer {nextChar} {isRussian} keyboardLayout={settings?.keyboard_layout ?? 'qwerty'} />
   {/if}
 
   {#if settings?.show_hand_guide && isRunning}
-    <HandPositionGuide {nextChar} {isRussian} />
+    <HandPositionGuide {nextChar} {isRussian} keyboardLayout={settings?.keyboard_layout ?? 'qwerty'} {uiLang} />
   {/if}
 {/if}
 
@@ -264,7 +286,8 @@
   .typing-progress { min-width: 180px; color: var(--sub); font-size: .72rem; text-align: right; }
   .progress-track { width: 100%; height: 5px; overflow: hidden; border-radius: 999px; background: var(--color-progress-track); margin-top: .35rem; }
   .progress-fill { height: 100%; border-radius: inherit; background: var(--color-progress-fill); transition: width .12s ease; }
-  .text-viewport { width:100%; overflow:hidden; background:var(--color-surface-primary); border:1px solid var(--color-border-strong); border-radius:8px; padding:1.5rem; }
+  .text-viewport { position:relative; width:100%; overflow:hidden; background:var(--color-surface-primary); border:1px solid var(--color-border-strong); border-radius:8px; padding:1.5rem; }
+  .text-viewport:focus-within { border-color:var(--color-focus-ring); }
   .text-display { --typing-font-size:clamp(1.1rem,1.8vw,1.5rem); max-width:min(900px, 100%); margin:0 auto; font-size:0; line-height:1.65; letter-spacing:normal; text-align:center; user-select:none; white-space:pre-wrap; overflow-wrap:break-word; min-height:3.3em; display:block; position:relative; }
   .text-ellipsis { color:var(--color-text-muted); padding:0 .25rem; font-size:var(--typing-font-size); }
   .char { position:relative; z-index:0; display:inline-block; vertical-align:baseline; font-size:var(--typing-font-size); line-height:1.65; transition:color .05s, opacity .1s; }

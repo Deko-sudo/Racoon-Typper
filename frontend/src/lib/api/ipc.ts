@@ -92,10 +92,6 @@ export async function searchCustomTexts(query: string, limit = 20): Promise<Cust
   return invoke<CustomText[]>('search_custom_texts', { query, limit });
 }
 
-export async function importTextFromUrl(url: string): Promise<string> {
-  return invoke<string>('import_text_from_url', { url });
-}
-
 export type KeyHeatData = {
   total_attempts: number;
   correct: number;
@@ -209,30 +205,6 @@ export async function exportReport(): Promise<string> {
   return invoke<string>('export_report');
 }
 
-export type ShareCardStats = {
-  wpm: number;
-  raw_wpm: number;
-  accuracy: number;
-  duration_ms: number;
-  mode: string;
-  language: string;
-  date: string;
-  heatmap: Record<string, { total_attempts: number; correct: number; incorrect: number; avg_wpm_at_key: number }>;
-};
-
-export type ShareCardColors = {
-  background: string;
-  surface: string;
-  text: string;
-  sub: string;
-  accent: string;
-  error: string;
-};
-
-export async function exportResultPng(stats: ShareCardStats, colors: ShareCardColors): Promise<number[]> {
-  return invoke<number[]>('export_result_png', { stats, colors });
-}
-
 export async function exportHeatmapPng(recentCount = 50): Promise<number[]> {
   return invoke<number[]>('export_heatmap_png', { recentCount });
 }
@@ -271,4 +243,14 @@ export async function getReplay(testId: number): Promise<ReplayFrame[]> {
 // Sound
 export async function getSoundEvent(event: string): Promise<SoundOutputResponse | null> {
   return invoke<SoundOutputResponse | null>('get_sound_event', { event });
+}
+
+/** OS-confirmed delivery of a rendered card; no caller-supplied paths. */
+export interface CardExportOutcome {
+  savedPath: string | null;
+  copied: boolean;
+}
+
+export async function saveResultCard(png: number[]): Promise<CardExportOutcome> {
+  return invoke<CardExportOutcome>('save_result_card', { png });
 }

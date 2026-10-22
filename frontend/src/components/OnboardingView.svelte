@@ -1,8 +1,8 @@
-// SPDX-License-Identifier: Apache-2.0
-// Copyright 2026 Racoon Typper Contributors
+<!-- SPDX-License-Identifier: Apache-2.0; Copyright 2026 Racoon Typper Contributors -->
 
 <script lang="ts">
   import { t, UI_LANGUAGES } from '../lib/i18n';
+  import PracticeLanguagePicker from './PracticeLanguagePicker.svelte';
   import {
     buildOnboardingResult,
     clampGoalValue,
@@ -22,16 +22,17 @@
   }: {
     uiLang?: string;
     onUiLangChange: (lang: string) => void;
-    onComplete: (result: OnboardingResult) => void;
+    onComplete: (result: OnboardingResult) => void | Promise<void>;
     onSkip: () => void;
   } = $props();
 
   let step = $state(0);
-  let selectedPracticeLanguage = $state<LanguageCode>('en');
+  let selectedPracticeLanguages = $state<LanguageCode[]>(['en']);
   let goalType = $state<OnboardingGoalType>('time');
   let goalMinutes = $state(15);
   let goalWpm = $state(40);
   let goalAccuracy = $state(90);
+  let saving = $state(false);
 
   function pickUiLanguage(lang: string) {
     onUiLangChange(lang);
@@ -45,22 +46,28 @@
     step = previousOnboardingStep(step);
   }
 
-  function finish() {
-    onComplete(
-      buildOnboardingResult(
-        selectedPracticeLanguage,
-        goalType,
-        goalMinutes,
-        goalWpm,
-        goalAccuracy,
-      ),
-    );
+  async function finish() {
+    if (saving) return;
+    saving = true;
+    try {
+      await onComplete(
+        buildOnboardingResult(
+          selectedPracticeLanguages,
+          goalType,
+          goalMinutes,
+          goalWpm,
+          goalAccuracy,
+        ),
+      );
+    } finally {
+      saving = false;
+    }
   }
 </script>
 
 <div class="onboarding-overlay" role="dialog" aria-modal="true" aria-label={t(uiLang, 'onboarding.welcome_title')}>
   <div class="onboarding-card">
-    <button class="skip-btn" onclick={onSkip}>{t(uiLang, 'onboarding.skip')}</button>
+    <button class="skip-btn" onclick={onSkip} disabled={saving}>{t(uiLang, 'onboarding.skip')}</button>
 
     <h1>{t(uiLang, 'onboarding.welcome_title')}</h1>
     <p class="subtitle">{t(uiLang, 'onboarding.subtitle')}</p>
@@ -85,18 +92,11 @@
         {/each}
       </div>
     {:else if step === 1}
-      <h2>{t(uiLang, 'onboarding.step_practice_lang')}</h2>
-      <div class="lang-grid">
-        {#each UI_LANGUAGES as [code, label] (code)}
-          <button
-            class="lang-option"
-            class:selected={selectedPracticeLanguage === code}
-            onclick={() => (selectedPracticeLanguage = code as LanguageCode)}
-          >
-            {label}
-          </button>
-        {/each}
-      </div>
+      <PracticeLanguagePicker
+        languages={selectedPracticeLanguages}
+        onChange={(languages) => (selectedPracticeLanguages = languages)}
+        {uiLang}
+      />
     {:else}
       <h2>{t(uiLang, 'onboarding.step_goal')}</h2>
       <div class="goal-controls">
@@ -141,13 +141,13 @@
     {/if}
 
     <div class="nav-row">
-      <button class="nav-btn secondary" onclick={back} disabled={step === 0}>
+      <button class="nav-btn secondary" onclick={back} disabled={step === 0 || saving}>
         {t(uiLang, 'onboarding.back')}
       </button>
       {#if step < ONBOARDING_STEPS - 1}
-        <button class="nav-btn primary" onclick={next}>{t(uiLang, 'onboarding.next')}</button>
+        <button class="nav-btn primary" onclick={next} disabled={step === 1 && selectedPracticeLanguages.length === 0}>{t(uiLang, 'onboarding.next')}</button>
       {:else}
-        <button class="nav-btn primary" onclick={finish}>
+        <button class="nav-btn primary" onclick={finish} disabled={saving}>
           {t(uiLang, 'onboarding.finish')}
         </button>
       {/if}

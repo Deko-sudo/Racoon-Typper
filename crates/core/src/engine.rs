@@ -182,8 +182,10 @@ impl CoreEngine {
         let action = KeyClassifier::classify(&key_event.key, &key_event.code);
         let previous_caret_pos = session.buffer.current_position;
 
-        // Делегируем обработку режиму
+        // A deadline is evaluated before mutating the buffer. A key delivered
+        // after expiry must not add a character or erase already scored input.
         let typing_result = match action {
+            _ if session.mode.is_complete(&session.buffer) => TypingResult::TestEnded,
             KeyAction::Print(ch) => {
                 let mode_result =
                     session
@@ -275,7 +277,9 @@ impl CoreEngine {
 
         // Финализация
         let test_complete: Option<FinalStats> = if is_complete {
-            let duration = session.buffer.elapsed_ms();
+            let duration = session
+                .mode
+                .completion_duration_ms(session.buffer.elapsed_ms());
             Some(self.stats.finalize(&session.buffer, duration))
         } else {
             None
@@ -512,6 +516,85 @@ mod tests {
             code: code.to_string(),
             timestamp: 100,
         }
+    }
+
+    #[test]
+    fn audit_expired_time_mode_does_not_accept_another_print() {
+        let mut engine = CoreEngine::new();
+        engine
+            .start_test_mode(
+                "deadline-print".to_string(),
+                Box::new(TimeMode::new("abc".to_string(), "en".to_string(), 1)),
+            )
+            .expect("start");
+        engine.process_key(&make_key("a", "KeyA"));
+        engine.session.as_mut().expect("session").buffer.start_time =
+            Some(std::time::Instant::now() - std::time::Duration::from_secs(2));
+
+        let output = engine.process_key(&make_key("b", "KeyB"));
+        assert_eq!(output.key_result, KeyResult::TestEnded);
+        assert_eq!(output.caret_pos, 1);
+        assert_eq!(output.test_complete.expect("completion").correct_chars, 1);
+        assert_eq!(engine.replay_frames().len(), 1);
+    }
+
+    #[test]
+    fn audit_expired_time_mode_does_not_apply_backspace() {
+        let mut engine = CoreEngine::new();
+        engine
+            .start_test_mode(
+                "deadline-backspace".to_string(),
+                Box::new(TimeMode::new("abc".to_string(), "en".to_string(), 1)),
+            )
+            .expect("start");
+        engine.process_key(&make_key("a", "KeyA"));
+        engine.session.as_mut().expect("session").buffer.start_time =
+            Some(std::time::Instant::now() - std::time::Duration::from_secs(2));
+
+        let output = engine.process_key(&make_key("Backspace", "Backspace"));
+        assert_eq!(output.key_result, KeyResult::TestEnded);
+        assert_eq!(output.caret_pos, 1);
+        assert_eq!(output.test_complete.expect("completion").correct_chars, 1);
+        assert_eq!(engine.replay_frames().len(), 1);
+    }
+
+    #[test]
+    fn audit_delayed_time_tick_uses_the_configured_scoring_window() {
+        let mut engine = CoreEngine::new();
+        engine
+            .start_test_mode(
+                "delayed-tick".to_string(),
+                Box::new(TimeMode::new("abc".to_string(), "en".to_string(), 30)),
+            )
+            .expect("start");
+        engine.process_key(&make_key("a", "KeyA"));
+        engine.session.as_mut().expect("session").buffer.start_time =
+            Some(std::time::Instant::now() - std::time::Duration::from_secs(45));
+
+        let output = engine.process_key(&make_key("", ""));
+        let stats = output.test_complete.expect("completion");
+        assert_eq!(stats.duration_ms, 30_000);
+        assert!((stats.wpm - 0.4).abs() < 0.001);
+        assert_eq!(stats.correct_chars, 1);
+    }
+
+    #[test]
+    fn audit_early_time_text_completion_retains_actual_duration() {
+        let mut engine = CoreEngine::new();
+        engine
+            .start_test_mode(
+                "early-completion".to_string(),
+                Box::new(TimeMode::new("ab".to_string(), "en".to_string(), 30)),
+            )
+            .expect("start");
+        engine.process_key(&make_key("a", "KeyA"));
+        engine.session.as_mut().expect("session").buffer.start_time =
+            Some(std::time::Instant::now() - std::time::Duration::from_secs(5));
+
+        let output = engine.process_key(&make_key("b", "KeyB"));
+        let stats = output.test_complete.expect("completion");
+        assert!((5000..6000).contains(&stats.duration_ms));
+        assert_eq!(stats.correct_chars, 2);
     }
 
     #[test]

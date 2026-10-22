@@ -358,12 +358,11 @@ The frontend output is `frontend/dist`. It is generated and ignored; it is not a
 
 ## Persistence locations and lifecycle
 
-The application now resolves data and configuration locations through Tauri's platform path resolver using the bundle identifier. On Linux startup, it performs a non-destructive one-way copy from the verified Phase 0 locations when the new destination file does not yet exist:
+The application resolves data and configuration locations through Tauri's platform path resolver with identifier `com.racoon.typper`. On Linux, the current files are `${XDG_DATA_HOME:-$HOME/.local/share}/com.racoon.typper/data.db` and `${XDG_CONFIG_HOME:-$HOME/.config}/com.racoon.typper/settings.toml`. Before legacy copying, database migration, or startup recovery, the application acquires an OS lock on the data directory's `.profile.lock` and retains it until shutdown. Another cooperating instance is rejected; the lock does not detect older binaries that do not acquire it. Keep the lock file in place even after shutdown.
 
-- legacy data: `${XDG_DATA_HOME:-$HOME/.local/share}/racoon-typper/data.db` plus WAL/SHM companions;
-- legacy settings: `${XDG_CONFIG_HOME:-$HOME/.config}/racoon-typper/settings.toml`.
+On every Linux startup, a missing destination may be copied from a retained legacy source. If `XDG_DATA_HOME` or `XDG_CONFIG_HOME` is set, the corresponding source is directly in that directory (`data.db` or `settings.toml`); otherwise it is in `~/.local/share/racoon-typper` or `~/.config/racoon-typper`. WAL/SHM companions are considered only when the main database is copied. Sources are never moved, so deleting a destination allows a later re-import. An existing destination wins.
 
-The legacy files are retained, and an existing destination always wins. Directory creation and database migration failures stop startup cleanly with a process error rather than an `expect` panic. SQLite is closed by normal Rust drop during shutdown; no asynchronous replay buffer exists because replay persistence completes synchronously inside the completion transaction.
+Directory creation and database migration failures stop startup with a process error. SQLite is closed by normal Rust drop during shutdown; replay persistence completes synchronously inside the completion transaction. Whole-file restore holds an exclusive lifecycle lease and the engine lock while closing, replacing, reopening, and recovering the database. Mutating commands hold shared leases for their complete operation and reject admission during restore. A fresh recovery gate belongs to each restored database; a failed recovery blocks further mutation. See [ADR 0003](docs/adr/0003-offline-and-profile-lifecycle.md) for limits and rollback.
 
 ## Security boundary
 

@@ -18,6 +18,7 @@ pub enum AppError {
     RecoveryNotStarted,
     RecoveryInProgress,
     RecoveryBlocked,
+    RestoreBlocked,
     InvalidMode(String),
     InvalidConfig(String),
     InvalidKey,
@@ -76,6 +77,7 @@ impl AppError {
             Self::RecoveryNotStarted => "RECOVERY_NOT_STARTED",
             Self::RecoveryInProgress => "RECOVERY_IN_PROGRESS",
             Self::RecoveryBlocked => "RECOVERY_BLOCKED",
+            Self::RestoreBlocked => "RESTORE_BLOCKED",
             Self::InvalidMode(_) => "INVALID_MODE",
             Self::InvalidConfig(_) => "INVALID_CONFIG",
             Self::InvalidKey => "INVALID_KEY",
@@ -105,6 +107,7 @@ impl AppError {
             Self::RecoveryNotStarted => "Startup recovery has not started.",
             Self::RecoveryInProgress => "Startup recovery is in progress.",
             Self::RecoveryBlocked => "Startup recovery is blocked.",
+            Self::RestoreBlocked => "Restore blocked: close the app; manual recovery from the retained snapshot is required before reopening.",
             Self::InvalidMode(_) => "The requested mode is invalid.",
             Self::InvalidConfig(_) => "The supplied configuration is invalid.",
             Self::InvalidKey => "The key event is invalid.",
@@ -181,6 +184,7 @@ impl From<racoon_data::DbError> for AppError {
             // not reach this mapping; this arm covers on-demand restore paths.
             racoon_data::DbError::Backup(msg) => AppError::DbConnection(msg),
             racoon_data::DbError::Restore(msg) => AppError::DbConnection(msg),
+            racoon_data::DbError::RestoreBlocked => AppError::RestoreBlocked,
         }
     }
 }

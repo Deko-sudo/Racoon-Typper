@@ -2,7 +2,79 @@
 
 ## Unreleased
 
+### Added
+
+- Choose multiple practice languages during onboarding, keep them across restarts, and switch between preferred languages in the test controls.
+
 ### Fixed
+
+- Remove accidental CJK characters from the Russian course's first word lesson;
+  check every Russian lesson's letters through the embedded production loader.
+
+- Verify Linux package restart retention with an actual persisted custom-text row;
+  restrict smoke cleanup to its own process session. Build an unsigned Debian
+  candidate in CI on Ubuntu 24.04, with source and artifact hash evidence.
+
+- Save result PNGs to the OS Pictures / `Raccoon Typer` folder and copy the image
+  to the clipboard. Show animated progress, the acknowledged path and independent
+  save/copy failures in the selected UI language instead of assuming a WebView
+  download click succeeded.
+
+- Count each source character once in the on-screen keyboard heatmap, keeping
+  mixed-case accuracy and intensity consistent with the saved counts.
+
+- Return aborted ordinary/custom tests to text selection and lessons/training
+  to their source views. Leave stale idle cards without another backend abort;
+  reopening the Test tab starts a fresh session. Rejected aborts and concurrent
+  restarts keep their view.
+
+- Include Cyrillic, CJK, diacritics and other expected Unicode characters in
+  result PNG heatmaps. Show localized first-attempt character accuracy instead
+  of a fixed Latin keyboard; bound the card size and explicitly account for
+  characters beyond the 60-tile limit. Overall scores and saved data are unchanged.
+
+- Journal whole-database replacement and recover unfinished swaps before opening
+  SQLite; preserve the complete original main/WAL/SHM/journal snapshot on failure.
+  Retain five completed rollback snapshots with best-effort cleanup, preserving
+  pending and unmarked copies for recovery.
+
+- Require speed and accuracy from the same completed test for Balanced/Elite,
+  including qualifying records outside the recent-history window. Existing
+  independent personal bests no longer unlock these two combined achievements.
+
+- Preserve the source and language when restarting custom texts, lessons and
+  weak-key training; initialize the history badge from persisted history.
+- Ignore obsolete custom-text search responses and serialize theme saves so
+  delayed replies cannot overwrite a newer choice; reconcile failed theme saves.
+
+- Handle profile-lock and local initialization errors before entering Tauri's
+  event loop, so a second instance exits normally instead of panicking.
+
+- Reject late timed-test input before changing the buffer, cap delayed timed
+  completion at its configured duration, and align live/final scoring.
+- Preserve immutable completion policy on retry and exclude a second
+  cooperating application instance from the same profile.
+- Serialize database replacement and run fresh recovery before restore succeeds.
+- Clear statistics atomically without violating ledger guards or personal-best
+  foreign keys; reject the reset during an active or retryable test.
+- Bind text-pack replacement to its exact preview; prevent stale input, restart,
+  lesson-loading and file-reading responses from changing a newer UI state.
+- Preserve complete language-scoped custom-text exports and imports; reject
+  exports that exceed their own importer limits instead of truncating them.
+- Accept all shipped themes, expire inactive displayed streaks, handle Unicode
+  guidance consistently, and stage SQLite backups in private directories.
+
+- Localize achievement names, goals, filters, statuses, and unlock notifications in all selectable UI languages.
+
+- Use committed native input text for typing tests and restore editable focus after restart, instead of using window keydown characters.
+
+- Redraw the hand guide with shared full-finger contours and complete active-finger fills; apply the selected keyboard layout to both typing hints.
+
+- Keep the typing caret aligned when the text viewport scrolls or resizes.
+- Preserve fractional statistics when validating completion JSON so finished tests can be saved.
+- Read timed-test duration from the actual backend response so the timer stops at its configured limit.
+
+- Validate database restores on a private copy before replacement; retain the previous database and companions. Detach old companions before replacement; return them on failure, or keep the connection closed for manual recovery if rollback fails.
 
 - **Hand guide highlight geometry** — the active finger highlight no longer
   spills onto the palm: band bottoms stop at the finger/palm merge lines
@@ -18,12 +90,33 @@
 
 ### Dependencies
 
+- Upgrade the supported frontend toolchain to Vite 7.3.7, Svelte plugin 6.2.4
+  and inspector 5.0.2 (esbuild 0.28.2); require Node 22.12+ on the 22.x line
+  or Node 24+. Keep Svelte and the desktop IPC surface unchanged.
+- Update transitive `plist` to 1.10.1 and its `quick-xml` dependency to 0.42.0
+  instead of retaining the affected 0.39.x branch.
+
+- Update `anyhow` to 1.0.103 and compatible transitive npm dependencies `devalue`
+  to 5.9.3, `nanoid` to 3.3.18, `postcss` to 8.5.23 and `source-map-js` to 1.2.2.
+  Known transitive Rust and development-tool advisories remain under review.
+
 - **DD1–DD3 dependency window closed** — `rusqlite` 0.31→0.39,
   `refinery` 0.8→0.9.2 (resolver-coupled pair; refinery-core caps rusqlite
   ≤0.39), and `toml` 0.8→1.1. Zero source changes required. Regression
   evidence: migration matrix V1..V7→V9 through the production Refinery
   runner (16/16), Online Backup API round-trips (9/9), existing-data and WAL
   preservation, settings TOML round-trips (26/26), full workspace suite green.
+
+### Removed
+
+- Remove URL text import and the in-app updater for strictly offline runtime
+  operation. Updates use manually installed release artifacts; the release
+  workflow no longer publishes an updater manifest.
+
+### Checks
+
+- Run the opt-in process-crash recovery target in CI in addition to the default
+  Rust workspace suite. The extended ignored campaign remains a separate run.
 
 ## v1.3.1
 

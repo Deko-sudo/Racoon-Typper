@@ -1,0 +1,19 @@
+[package]
+name = "racoon-glib-variant-regression"
+version = "0.0.0"
+edition = "2021"
+publish = false
+license = "Apache-2.0"
+
+[workspace]
+
+[dependencies]
+glib = { path = "../../vendor/glib-0.18.5" }
+
+[patch.crates-io]
+glib-macros = { path = "../../vendor/glib-macros-0.18.5" }
+
+[profile.release]
+opt-level = 3
+debug = 1
+codegen-units = 1

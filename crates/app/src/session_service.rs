@@ -6,9 +6,10 @@
 //! adapters without exposing those concerns to the kernel.
 
 use racoon_application::{
-    CompletionIntent, CompletionPolicySnapshot, FinalizationClaimOutcome, FinalizationLedger,
-    FinalizationLedgerClaimOutcome, FinalizationOutcome, LedgerMutationOutcome, SessionCompletion,
-    SessionCompletionStore, SessionFinalizer, SessionIdSource, SessionKernel, SessionModeFactory,
+    CompletionIntent, CompletionIntentLoadOutcome, CompletionPolicySnapshot,
+    FinalizationClaimOutcome, FinalizationLedger, FinalizationLedgerClaimOutcome,
+    FinalizationOutcome, LedgerMutationOutcome, SessionCompletion, SessionCompletionStore,
+    SessionFinalizer, SessionIdSource, SessionKernel, SessionModeFactory,
     SessionPersistenceReceipt, SessionRandomSource, SessionRecoveryLedger, SessionWallClock,
     StartedSession,
 };
@@ -77,12 +78,37 @@ impl SessionCompletionStore for DurableSessionCompletionStore<'_> {
         &self,
         completion: &SessionCompletion,
     ) -> Result<SessionPersistenceReceipt, Self::Error> {
-        let settings = self.app_state.with_settings(|store| store.load())?;
-        let policy = completion_policy_snapshot(&settings);
-        let intent = CompletionIntent::from_completion(completion, policy)
-            .map_err(|error| AppError::Internal(format!("completion intent: {error}")))?;
-
         let recovery = SqliteSessionRecoveryLedger::new(&self.app_state.db);
+        let intent = match recovery.load_completion_intent(&completion.session_id) {
+            Ok(CompletionIntentLoadOutcome::Found(stored)) => {
+                // A retry retains the policy captured with the durable intent,
+                // even if settings changed since the first attempt. Compare
+                // every canonical completion fact before accepting that policy.
+                let candidate = CompletionIntent::from_completion(
+                    completion,
+                    stored.payload().completion_policy().clone(),
+                )
+                .map_err(|_| AppError::Internal("invalid retry completion".into()))?;
+                if candidate.canonical_payload() != stored.canonical_payload() {
+                    return Err(AppError::Internal(
+                        "completion conflicts with the stored intent".into(),
+                    ));
+                }
+                *stored
+            }
+            Ok(CompletionIntentLoadOutcome::NotFound) => {
+                let settings = self.app_state.with_settings(|store| store.load())?;
+                CompletionIntent::from_completion(completion, completion_policy_snapshot(&settings))
+                    .map_err(|_| AppError::Internal("invalid completion intent".into()))?
+            }
+            Ok(_) => {
+                return Err(AppError::Internal(
+                    "stored completion intent is invalid".into(),
+                ))
+            }
+            Err(_) => return Err(AppError::DbQuery("completion intent read failed".into())),
+        };
+
         let finalizations = SqliteFinalizationLedger::new(&self.app_state.db);
         let finalizer = SqliteSessionFinalizer::new(&self.app_state.db);
 
@@ -503,9 +529,9 @@ mod tests {
 
     fn test_app_state() -> AppState {
         let settings_path = std::env::temp_dir().join(format!(
-            "racoon-durable-store-{}-{}.toml",
+            "racoon-durable-store-{}-{:?}.toml",
             std::process::id(),
-            std::thread::current().name().unwrap_or("test")
+            std::thread::current().id()
         ));
         let _ = std::fs::remove_file(&settings_path);
         AppState::new(
@@ -600,6 +626,63 @@ mod tests {
     }
 
     #[test]
+    fn engine_generated_completion_persists_fractional_statistics() {
+        struct Clock(std::cell::Cell<u64>);
+        impl racoon_application::SessionClock for Clock {
+            fn monotonic_timestamp_ms(&self) -> u64 {
+                self.0.get()
+            }
+        }
+        for interval in [137, 211, 333, 479] {
+            let app_state = test_app_state();
+            let mut engine = CoreEngine::new();
+            let info = start_test(
+                &mut engine,
+                &app_state,
+                StartTestRequest {
+                    mode: "custom".into(),
+                    text: Some("hello world".into()),
+                    duration: None,
+                    word_count: None,
+                    quote_id: None,
+                    language: Some("en".into()),
+                },
+            )
+            .expect("start actual engine");
+            let session_id = SessionId::parse(&info.session_id).expect("session id");
+            let engine = Mutex::new(engine);
+            let clock = Clock(std::cell::Cell::new(1000));
+            let store = DurableSessionCompletionStore {
+                app_state: &app_state,
+            };
+            for (i, ch) in info.text.chars().enumerate() {
+                clock.0.set(1000 + i as u64 * interval);
+                let output = SessionKernel::new()
+                    .process_key(
+                        &engine,
+                        &clock,
+                        &app_state,
+                        &store,
+                        session_id.clone(),
+                        ch.to_string(),
+                        "KeyA".into(),
+                    )
+                    .unwrap_or_else(|error| panic!("interval={interval} key={i}: {error:?}"));
+                if i == info.text_length - 1 {
+                    assert_eq!(output.session_state, racoon_domain::SessionState::Persisted);
+                }
+            }
+            app_state
+                .db
+                .with_connection(|conn| {
+                    assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 1);
+                    Ok(())
+                })
+                .expect("history");
+        }
+    }
+
+    #[test]
     fn durable_completion_finalizes_effects_and_terminal_markers() {
         let app_state = test_app_state();
         let session_id = "018f0c2e-7b8d-7abc-8def-0123456789aa";
@@ -661,6 +744,180 @@ mod tests {
                 Ok(())
             })
             .unwrap();
+    }
+
+    #[test]
+    fn audit_retry_reuses_recorded_policy_after_settings_change() {
+        let app_state = test_app_state();
+        let session_id = "018f0c2e-7b8d-7abc-8def-0123456789ae";
+        record_started_for(&app_state, session_id);
+        app_state
+            .with_settings(|store| store.set("daily_goal_minutes", toml::Value::Integer(1)))
+            .expect("initial goal");
+        app_state
+            .db
+            .with_connection(|conn| {
+                conn.execute_batch(
+                    "CREATE TEMP TRIGGER fail_completion_claim
+                BEFORE UPDATE OF state ON session_ledger
+                WHEN NEW.state = 'finalization_pending'
+                BEGIN SELECT RAISE(ABORT, 'injected claim failure'); END;",
+                )
+                .map_err(|error| DbError::Write(error.to_string()))
+            })
+            .expect("install claim failure");
+        let store = DurableSessionCompletionStore {
+            app_state: &app_state,
+        };
+        let mut completion = completion(session_id);
+        completion.final_stats.duration_ms = 120_000;
+        assert!(store.persist_completion(&completion).is_err());
+        assert_eq!(
+            durable_state(&app_state, session_id),
+            Some(DurableSessionState::AwaitingPersistence)
+        );
+        let recovery = SqliteSessionRecoveryLedger::new(&app_state.db);
+        let racoon_application::CompletionIntentLoadOutcome::Found(original) = recovery
+            .load_completion_intent(&completion.session_id)
+            .expect("read recorded intent")
+        else {
+            panic!("failure must occur after the intent is durably recorded")
+        };
+        app_state
+            .db
+            .with_connection(|conn| {
+                conn.execute_batch("DROP TRIGGER fail_completion_claim")
+                    .map_err(|error| DbError::Write(error.to_string()))
+            })
+            .expect("clear injected failure");
+        app_state
+            .with_settings(|store| store.set("daily_goal_minutes", toml::Value::Integer(99)))
+            .expect("change goal while completion is retryable");
+
+        let receipt = store
+            .persist_completion(&completion)
+            .expect("retry with frozen policy");
+        let repeated = store
+            .persist_completion(&completion)
+            .expect("idempotent retry");
+        assert_eq!(receipt.test_id, repeated.test_id);
+        let racoon_application::CompletionIntentLoadOutcome::Found(retained) = recovery
+            .load_completion_intent(&completion.session_id)
+            .expect("read retained intent")
+        else {
+            panic!("intent remains available")
+        };
+        assert_eq!(original.canonical_payload(), retained.canonical_payload());
+        app_state
+            .db
+            .with_connection(|conn| {
+                assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 1);
+                let day = SqliteDailyStatsRepository::new(conn)
+                    .get_day("2026-07-16")?
+                    .expect("day");
+                assert!(
+                    day.daily_goal_met,
+                    "the stored one-minute target must apply"
+                );
+                Ok(())
+            })
+            .expect("single completion and original policy");
+    }
+
+    #[test]
+    fn audit_existing_intent_never_substitutes_different_completion_facts() {
+        for changed_field in ["score", "replay", "timestamp", "language"] {
+            let app_state = test_app_state();
+            let session_id = "018f0c2e-7b8d-7abc-8def-0123456789af";
+            record_started_for(&app_state, session_id);
+            let original = completion(session_id);
+            let intent =
+                CompletionIntent::from_completion(&original, CompletionPolicySnapshot::time(1.0))
+                    .expect("original intent");
+            let recovery = SqliteSessionRecoveryLedger::new(&app_state.db);
+            assert!(matches!(
+                recovery.record_completion_intent(&intent),
+                Ok(LedgerMutationOutcome::Created)
+            ));
+            let mut changed = original.clone();
+            match changed_field {
+                "score" => changed.final_stats.wpm += 1.0,
+                "replay" => changed.replay_frames[0].key = "x".into(),
+                "timestamp" => changed.completed_at += chrono::Duration::seconds(1),
+                "language" => {
+                    changed.language = "ru".into();
+                    changed.mode_config = serde_json::json!({"language": "ru"});
+                }
+                _ => unreachable!(),
+            }
+            assert!(
+                DurableSessionCompletionStore {
+                    app_state: &app_state
+                }
+                .persist_completion(&changed)
+                .is_err(),
+                "changed {changed_field} must be rejected"
+            );
+            assert_eq!(
+                durable_state(&app_state, session_id),
+                Some(DurableSessionState::AwaitingPersistence)
+            );
+            app_state
+                .db
+                .with_connection(|conn| {
+                    assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 0);
+                    Ok(())
+                })
+                .expect("no effects for a different completion");
+        }
+    }
+
+    #[test]
+    fn audit_retry_fails_closed_for_invalid_recorded_intents() {
+        for invalid in ["payload", "version"] {
+            let app_state = test_app_state();
+            let session_id = "018f0c2e-7b8d-7abc-8def-0123456789b0";
+            record_started_for(&app_state, session_id);
+            let completion = completion(session_id);
+            let intent =
+                CompletionIntent::from_completion(&completion, CompletionPolicySnapshot::time(1.0))
+                    .expect("original intent");
+            let recovery = SqliteSessionRecoveryLedger::new(&app_state.db);
+            assert!(matches!(
+                recovery.record_completion_intent(&intent),
+                Ok(LedgerMutationOutcome::Created)
+            ));
+            app_state.db.with_connection(|conn| {
+                conn.execute_batch("DROP TRIGGER session_completion_intents_immutable")
+                    .map_err(|error| DbError::Write(error.to_string()))?;
+                let sql = if invalid == "payload" {
+                    "UPDATE session_completion_intents SET canonical_payload = x'7b7d', payload_byte_length = 2"
+                } else {
+                    "UPDATE session_completion_intents SET payload_version = 999"
+                };
+                conn.execute_batch(sql).map_err(|error| DbError::Write(error.to_string()))
+            }).expect("simulate damaged or future intent");
+
+            assert!(
+                DurableSessionCompletionStore {
+                    app_state: &app_state
+                }
+                .persist_completion(&completion)
+                .is_err(),
+                "invalid {invalid} must fail closed"
+            );
+            assert_eq!(
+                durable_state(&app_state, session_id),
+                Some(DurableSessionState::AwaitingPersistence)
+            );
+            app_state
+                .db
+                .with_connection(|conn| {
+                    assert_eq!(SqliteTestRepository::new(conn).get_count(None)?, 0);
+                    Ok(())
+                })
+                .expect("no effects for invalid intent");
+        }
     }
 
     #[test]

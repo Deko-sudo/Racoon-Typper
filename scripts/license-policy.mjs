@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { rustInventory } from "./vendor-provenance.mjs";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..");
@@ -132,7 +133,7 @@ function assetProvenance(path) {
       provenance_status: "third-party-font",
       modified: false,
       generation: null,
-      notes: "Embedded at build time (include_bytes!) for the PNG result share card; full license text shipped in resources/fonts/DejaVu-LICENSE.",
+      notes: "Bundled as local frontend font assets for the Canvas PNG result share card; full license text shipped in resources/fonts/DejaVu-LICENSE.",
     };
   }
   throw new Error(`No provenance rule for asset: ${relative}`);
@@ -233,18 +234,7 @@ function generateRustInventory() {
     maxBuffer: 128 * 1024 * 1024,
   });
   const metadata = JSON.parse(output);
-  const packages = metadata.packages
-    .filter((packageJson) => packageJson.source)
-    .map((packageJson) => ({
-      name: packageJson.name,
-      version: packageJson.version,
-      license: packageJson.license || "UNKNOWN",
-      source: packageJson.source,
-      repository: packageJson.repository || null,
-      authors: packageJson.authors || [],
-    }))
-    .sort((left, right) => `${left.name}@${left.version}`.localeCompare(`${right.name}@${right.version}`));
-  return packages;
+  return rustInventory(metadata, repositoryRoot, ["licenses/vendor-glib.json", "licenses/vendor-glib-macros.json", "licenses/vendor-gtk3-macros.json"].map(path => JSON.parse(read(path))));
 }
 
 function validateThirdPartyLicenses(packages, ecosystem) {
@@ -427,6 +417,7 @@ function generateSbom(dependencies) {
       purl: packageUrl(packageJson.name, packageJson.version, "rust"),
       licenses: [sbomLicense(packageJson.license)],
       externalReferences: packageJson.repository ? [{ type: "vcs", url: packageJson.repository }] : undefined,
+      properties: packageJson.vendor ? Object.entries(packageJson.vendor).map(([name, value]) => ({ name: `racoon:vendor:${name}`, value })) : undefined,
     });
   }
   for (const packageJson of dependencies.npm) {

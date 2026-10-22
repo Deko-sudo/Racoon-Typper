@@ -2,7 +2,7 @@
 
 **Status:** Baseline inventory for Task G; it records the current implementation, not a claim that the listed residual risks are closed.
 
-**Scope and assumptions:** Racoon Typper 1.1.0 is a local-first Tauri desktop application. It has no account, backend service, telemetry, or application-controlled network API. The primary adversary is therefore a malicious or compromised renderer, a person or process with access to the local user account or its files, or a malicious file/content supplied to the user. This document does not treat a fully compromised operating system or a malicious installed application binary as preventable by application code.
+**Scope and assumptions:** The audited Racoon Typper working version is a local-first Tauri desktop application. It has no account, backend service, telemetry, or application-controlled network API. The primary adversary is therefore a malicious or compromised renderer, a person or process with access to the local user account or its files, or a malicious file/content supplied to the user. This document does not treat a fully compromised operating system or a malicious installed application binary as preventable by application code.
 
 **Evidence inspected:** `crates/app/src/main.rs`, `crates/app/src/commands/`, `crates/app/src/paths.rs`, `crates/app/src/error.rs`, `crates/app/src/validation.rs`, `crates/data/src/backup.rs`, `crates/data/src/profile_transfer.rs`, `crates/app/tauri.conf.json`, `crates/app/capabilities/main.json`, packaging manifests/scripts, and the tests cited below. The command and packaging inventory is current at Task G; it must be revisited when either surface changes.
 
@@ -38,7 +38,7 @@ The `tauri::generate_handler!` registration in `crates/app/src/main.rs` exposes 
 - Portable profile transfer: `export_profile`, `preview_profile_import`, `import_profile`.
 - Whole-file restore: `restore_database` (closes the live database, replaces the file from a validated backup, reopens it, and resets the in-memory engine; the frontend reloads after success).
 
-`crates/app/build.rs` generates Tauri 2 application-command permissions from the exact 39-command set. `crates/app/capabilities/main.json` grants each generated `allow-*` permission only to the local `main` window. It grants no `core:*` permission: the frontend imports only `invoke`, and neither the Rust application nor frontend uses Tauri window, webview, event, app, path, resource, image, menu, or tray IPC APIs. The capability has no remote URL association; the bundled local content is the sole permitted origin. `crates/app/tests/capability_audit.rs` is the regression control for unexpected or missing handler/frontend/manifest/capability coverage.
+`crates/app/build.rs` generates Tauri 2 application-command permissions from the audited command set. `crates/app/capabilities/main.json` grants each generated `allow-*` permission only to the local `main` window. It grants no `core:*` permission: the frontend imports only `invoke`, and neither the Rust application nor frontend uses Tauri window, webview, event, app, path, resource, image, menu, or tray IPC APIs. The capability has no remote URL association; the bundled local content is the sole permitted origin. `crates/app/tests/capability_audit.rs` is the regression control for unexpected or missing handler/frontend/manifest/capability coverage.
 
 ## Abuse cases, controls, and evidence
 
@@ -57,7 +57,7 @@ The `tauri::generate_handler!` registration in `crates/app/src/main.rs` exposes 
 
 - This document does **not** add a new dependency decision. The Linux GLib/GTK3 risk remains governed by [ADR 0001](../adr/0001-glib-gtk3-advisory.md), which records a bounded documented acceptance for the transitive `glib` 0.18/gtk3-rs chain and its explicit revisit triggers.
 - The threat model's packaging and renderer boundaries include that dependency exposure. `cargo tree -i glib@0.18.5` currently resolves the chain through Tauri/wry/webkit2gtk/gtk, while the Windows and macOS target queries have no `webkit2gtk` result. This does not make the renderer or package chain risk-free; it only scopes this particular advisory as ADR 0001 describes.
-- No application network API is in scope today. Any future remote sync, telemetry, update service, external content fetch, file picker, arbitrary theme import, or restore IPC changes the trust boundaries and requires a threat-model update before implementation.
+- The owner confirmed strict offline operation on 2026-10-16. URL import and the updater are removed from runtime dependencies, handlers, capabilities, and UI. File pickers and restore IPC are local trust boundaries covered by the capability and restore regressions; adding a future network feature requires a new explicit product/security decision.
 
 ## Residual-risk register
 

@@ -30,6 +30,7 @@ pub enum DbError {
     /// or path validation). Restore always operates on file paths while the live
     /// `Database` connection is closed.
     Restore(String),
+    RestoreBlocked,
 }
 
 impl fmt::Display for DbError {
@@ -54,6 +55,7 @@ impl fmt::Display for DbError {
             DbError::NotFound(msg) => write!(f, "Not found: {}", msg),
             DbError::Backup(msg) => write!(f, "DB backup error: {}", msg),
             DbError::Restore(msg) => write!(f, "DB restore error: {}", msg),
+            DbError::RestoreBlocked => f.write_str("Restore blocked; manual recovery is required."),
         }
     }
 }

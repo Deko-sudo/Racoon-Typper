@@ -10,11 +10,11 @@ export interface CharStatus {
 /// mode_type; the contract test in scripts/mode-config-contract.test.mjs
 /// pins the exact field sets.
 export type ModeConfig =
-  | { type: 'time'; duration: number; language: string }
-  | { type: 'words'; word_count: number; language: string }
-  | { type: 'quote'; quote_id: number | null; language: string }
-  | { type: 'custom'; language: string }
-  | { type: 'lesson'; lesson_id: string; module_id: string };
+  | { duration: number; language: string }
+  | { word_count: number; language: string }
+  | { quote_id: number | null; language: string }
+  | { language: string }
+  | { lesson_id: string; module_id: string };
 
 export interface TestSessionResponse {
   session_id: string;
@@ -122,6 +122,7 @@ export interface AppSettings {
   blind_mode_enabled: boolean;
   ui_language: string;
   practice_language: string;
+  practice_languages: LanguageCode[];
   onboarding_completed: boolean;
   keyboard_layout: string;
   vim_mode: boolean;

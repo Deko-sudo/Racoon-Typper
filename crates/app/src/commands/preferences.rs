@@ -29,12 +29,32 @@ fn set_setting_with_state(
     key: String,
     value: serde_json::Value,
 ) -> Result<AppSettings, AppError> {
-    state.require_startup_recovery_ready()?;
+    let _readiness = state.require_startup_recovery_ready()?;
     validate_setting_key(&key)?;
     if key == "practice_language" {
         validate_practice_language(&value)?;
     }
-    let toml_value = json_to_toml_value(&value)?;
+    let toml_value = if key == "practice_languages" {
+        let languages = value
+            .as_array()
+            .ok_or_else(|| AppError::InvalidConfig("practice_languages must be an array".into()))?;
+        if languages.is_empty() || languages.len() > 32 {
+            return Err(AppError::InvalidConfig(
+                "select 1 to 32 practice languages".into(),
+            ));
+        }
+        for language in languages {
+            validate_practice_language(language)?;
+        }
+        toml::Value::Array(
+            languages
+                .iter()
+                .map(json_to_toml_value)
+                .collect::<Result<_, _>>()?,
+        )
+    } else {
+        json_to_toml_value(&value)?
+    };
     state
         .with_settings(|store| store.set(&key, toml_value))
         .map_err(AppError::from)
@@ -548,9 +568,9 @@ mod tests {
     #[test]
     fn practice_language_setting_accepts_bundled_courses_and_rejects_unknown_codes() {
         let settings_path = std::env::temp_dir().join(format!(
-            "racoon-settings-practice-lang-{}-{}.toml",
+            "racoon-settings-practice-lang-{}-{:?}.toml",
             std::process::id(),
-            std::thread::current().name().unwrap_or("test")
+            std::thread::current().id()
         ));
         let _ = std::fs::remove_file(&settings_path);
         let state = app_state(StartupRecoveryGate::new(), settings_path.clone());
@@ -580,11 +600,41 @@ mod tests {
     }
 
     #[test]
+    fn practice_languages_ipc_validates_each_course_before_saving() {
+        let path = std::env::temp_dir().join(format!(
+            "racoon-practice-languages-ipc-{}.toml",
+            std::process::id()
+        ));
+        let state = app_state(StartupRecoveryGate::new(), path.clone());
+        mark_recovery_ready(&state);
+        let updated = set_setting_with_state(
+            &state,
+            "practice_languages".into(),
+            serde_json::json!(["ru", "en", "ja"]),
+        )
+        .unwrap();
+        assert_eq!(updated.practice_languages, ["ru", "en", "ja"]);
+        assert_eq!(updated.practice_language, "ru");
+        let before = std::fs::read(&path).unwrap();
+        for invalid in [
+            serde_json::json!([]),
+            serde_json::json!(["en", "kk"]),
+            serde_json::json!(["ru", 42]),
+            serde_json::json!(["en", "en"]),
+            serde_json::json!("ru,en"),
+        ] {
+            assert!(set_setting_with_state(&state, "practice_languages".into(), invalid).is_err());
+            assert_eq!(std::fs::read(&path).unwrap(), before);
+        }
+        std::fs::remove_file(path).unwrap();
+    }
+
+    #[test]
     fn set_setting_command_is_gated_before_ready_and_succeeds_after_ready() {
         let settings_path = std::env::temp_dir().join(format!(
-            "racoon-settings-gate-{}-{}.toml",
+            "racoon-settings-gate-{}-{:?}.toml",
             std::process::id(),
-            std::thread::current().name().unwrap_or("test")
+            std::thread::current().id()
         ));
         let _ = std::fs::remove_file(&settings_path);
         let gate = StartupRecoveryGate::new();

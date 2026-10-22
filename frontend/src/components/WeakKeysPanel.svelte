@@ -35,7 +35,7 @@
   let viewportChars = $derived(trainingCharStatuses.slice(viewportStart, viewportEnd));
   let viewportOffset = $derived(trainingCaretPos - viewportStart);
   let progress = $derived(trainingCharStatuses.length === 0 ? 0 : (trainingCaretPos / trainingCharStatuses.length) * 100);
-  let nextChar = $derived(trainingRunning && trainingCaretPos < trainingText.length ? trainingText[trainingCaretPos] : '');
+  let nextChar = $derived(trainingRunning ? trainingCharStatuses[trainingCaretPos]?.expected ?? '' : '');
   const isCyrillicTraining = $derived(trainingLanguage === 'ru');
   function fingerFor(ch: string): string {
     return layoutFingers(keyboardLayout, isCyrillicTraining)[ch.toLowerCase()] || '';

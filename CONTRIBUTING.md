@@ -105,3 +105,12 @@ npm run check:version --prefix frontend
 ```
 
 Release preparation follows [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md). Do not describe a package format or platform as supported until it has passed clean-install and smoke validation.
+
+### Rust CI flag scope
+
+Pin the setup action to the repository toolchain and set its `rustflags` input
+to an empty string. The pinned action otherwise exports global `-D warnings`,
+which promotes warnings in local vendored upstream crates during every build.
+Keep `cargo clippy --workspace --all-targets -- -D warnings` for project crates.
+This scopes the existing quality gate; it does not suppress emitted upstream
+warnings or waive source/advisory/provenance checks.

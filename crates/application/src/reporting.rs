@@ -1289,6 +1289,10 @@ impl AchievementInputQuery {
         Ok(Self { lesson_languages })
     }
 
+    pub const fn minimum_combined_accuracy(&self) -> f64 {
+        racoon_core::analytics::COMBINED_ACHIEVEMENT_ACCURACY
+    }
+
     pub fn lesson_languages(&self) -> &[ReportingLanguage] {
         &self.lesson_languages
     }
@@ -1353,6 +1357,7 @@ pub struct AchievementInputs {
     total_tests: u64,
     best_wpm: f64,
     best_accuracy: f64,
+    best_accurate_wpm: f64,
     longest_streak: u64,
     lessons_completed: u64,
 }
@@ -1362,15 +1367,18 @@ impl AchievementInputs {
         total_tests: u64,
         best_wpm: f64,
         best_accuracy: f64,
+        best_accurate_wpm: f64,
         longest_streak: u64,
         lessons_completed: u64,
     ) -> Result<Self, ReportingError> {
         validate_score(best_wpm)?;
         validate_percentage(best_accuracy)?;
+        validate_score(best_accurate_wpm)?;
         Ok(Self {
             total_tests,
             best_wpm,
             best_accuracy,
+            best_accurate_wpm,
             longest_streak,
             lessons_completed,
         })
@@ -1386,6 +1394,10 @@ impl AchievementInputs {
 
     pub const fn best_accuracy(&self) -> f64 {
         self.best_accuracy
+    }
+
+    pub const fn best_accurate_wpm(&self) -> f64 {
+        self.best_accurate_wpm
     }
 
     pub const fn longest_streak(&self) -> u64 {
@@ -2035,7 +2047,7 @@ impl<'a, P: AnalyticsReportingPort + ?Sized, C: SessionWallClock + ?Sized>
                     .map_err(|_| ReportingError::InvariantViolation)?,
                 achievement_inputs.best_wpm(),
                 achievement_inputs.best_accuracy(),
-                0,
+                achievement_inputs.best_accurate_wpm(),
                 i64::try_from(achievement_inputs.longest_streak())
                     .map_err(|_| ReportingError::InvariantViolation)?,
                 i64::try_from(achievement_inputs.lessons_completed())
@@ -2184,6 +2196,7 @@ fn is_stably_ordered_personal_bests(entries: &[PersonalBestEntry]) -> bool {
 
 fn validate_achievement_inputs(inputs: &AchievementInputs) -> Result<(), ReportingError> {
     validate_score(inputs.best_wpm())?;
+    validate_score(inputs.best_accurate_wpm())?;
     validate_percentage(inputs.best_accuracy())
 }
 

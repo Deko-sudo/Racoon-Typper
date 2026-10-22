@@ -15,25 +15,43 @@ env:
 
 jobs:
   rust-checks:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
         with:
+          toolchain: 1.96.0
+          rustflags: "" # workspace Clippy remains -D warnings; do not promote upstream warnings
           components: clippy, rustfmt
       - name: Install system deps
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev
+      - name: Test Linux smoke persistence and process isolation
+        run: python3 -m unittest discover -s scripts -p linux_smoke_test.py -v
+      - name: Test desktop smoke refusal and restart failure paths
+        run: python3 -m unittest discover -s scripts -p desktop_smoke_test.py -v
       - name: fmt
         run: cargo fmt --all --check
       - name: clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: test
         run: cargo test --workspace
+      - name: Test opt-in process-crash recovery
+        run: cargo test -p racoon-data --features crash-test-support --test process_crash_recovery
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - name: Test macro diagnostics backports
+        run: |
+          # metadata --offline resolves target-specific crates too; warm the full lock first.
+          cargo fetch --locked --manifest-path scripts/macro-diagnostics-regression/Cargo.toml
+          node scripts/check-macro-diagnostics.mjs
+      - name: Test optimized GLib backport contract
+        run: cargo test --manifest-path scripts/glib-variant-regression/Cargo.toml --locked --release
 
   frontend-build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
@@ -43,22 +61,29 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
       - name: Install frontend deps
         run: npm ci --prefix frontend
+      - name: Audit frontend dependencies
+        run: npm audit --prefix frontend --audit-level=moderate
       - name: Check project version
         run: npm run check:version --prefix frontend
       - name: Check IPC command registration contract
         run: npm run check:ipc-contracts --prefix frontend
       - name: Check frontend
         run: npm run check --prefix frontend
+      - name: Verify release documentation against configuration
+        run: node --test scripts/release-docs.test.mjs scripts/platform-config.test.mjs
       - name: Test frontend UI helpers
         run: npm run test:ui --prefix frontend
       - name: Build frontend
         run: npm run build --prefix frontend
 
   license-policy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
       - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: 1.96.0
+          rustflags: "" # workspace Clippy remains -D warnings; do not promote upstream warnings
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 22
@@ -70,8 +95,14 @@ jobs:
         run: cargo install cargo-deny --locked --version 0.20.2
       - name: Validate Rust dependency licenses
         run: cargo deny check licenses
+      - name: Audit all workspace dependency maintenance and soundness findings
+        run: cargo deny --locked check advisories -D unmaintained -D unsound
       - name: Validate project and npm licenses
         run: npm run license:check --prefix frontend
+      - name: Test vendored source provenance
+        run: node --test scripts/vendor-provenance.test.mjs
+      - name: Check vendored GLib against registry advisories
+        run: node scripts/check-vendored-glib-advisories.mjs
       - name: Upload licensing reports
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -83,4 +114,55 @@ jobs:
             licenses/dependencies.json
             licenses/sbom.cdx.json
             THIRD_PARTY_NOTICES.md
+          if-no-files-found: error
+
+  linux-candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: 1.96.0
+          rustflags: "" # workspace Clippy remains -D warnings; do not promote upstream warnings
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev build-essential file squashfs-tools rpm
+      - run: npm ci --prefix frontend
+      - name: Build unpromoted Linux candidates
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1" # build tools work without /dev/fuse; runtime smoke is separate
+        run: npm run tauri:build:ci --prefix frontend -- --bundles deb,rpm,appimage
+      - name: Install and verify restart retention
+        run: |
+          package=$(find target/release/bundle/deb -type f -name '*.deb' -print -quit)
+          test -n "$package"
+          bash scripts/linux-package-smoke.sh "$package"
+      - name: Verify AppImage restart retention
+        run: bash scripts/appimage-smoke.sh target/release/bundle/appimage/*.AppImage
+      - name: Install RPM in an isolated Fedora runtime and verify restart retention
+        run: bash scripts/rpm-package-smoke.sh target/release/bundle/rpm/*.rpm
+      - name: Record source and unsigned artifact hashes
+        run: |
+          mkdir -p candidate-evidence
+          git rev-parse HEAD > candidate-evidence/source-commit.txt
+          git rev-parse 'HEAD^{tree}' > candidate-evidence/source-tree.txt
+          rustc --version > candidate-evidence/toolchains.txt
+          node --version >> candidate-evidence/toolchains.txt
+          sha256sum target/release/bundle/deb/*.deb target/release/bundle/rpm/*.rpm target/release/bundle/appimage/*.AppImage > candidate-evidence/SHA256SUMS
+          printf '%s\n' 'Unreleased unsigned Linux candidate; no tag, release or promotion created.' > candidate-evidence/STATUS.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: linux-stability-candidate
+          path: |
+            target/release/bundle/deb/*.deb
+            target/release/bundle/rpm/*.rpm
+            target/release/bundle/appimage/*.AppImage
+            candidate-evidence/**
           if-no-files-found: error

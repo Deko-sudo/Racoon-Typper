@@ -53,6 +53,9 @@ jobs:
         with:
           ref: ${{ needs.validate-tag.outputs.tag }}
       - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: 1.96.0
+          rustflags: "" # workspace Clippy remains -D warnings; do not promote upstream warnings
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
@@ -91,12 +94,15 @@ jobs:
 
   build-windows:
     needs: validate-tag
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ needs.validate-tag.outputs.tag }}
       - uses: actions-rust-lang/setup-rust-toolchain@46268bd060767258de96ed93c1251119784f2ab6 # v1.16.1
+        with:
+          toolchain: 1.96.0
+          rustflags: "" # workspace Clippy remains -D warnings; do not promote upstream warnings
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6.5.0
         with:
           node-version: 22
@@ -112,7 +118,7 @@ jobs:
 
   windows-installer-smoke:
     needs: [validate-tag, build-windows]
-    runs-on: windows-latest
+    runs-on: windows-2022
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
@@ -232,7 +238,7 @@ jobs:
             --outfile "artifacts/${TARBALL}.torrent" \
             --comment "Racoon Typper ${RELEASE_TAG} — Linux x86_64 tarball" \
             --webseed "$WEBSEED"
-      - name: Sign updater artifacts and generate latest.json
+      - name: Sign release installers
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -241,58 +247,18 @@ jobs:
           set -euo pipefail
           cd artifacts
           # Sign the AppImage (Linux) and NSIS installer (Windows) for the
-          # updater. The updater verifies these signatures before installing.
+          # release assets. Manual verification requires a trusted public key
+          # distributed separately by the maintainer.
           # Artifacts are extracted into per-job subdirectories, so search the
           # whole tree rather than relying on a flat glob.
           while IFS= read -r -d '' f; do
-            npx --yes @tauri-apps/cli signer sign \
+            npx --yes @tauri-apps/cli@2.11.3 signer sign \
               --private-key "$TAURI_SIGNING_PRIVATE_KEY" \
               --password "$TAURI_SIGNING_PRIVATE_KEY_PASSWORD" \
               "$f"
           done < <(find . -type f \( -name '*.AppImage' -o -name '*.exe' \) -print0)
-      - name: Generate latest.json for the updater
-        shell: bash
-        env:
-          RELEASE_TAG: ${{ needs.validate-tag.outputs.tag }}
-        run: |
-          set -euo pipefail
-          cd artifacts
-          # The updater endpoint serves latest.json. It lists the signed
-          # installers per platform; the updater picks the matching one.
-          # Files live in per-job subdirectories, so find them recursively.
-          node -e '
-            const tag = process.env.RELEASE_TAG;
-            const base = `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/${tag}`;
-            const fs = require("fs");
-            const path = require("path");
-            const version = tag.replace("v", "");
-            function findFile(name) {
-              const hits = [];
-              function walk(dir) {
-                for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-                  const full = path.join(dir, entry.name);
-                  if (entry.isDirectory()) walk(full);
-                  else if (entry.name === name) hits.push(full);
-                }
-              }
-              walk(".");
-              return hits.length > 0;
-            }
-            const notes = [];
-            const add = (platform, arch, file, sig) => {
-              if (findFile(file)) {
-                notes.push({ platform, arch, url: `${base}/${file}`, signature: sig ? `${base}/${sig}` : null });
-              }
-            };
-            const appImage = `racoon-typper_${version}_amd64.AppImage`;
-            const setupExe = `racoon-typper_${version}_x64-setup.exe`;
-            add("linux-x86_64", "x86_64", appImage, `${appImage}.sig`);
-            add("windows-x86_64", "x86_64", setupExe, `${setupExe}.sig`);
-            const manifest = { version, notes: "", pub_date: new Date().toISOString(), platforms: { "linux-x86_64": notes.filter(n=>n.platform==="linux-x86_64"), "windows-x86_64": notes.filter(n=>n.platform==="windows-x86_64") } };
-            fs.writeFileSync("latest.json", JSON.stringify(manifest, null, 2));
-          '
       # Checksums are generated last so every attached asset — including the
-      # updater signatures and latest.json produced above — is covered, and
+      # installer signatures produced above — is covered, and
       # entries use flat basenames matching a plain release download.
       - name: Generate checksums for the exact release asset set
         shell: bash
@@ -309,11 +275,11 @@ jobs:
             -name 'racoon-typper*_x64-setup.exe' -o -name 'racoon-typper*_x64-setup.exe.sig' -o \
             -name 'racoon-typper*-x86_64.tar.gz' -o -name 'racoon-typper*-x86_64.tar.gz.torrent' \
             \) -print0)
-          for f in latest.json release-evidence/*; do
+          for f in release-evidence/*; do
             hash=$(sha256sum "$f" | awk '{print $1}')
             printf '%s  %s\n' "$hash" "$(basename "$f")" >> SHA256SUMS
           done
-          test "$(wc -l < SHA256SUMS)" -ge 12 || { echo "unexpectedly few checksum entries"; exit 1; }
+          test "$(wc -l < SHA256SUMS)" -ge 11 || { echo "unexpectedly few checksum entries"; exit 1; }
           sort -k 2 -o SHA256SUMS SHA256SUMS
 
       - name: Create draft release candidate
@@ -332,7 +298,6 @@ jobs:
             artifacts/**/*.exe
             artifacts/**/*.sig
             artifacts/SHA256SUMS
-            artifacts/latest.json
             artifacts/release-evidence/*
           body: |
             Release candidate built from the immutable tag above.

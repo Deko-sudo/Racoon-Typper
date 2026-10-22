@@ -36,10 +36,10 @@
   function getKeyData(key: string): { correct: number; incorrect: number; total: number } {
     const lower = key.toLowerCase();
     const upper = key.toUpperCase();
-    const direct = charStats[key] || heatmap[key];
-    const lowerEntry = charStats[lower] || heatmap[lower];
-    const upperEntry = charStats[upper] || heatmap[upper];
-    const entries = [direct, lowerEntry, upperEntry].filter(Boolean) as Array<{ correct: number; incorrect: number; total?: number; total_attempts?: number }>;
+    // Deduplicate source keys, not objects: direct/lower often name one record.
+    const entries = [...new Set([key, lower, upper])]
+      .map((sourceKey) => charStats[sourceKey] || heatmap[sourceKey])
+      .filter(Boolean) as Array<{ correct: number; incorrect: number; total?: number; total_attempts?: number }>;
     if (entries.length === 0) return { correct: 0, incorrect: 0, total: 0 };
     return {
       correct: entries.reduce((s, e) => s + e.correct, 0),

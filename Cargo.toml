@@ -3,6 +3,7 @@
 
 [workspace]
 resolver = "2"
+exclude = ["scripts/macro-diagnostics-regression", "vendor/glib-macros-0.18.5", "vendor/gtk3-macros-0.18.2", "vendor/glib-0.18.5", "scripts/glib-variant-regression", "scripts/glib-advisory-reference"]
 members = [
     "crates/domain",
     "crates/core",
@@ -20,7 +21,8 @@ authors = ["Racoon Typper Contributors"]
 
 [workspace.dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# Canonical completion payloads must retain every f64 bit when read back.
+serde_json = { version = "1", features = ["float_roundtrip"] }
 toml = "1"
 
 # Workspace internal deps
@@ -38,3 +40,11 @@ uuid = { version = "1", features = ["serde", "v7"] }
 [profile.release]
 strip = true
 lto = "thin"
+
+# Narrow backport of gtk-rs PR #1343; see ADR 0007.
+[patch.crates-io]
+glib = { path = "vendor/glib-0.18.5" }
+
+# Upstream diagnostic backports; see ADR 0008.
+glib-macros = { path = "vendor/glib-macros-0.18.5" }
+gtk3-macros = { path = "vendor/gtk3-macros-0.18.2" }

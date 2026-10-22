@@ -11,14 +11,22 @@
 //! All public functions return typed `DbError::Backup` / `DbError::Restore`
 //! failures so that nothing is silently swallowed.
 
+use std::collections::{BTreeMap, BTreeSet};
+use std::fs::{self, File};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::Duration;
 
 use rusqlite::backup::Backup;
-use rusqlite::Connection;
+use rusqlite::{Connection, OpenFlags};
 
 use crate::error::DbError;
 use crate::Database;
+
+mod restore_protocol;
+#[cfg(test)]
+mod restore_protocol_tests;
+pub(crate) use restore_protocol::recover as recover_pending_restore;
 
 /// Page-step size and sleep used by the online backup. The database is a local
 /// single-writer file, so a small step keeps the source lock short while the
@@ -58,8 +66,9 @@ pub fn premigration_backup_filename(
 
 /// Copies the live database into a consistent single-file snapshot at `dest`.
 ///
-/// `dest` is written atomically: the snapshot is built at `dest.tmp` and renamed
-/// into place, so a reader never observes a half-written backup. The destination
+/// `dest` is written atomically: the snapshot is built in a private sibling
+/// directory and renamed into place, so a reader never observes a half-written
+/// backup. Existing temporary paths are never reused. The destination
 /// parent directory is created if missing. The returned `PathBuf` is the final
 /// backup path (equal to `dest`).
 ///
@@ -76,12 +85,7 @@ pub fn backup_to_path(source: &Database, dest: &Path) -> Result<PathBuf, DbError
         }
     }
 
-    // Build the snapshot at a sibling temp path, then rename into place.
-    let temp_dest = sibling_temp_path(dest, "tmp");
-    run_online_backup(source, &temp_dest)?;
-    std::fs::rename(&temp_dest, dest)
-        .map_err(|error| DbError::Backup(format!("finalize backup file: {error}")))?;
-    Ok(dest.to_path_buf())
+    source.with_connection(|conn| publish_backup(conn, dest))
 }
 
 /// Restores a backup file into a live database path.
@@ -93,13 +97,23 @@ pub fn backup_to_path(source: &Database, dest: &Path) -> Result<PathBuf, DbError
 /// paths rather than an open `Database` precisely because restore requires the
 /// live connection to be torn down first.
 ///
-/// `backup_path` must exist and be a regular file. The source is copied and
-/// integrity-checked at a sibling temporary path before the live file changes.
-/// A failed source validation or copy therefore preserves the live database.
-/// Once the replacement is valid, it atomically replaces the live database and
-/// stale `-wal`/`-shm` companions are removed. Returns the restored path on
-/// success.
+/// A private sibling copy is migrated and schema-checked before replacement.
+/// All writers, including external processes, must remain closed throughout.
+/// The original main/WAL/SHM/journal files are retained in a sibling
+/// `restore-rollback-*` directory.
+/// Companions are detached before rename and restored on a pre-swap error.
+/// A durable pending/committed/aborted journal recovers unfinished swaps before
+/// SQLite opens. Failed recovery keeps the connection closed. Five completed
+/// snapshot directories are retained (best-effort cleanup).
 pub fn restore_from_path(backup_path: &Path, live_db_path: &Path) -> Result<PathBuf, DbError> {
+    restore_with_steps(backup_path, live_db_path, &mut |_| Ok(()))
+}
+
+fn restore_with_steps(
+    backup_path: &Path,
+    live_db_path: &Path,
+    step: &mut impl FnMut(&'static str) -> Result<(), DbError>,
+) -> Result<PathBuf, DbError> {
     if backup_path.as_os_str().is_empty() || live_db_path.as_os_str().is_empty() {
         return Err(DbError::Restore("empty backup or live path".to_string()));
     }
@@ -115,6 +129,15 @@ pub fn restore_from_path(backup_path: &Path, live_db_path: &Path) -> Result<Path
             "backup source and live destination must differ".to_string(),
         ));
     }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::MetadataExt;
+        if fs::metadata(live_db_path)
+            .is_ok_and(|live| backup_meta.dev() == live.dev() && backup_meta.ino() == live.ino())
+        {
+            return Err(restore_fail("backup source aliases the live database"));
+        }
+    }
     if let Some(parent) = live_db_path.parent() {
         if !parent.as_os_str().is_empty() {
             std::fs::create_dir_all(parent)
@@ -122,26 +145,241 @@ pub fn restore_from_path(backup_path: &Path, live_db_path: &Path) -> Result<Path
         }
     }
 
-    let temp_path = sibling_temp_path(live_db_path, "restore");
-    remove_database_companions(&temp_path);
-    let source = Connection::open(backup_path)
-        .map_err(|error| DbError::Restore(format!("open backup source: {error}")))?;
-    let replacement = (|| -> Result<(), DbError> {
-        let mut dest = Connection::open(&temp_path)
-            .map_err(|error| DbError::Restore(format!("open restore destination: {error}")))?;
+    recover_pending_restore(live_db_path)?;
+    static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+    let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let stage = sibling_temp_path(live_db_path, &format!("restore-rollback-{sequence}"));
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(false);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder.create(&stage).map_err(restore_fail)?;
+    let temp_path = stage.join("replacement.db");
+    let result = (|| -> Result<(), DbError> {
+        let source = Connection::open_with_flags(backup_path, OpenFlags::SQLITE_OPEN_READ_ONLY)
+            .map_err(restore_fail)?;
+        let mut dest = Connection::open(&temp_path).map_err(restore_fail)?;
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&temp_path, fs::Permissions::from_mode(0o600))
+                .map_err(restore_fail)?;
+        }
         copy_via_online_backup(&source, &mut dest, "restore").map_err(restore_error)?;
         validate_sqlite_snapshot(&dest)?;
-        let _ = dest.pragma_update(None, "wal_checkpoint", "TRUNCATE");
-        Ok(())
+        validate_schema(&mut dest)?;
+        dest.pragma_update(None, "journal_mode", "DELETE")
+            .map_err(restore_fail)?;
+        dest.close().map_err(|(_, error)| restore_fail(error))?;
+        drop(source);
+        sync_file(&temp_path)?;
+        restore_protocol::publish(&stage, live_db_path, step)
     })();
-    drop(source);
-    if let Err(error) = replacement {
-        remove_database_companions(&temp_path);
-        return Err(error);
+    if result.is_err() && matches!(stage.join("pending").try_exists(), Ok(false)) {
+        let _ = fs::remove_dir_all(&stage);
     }
-
-    replace_database_file(&temp_path, live_db_path)?;
+    result?;
+    let _ = restore_protocol::prune(live_db_path);
     Ok(live_db_path.to_path_buf())
+}
+
+fn restore_fail(error: impl std::fmt::Display) -> DbError {
+    DbError::Restore(error.to_string())
+}
+fn restore_companion(path: &Path, suffix: &str) -> PathBuf {
+    let mut name = path.as_os_str().to_os_string();
+    name.push(suffix);
+    PathBuf::from(name)
+}
+fn sync_file(path: &Path) -> Result<(), DbError> {
+    // Windows FlushFileBuffers requires GENERIC_WRITE. Unix also calls this
+    // helper for directories, so retain the read-only handle on those systems.
+    #[cfg(windows)]
+    let file = File::options().write(true).open(path);
+    #[cfg(not(windows))]
+    let file = File::open(path);
+    file.and_then(|file| file.sync_all()).map_err(restore_fail)
+}
+
+/// Token boundaries, quoted identifiers and literal bytes are significant.
+/// Only whitespace/comments and unquoted ASCII case are normalized.
+fn schema_tokens(sql: &str) -> Result<Vec<String>, DbError> {
+    let mut chars = sql.chars().peekable();
+    let mut tokens = Vec::new();
+    while let Some(ch) = chars.next() {
+        if matches!(ch, ' ' | '\t' | '\n' | '\r' | '\u{c}') {
+            continue;
+        }
+        if ch == '-' && chars.next_if_eq(&'-').is_some() {
+            for ch in chars.by_ref() {
+                if ch == '\n' {
+                    break;
+                }
+            }
+            continue;
+        }
+        if ch == '/' && chars.next_if_eq(&'*').is_some() {
+            let mut closed = false;
+            while let Some(ch) = chars.next() {
+                if ch == '*' && chars.next_if_eq(&'/').is_some() {
+                    closed = true;
+                    break;
+                }
+            }
+            if !closed {
+                return Err(restore_fail("unclosed schema comment"));
+            }
+            continue;
+        }
+        let mut token = ch.to_string();
+        if matches!(ch, '\'' | '"' | '`' | '[') {
+            let end = if ch == '[' { ']' } else { ch };
+            loop {
+                let next = chars
+                    .next()
+                    .ok_or_else(|| restore_fail("unclosed schema quote"))?;
+                token.push(next);
+                if next == end {
+                    if ch != '[' && chars.next_if_eq(&end).is_some() {
+                        token.push(end);
+                    } else {
+                        break;
+                    }
+                }
+            }
+        } else if ch.is_alphanumeric() || ch == '_' {
+            while let Some(next) = chars.next_if(|c| c.is_alphanumeric() || matches!(c, '_' | '$'))
+            {
+                token.push(next);
+            }
+            token.make_ascii_lowercase();
+        }
+        tokens.push(token);
+    }
+    Ok(tokens)
+}
+
+type Schema = BTreeMap<(String, String, String), Vec<String>>;
+fn schema(conn: &Connection) -> Result<Schema, DbError> {
+    let mut query = conn
+        .prepare("SELECT type, name, tbl_name, sql FROM sqlite_schema WHERE sql IS NOT NULL")
+        .map_err(restore_fail)?;
+    let rows = query
+        .query_map([], |row| {
+            Ok((
+                (row.get(0)?, row.get(1)?, row.get(2)?),
+                row.get::<_, String>(3)?,
+            ))
+        })
+        .map_err(restore_fail)?;
+    let mut objects = BTreeMap::new();
+    for row in rows {
+        let (key, sql) = row.map_err(restore_fail)?;
+        objects.insert(key, schema_tokens(&sql)?);
+    }
+    Ok(objects)
+}
+fn validate_schema(conn: &mut Connection) -> Result<(), DbError> {
+    let mut reference = Connection::open_in_memory().map_err(restore_fail)?;
+    crate::db::run_migrations(&mut reference)?;
+    let version: i64 = conn
+        .query_row(
+            "SELECT MAX(version) FROM refinery_schema_history",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(restore_fail)?;
+    if !(1..=9).contains(&version) {
+        return Err(restore_fail("unsupported backup migration version"));
+    }
+    conn.pragma_update(None, "foreign_keys", "ON")
+        .map_err(restore_fail)?;
+    crate::db::run_migrations(conn)?;
+    let mut expected = schema(&reference)?;
+    let mut names: BTreeSet<String> = expected
+        .keys()
+        .flat_map(|(_, name, table)| [name.clone(), table.clone()])
+        .collect();
+    for (kind, name, _) in expected.keys() {
+        if kind == "table" {
+            let mut query = reference
+                .prepare("SELECT name FROM pragma_table_info(?1)")
+                .map_err(restore_fail)?;
+            for column in query
+                .query_map([name], |row| row.get::<_, String>(0))
+                .map_err(restore_fail)?
+            {
+                names.insert(column.map_err(restore_fail)?);
+            }
+        }
+    }
+    let mut actual = schema(conn)?;
+    for objects in [&mut expected, &mut actual] {
+        for token in objects.values_mut().flatten() {
+            // Single-quoted literals and unknown quoted text stay byte-exact.
+            let identifier = token
+                .strip_prefix('"')
+                .and_then(|text| text.strip_suffix('"'))
+                .or_else(|| {
+                    token
+                        .strip_prefix('`')
+                        .and_then(|text| text.strip_suffix('`'))
+                })
+                .or_else(|| {
+                    token
+                        .strip_prefix('[')
+                        .and_then(|text| text.strip_suffix(']'))
+                });
+            if let Some(identifier) = identifier {
+                let name = identifier.to_ascii_lowercase();
+                if names.contains(&name) {
+                    *token = name;
+                }
+            }
+        }
+    }
+    if actual != expected {
+        return Err(restore_fail("backup differs from application schema"));
+    }
+    let violations: i64 = conn
+        .query_row("SELECT COUNT(*) FROM pragma_foreign_key_check", [], |row| {
+            row.get(0)
+        })
+        .map_err(restore_fail)?;
+    if violations != 0 {
+        return Err(restore_fail("backup contains foreign-key violations"));
+    }
+    let id = format!("restore-probe-{}", std::process::id());
+    for recursive in [false, true] {
+        conn.pragma_update(None, "recursive_triggers", recursive)
+            .map_err(restore_fail)?;
+        conn.execute_batch("SAVEPOINT restore_guard")
+            .map_err(restore_fail)?;
+        let probe = (|| -> Result<(), DbError> {
+            conn.execute("INSERT INTO session_ledger(session_id,state,mode_type,mode_descriptor,language,created_at,updated_at) VALUES (?1,'running','time','{}','en','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z')", [&id]).map_err(restore_fail)?;
+            conn.execute(
+                "UPDATE session_ledger SET state='finalized' WHERE session_id=?1",
+                [&id],
+            )
+            .map_err(restore_fail)?;
+            match conn.execute(
+                "UPDATE session_ledger SET state='running' WHERE session_id=?1",
+                [&id],
+            ) {
+                Err(rusqlite::Error::SqliteFailure(error, _)) if error.extended_code == 1811 => {
+                    Ok(())
+                }
+                _ => Err(restore_fail("terminal state guard did not reject update")),
+            }
+        })();
+        conn.execute_batch("ROLLBACK TO restore_guard; RELEASE restore_guard")
+            .map_err(restore_fail)?;
+        probe?;
+    }
+    validate_sqlite_snapshot(conn)
 }
 
 fn restore_error(error: DbError) -> DbError {
@@ -161,30 +399,6 @@ fn validate_sqlite_snapshot(conn: &Connection) -> Result<(), DbError> {
         Err(DbError::Restore(format!(
             "restored snapshot integrity check failed: {result}"
         )))
-    }
-}
-
-fn replace_database_file(replacement: &Path, live_db_path: &Path) -> Result<(), DbError> {
-    std::fs::rename(replacement, live_db_path)
-        .map_err(|error| DbError::Restore(format!("finalize restore replacement: {error}")))?;
-    remove_database_companions_except_main(live_db_path);
-    Ok(())
-}
-
-/// Removes a database file and its `-wal` / `-shm` companions if present. Used
-/// before restore so the destination starts clean. Missing files are not errors.
-fn remove_database_companions(db_path: &Path) {
-    let _ = std::fs::remove_file(db_path);
-    if let Some(stem) = db_path.file_name().and_then(|n| n.to_str()) {
-        let _ = std::fs::remove_file(db_path.with_file_name(format!("{stem}-wal")));
-        let _ = std::fs::remove_file(db_path.with_file_name(format!("{stem}-shm")));
-    }
-}
-
-fn remove_database_companions_except_main(db_path: &Path) {
-    if let Some(stem) = db_path.file_name().and_then(|name| name.to_str()) {
-        let _ = std::fs::remove_file(db_path.with_file_name(format!("{stem}-wal")));
-        let _ = std::fs::remove_file(db_path.with_file_name(format!("{stem}-shm")));
     }
 }
 
@@ -245,10 +459,7 @@ pub fn create_pre_migration_backup(
     // responsible for not holding a conflicting write transaction open.
     let source = Connection::open(db_path)
         .map_err(|error| DbError::Backup(format!("open source for backup: {error}")))?;
-    let temp_dest = sibling_temp_path(&dest, "tmp");
-    run_online_backup_from_conn(&source, &temp_dest)?;
-    std::fs::rename(&temp_dest, &dest)
-        .map_err(|error| DbError::Backup(format!("finalize backup file: {error}")))?;
+    publish_backup(&source, &dest)?;
 
     // Rotation prunes older snapshots. A missing rotation directory is treated
     // as nothing to rotate by `rotate_backups`; any other rotation failure is a
@@ -258,22 +469,62 @@ pub fn create_pre_migration_backup(
     Ok(dest)
 }
 
-/// Runs the Online Backup API from the live `Database` into `dest_path`,
-/// building the destination from a fresh connection.
-fn run_online_backup(source: &Database, dest_path: &Path) -> Result<(), DbError> {
-    source.with_connection(|source_conn| {
-        let mut dest = Connection::open(dest_path)
-            .map_err(|error| DbError::Backup(format!("open backup destination: {error}")))?;
-        copy_via_online_backup(source_conn, &mut dest, "backup")?;
-        Ok(())
-    })
-}
-
-/// Runs the Online Backup API from an already-open source connection.
-fn run_online_backup_from_conn(source: &Connection, dest_path: &Path) -> Result<(), DbError> {
-    let mut dest = Connection::open(dest_path)
-        .map_err(|error| DbError::Backup(format!("open backup destination: {error}")))?;
-    copy_via_online_backup(source, &mut dest, "backup")
+/// Builds one backup in an exclusively created private directory and removes
+/// partial snapshots on failure. Caller holds the source lock where applicable.
+fn publish_backup(source: &Connection, destination: &Path) -> Result<PathBuf, DbError> {
+    let source_path: String = source.query_row(
+        "SELECT file FROM pragma_database_list WHERE name = 'main'",
+        [],
+        |row| row.get(0),
+    )?;
+    if !source_path.is_empty() {
+        let source_path = fs::canonicalize(source_path)
+            .map_err(|error| DbError::Backup(format!("resolve backup source: {error}")))?;
+        if fs::canonicalize(destination).is_ok_and(|path| path == source_path) {
+            return Err(DbError::Backup(
+                "backup destination aliases the live database".into(),
+            ));
+        }
+    }
+    static SEQUENCE: AtomicU64 = AtomicU64::new(0);
+    let sequence = SEQUENCE.fetch_add(1, Ordering::Relaxed);
+    let stage = sibling_temp_path(destination, &format!("backup-{sequence}"));
+    let mut builder = fs::DirBuilder::new();
+    builder.recursive(false);
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::DirBuilderExt;
+        builder.mode(0o700);
+    }
+    builder
+        .create(&stage)
+        .map_err(|error| DbError::Backup(format!("create backup staging directory: {error}")))?;
+    let result = (|| {
+        let temporary_path = stage.join("snapshot.db");
+        let mut options = fs::OpenOptions::new();
+        options.create_new(true).write(true);
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::OpenOptionsExt;
+            options.mode(0o600);
+        }
+        drop(
+            options
+                .open(&temporary_path)
+                .map_err(|error| DbError::Backup(format!("create backup snapshot: {error}")))?,
+        );
+        let mut snapshot = Connection::open(&temporary_path)
+            .map_err(|error| DbError::Backup(format!("open backup snapshot: {error}")))?;
+        copy_via_online_backup(source, &mut snapshot, "backup")?;
+        snapshot
+            .close()
+            .map_err(|(_, error)| DbError::Backup(format!("close backup snapshot: {error}")))?;
+        fs::rename(&temporary_path, destination)
+            .map_err(|error| DbError::Backup(format!("finalize backup file: {error}")))?;
+        Ok(destination.to_path_buf())
+    })();
+    let _ = fs::remove_dir_all(stage);
+    result
 }
 
 /// Copies `source` into `dest` using `rusqlite::backup::Backup::run_to_completion`.
@@ -305,6 +556,79 @@ fn sibling_temp_path(target: &Path, suffix: &str) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sync_file_flushes_existing_bytes_without_creating_or_truncating_files() {
+        let root = std::env::temp_dir().join(format!("restore-sync-{}", std::process::id()));
+        fs::create_dir(&root).unwrap();
+        let path = root.join("snapshot.db");
+        fs::write(&path, b"preserve all snapshot bytes").unwrap();
+        let result = sync_file(&path);
+        let bytes = fs::read(&path).unwrap();
+        let missing = root.join("missing.db");
+        let missing_result = sync_file(&missing);
+        let created = missing.exists();
+        fs::remove_dir_all(root).unwrap();
+        assert!(result.is_ok(), "existing file sync failed: {result:?}");
+        assert_eq!(bytes, b"preserve all snapshot bytes");
+        assert!(missing_result.is_err());
+        assert!(!created);
+    }
+
+    #[test]
+    fn schema_comparison_preserves_literals_and_quote_boundaries() {
+        assert_eq!(
+            schema_tokens("SELECT/*comment*/'finalized'").unwrap(),
+            schema_tokens("select 'finalized'").unwrap()
+        );
+        for different in [
+            "SELECT 'final ized'",
+            "SELECT 'FINALIZED'",
+            "SELECT \"finalized\"",
+            "SELECT 'final' 'ized'",
+            "SELECT 'final''ized'",
+            "SELECT\u{a0}'finalized'",
+        ] {
+            assert_ne!(
+                schema_tokens("SELECT 'finalized'").unwrap(),
+                schema_tokens(different).unwrap()
+            );
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn restore_keeps_the_published_database_private() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = std::env::temp_dir().join(format!("restore-private-{}", std::process::id()));
+        fs::create_dir(&root).unwrap();
+        let source = root.join("source.db");
+        let live = root.join("live.db");
+        backup_to_path(&Database::open_in_memory().unwrap(), &source).unwrap();
+        fs::copy(&source, &live).unwrap();
+        fs::set_permissions(&live, fs::Permissions::from_mode(0o600)).unwrap();
+        restore_from_path(&source, &live).unwrap();
+        let mode = fs::metadata(&live).unwrap().permissions().mode() & 0o777;
+        fs::remove_dir_all(root).unwrap();
+        assert_eq!(mode, 0o600);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn restore_rejects_a_hard_link_to_the_live_database() {
+        let root = std::env::temp_dir().join(format!("restore-alias-{}", std::process::id()));
+        fs::create_dir(&root).unwrap();
+        let source = root.join("source.db");
+        let live = root.join("live.db");
+        backup_to_path(&Database::open_in_memory().unwrap(), &live).unwrap();
+        fs::hard_link(&live, &source).unwrap();
+        let bytes = fs::read(&live).unwrap();
+        let result = restore_from_path(&source, &live);
+        let unchanged = fs::read(&live).unwrap() == bytes;
+        fs::remove_dir_all(root).unwrap();
+        assert!(result.is_err(), "restore accepted a live-file alias");
+        assert!(unchanged, "rejected alias changed the live file");
+    }
 
     #[test]
     fn premigration_filename_is_sortable_and_suffixed() {

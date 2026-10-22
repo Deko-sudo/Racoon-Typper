@@ -73,10 +73,12 @@ impl KeyClassifier {
 
         // Печатный символ
         // key может быть "a", "A", "1", " " и т.д.
-        // Берем первый char
-        if let Some(ch) = key.chars().next() {
+        // Named keys and multi-scalar input are not a printable character.
+        // Native committed text is split into scalar values by the client.
+        let mut chars = key.chars();
+        if let Some(ch) = chars.next() {
             // Проверяем что это печатный символ (не control char)
-            if !ch.is_control() || ch == ' ' || ch == '\t' {
+            if chars.next().is_none() && (!ch.is_control() || ch == ' ' || ch == '\t') {
                 return KeyAction::Print(ch);
             }
         }
