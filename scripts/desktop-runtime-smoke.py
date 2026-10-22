@@ -73,7 +73,7 @@ def stop_owned_process(process):
         process.wait(timeout=5)
 
 
-def run_smoke(command, profile, evidence, window_check, timeout=120):
+def run_smoke(command, profile, evidence, window_check, timeout=120, interact=None):
     # Never replace, seed or remove an existing real user profile. These OSes
     # use known folders, so changing APPDATA/XDG_* would not isolate Tauri.
     evidence.mkdir(parents=True, exist_ok=True)
@@ -95,14 +95,24 @@ def run_smoke(command, profile, evidence, window_check, timeout=120):
                     time.sleep(1)
                     if process.poll() is not None:
                         raise RuntimeError("Application exited immediately after startup")
+                    if attempt == 1 and interact:
+                        interact(process.pid)
                 finally:
                     stop_owned_process(process)
             if attempt == 0:
                 with closing(sqlite3.connect(database)) as db, db:
                     db.execute("INSERT INTO custom_texts(name,text,language,created_at,use_count) VALUES (?,?,?,'2026-01-01T00:00:00Z',0)", checks.MARKER)
             checks.check_database(database)
+        if interact:
+            # The only direct INSERT above is a custom text, never a result.
+            with closing(sqlite3.connect(database)) as db:
+                rows = db.execute("SELECT language, correct_chars, incorrect_chars FROM tests").fetchall()
+            if rows != [("en", 4, 0), ("en", 4, 0)]:
+                raise RuntimeError("Native UI did not persist two exact four-character results")
         result = {"startup_runs": 2, "native_window_observed": True, "persistent_custom_text": True,
                   "integrity": "ok", "foreign_key_violations": 0, "typed_input_png_clipboard_verified": False}
+        if interact:
+            result["native_ui"] = "two EN completions, repeat, abort, PNG file and OS image clipboard; hardware DPI/paste unverified"
         (evidence / "runtime-smoke.json").write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
         return result
     finally:
@@ -114,11 +124,20 @@ if __name__ == "__main__":
     parser.add_argument("--executable", required=True, type=Path)
     parser.add_argument("--evidence", required=True, type=Path)
     parser.add_argument("--window-probe", type=Path)
+    parser.add_argument("--ui-probe", type=Path, help="Optional Windows UIA/SendInput investigation; failures are not a UI pass")
     args = parser.parse_args()
     # Refuse use on a personal desktop, even when no profile exists yet.
     if os.environ.get("GITHUB_ACTIONS") != "true" or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted":
         parser.error("Use only on a fresh GitHub-hosted CI runner, never a personal profile")
     if sys.platform == "darwin" and not args.window_probe:
         parser.error("macOS requires a compiled --window-probe")
+    interact = None
+    if args.ui_probe:
+        if sys.platform != "win32":
+            parser.error("--ui-probe currently requires Windows")
+        checks.MARKER = ("Desktop package persistence probe", "asdf", "en")
+        def interact(pid):
+            subprocess.run(["powershell.exe", "-NoProfile", "-File", str(args.ui_probe.resolve()),
+                            "-AppProcessId", str(pid), "-Evidence", str(args.evidence.resolve())], check=True, timeout=150)
     print(json.dumps(run_smoke([str(args.executable.resolve())], profile_directory(), args.evidence,
-                               lambda pid: visible_window(pid, args.window_probe))))
+                               lambda pid: visible_window(pid, args.window_probe), interact=interact)))

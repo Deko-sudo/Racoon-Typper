@@ -2,7 +2,8 @@
 # Copyright 2026 Racoon Typper Contributors
 param(
   [Parameter(Mandatory = $true)] [string]$Installer,
-  [string]$Evidence = 'candidate-evidence/windows-runtime'
+  [string]$Evidence = 'candidate-evidence/windows-runtime',
+  [switch]$UiProbe
 )
 $ErrorActionPreference = 'Stop'
 if ($env:GITHUB_ACTIONS -ne 'true' -or $env:RUNNER_ENVIRONMENT -ne 'github-hosted') {
@@ -20,7 +21,9 @@ try {
   if ($install.ExitCode -ne 0) { throw "NSIS installer exited with $($install.ExitCode)" }
   $exe = Join-Path $installDirectory 'racoon-app.exe'
   if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { throw 'Installed executable not found' }
-  python scripts/desktop-runtime-smoke.py --executable $exe --evidence $Evidence
+  $probeArguments = @()
+  if ($UiProbe) { $probeArguments = @('--ui-probe', 'scripts/windows-ui-probe.ps1') }
+  python scripts/desktop-runtime-smoke.py --executable $exe --evidence $Evidence @probeArguments
   if ($LASTEXITCODE -ne 0) { throw 'Windows window/database restart smoke failed; see evidence logs.' }
 } finally {
   Remove-Item -LiteralPath $workspace -Recurse -Force -ErrorAction SilentlyContinue

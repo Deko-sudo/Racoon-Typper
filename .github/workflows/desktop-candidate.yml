@@ -80,6 +80,26 @@ jobs:
           dmg=$(find target/${{ matrix.target }}/release/bundle/dmg -type f -name '*.dmg' -print -quit)
           test -n "$dmg"
           bash scripts/macos-dmg-smoke.sh "$dmg"
+      - name: Investigate native Windows UIA input, repeat, abort and PNG delivery
+        if: runner.os == 'Windows'
+        id: native-ui
+        continue-on-error: true # environment experiment; never replaces the manual acceptance gate
+        shell: pwsh
+        run: |
+          $installer = Get-ChildItem target/${{ matrix.target }}/release/bundle/nsis/*.exe | Select-Object -First 1 -ExpandProperty FullName
+          ./scripts/windows-nsis-smoke.ps1 -Installer $installer -Evidence candidate-evidence/windows-ui -UiProbe
+      - name: Record macOS accessibility availability without requesting permission
+        if: runner.os == 'macOS'
+        run: |
+          mkdir -p candidate-evidence
+          swift -e 'import ApplicationServices; print("AXIsProcessTrusted=\(AXIsProcessTrusted()); no permission requested or security changes made")' > candidate-evidence/accessibility-availability.txt
+      - name: Record native UI experiment boundary
+        if: runner.os == 'Windows' && always()
+        env:
+          NATIVE_UI_OUTCOME: ${{ steps.native-ui.outcome }}
+        run: |
+          mkdir -p candidate-evidence
+          echo "Windows UI experiment: $NATIVE_UI_OUTCOME; manual hardware/DPI/paste gate remains pending" > candidate-evidence/native-ui-experiment.txt
       - name: Record exact source and artifact checksums
         env:
           CANDIDATE_TARGET: ${{ matrix.target }}

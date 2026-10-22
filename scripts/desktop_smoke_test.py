@@ -94,6 +94,31 @@ class DesktopSmokeTests(unittest.TestCase):
         self.assertEqual(marker.read_bytes(), b"keep me")
         self.assertFalse((self.profile/'settings.toml').exists())
 
+    def test_ui_probe_failure_cleans_profile_and_cannot_record_success(self):
+        def fail(_pid):
+            raise RuntimeError('injected UI probe failure')
+        with self.assertRaisesRegex(RuntimeError, 'injected UI probe failure'):
+            self.run_app(window_check=lambda pid: True, interact=fail)
+        self.assertFalse(self.profile.exists())
+        self.assertFalse((self.evidence/'runtime-smoke.json').exists())
+
+    def test_ui_probe_cannot_pass_without_persisted_results(self):
+        def fake_success(_pid):
+            with closing(sqlite3.connect(self.profile/'data.db')) as db, db:
+                db.execute('CREATE TABLE tests(language TEXT, correct_chars INT, incorrect_chars INT)')
+        with self.assertRaisesRegex(RuntimeError, 'two exact four-character results'):
+            self.run_app(window_check=lambda pid: True, interact=fake_success)
+        self.assertFalse((self.evidence/'runtime-smoke.json').exists())
+
+    def test_ui_probe_records_its_narrow_scope_after_result_verification(self):
+        def completed(_pid):
+            with closing(sqlite3.connect(self.profile/'data.db')) as db, db:
+                db.execute('CREATE TABLE tests(language TEXT, correct_chars INT, incorrect_chars INT)')
+                db.executemany('INSERT INTO tests VALUES (?,?,?)', [('en',4,0)] * 2)
+        result = self.run_app(window_check=lambda pid: True, interact=completed)
+        self.assertIn('two EN completions', result['native_ui'])
+        self.assertFalse(result['typed_input_png_clipboard_verified'])
+
     def test_unwritable_evidence_does_not_leave_a_partial_profile(self):
         self.evidence.write_text('file, not directory', encoding='utf-8')
         with self.assertRaises(FileExistsError):

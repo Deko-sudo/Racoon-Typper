@@ -4,6 +4,7 @@ import importlib.util
 import os
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 import unittest
 
@@ -70,6 +71,29 @@ class LinuxSmokeTests(unittest.TestCase):
         result=subprocess.run(['bash',str(script),str(self.app)],env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=20)
         self.assertEqual(result.returncode,0,result.stdout)
         self.assertEqual((self.path/'audit').read_text().splitlines(),['new','reused'],result.stdout)
+
+    def test_rpm_wrapper_propagates_a_failed_runtime_probe_through_tee(self):
+        fakebin = self.path/'bin'; fakebin.mkdir()
+        # Execute the wrapper's real container shell options/heredoc, redirecting
+        # only its mount path and OS package commands into this test directory.
+        docker = fakebin/'docker'
+        docker.write_text(f'''#!{sys.executable}
+import os,subprocess,sys
+body=sys.stdin.read().replace('/evidence',os.environ['FAKE_EVIDENCE'])
+index=sys.argv.index('bash')
+sys.exit(subprocess.run(['/bin/bash',*sys.argv[index+1:]],input=body,text=True).returncode)
+''')
+        docker.chmod(0o700)
+        for name in ['dnf', 'useradd', 'chown', 'rpm', 'runuser']:
+            command=fakebin/name
+            command.write_text('#!/bin/sh\nexit '+('7' if name=='runuser' else '0')+'\n')
+            command.chmod(0o700)
+        env=dict(os.environ, PATH=str(fakebin)+':'+os.environ['PATH'], FAKE_EVIDENCE=str(self.path/'evidence'))
+        (self.path/'evidence').mkdir()
+        package=self.path/'candidate.rpm'; package.touch()
+        result=subprocess.run(['bash',str(ROOT/'scripts/rpm-package-smoke.sh'),str(package)],
+                              cwd=self.path,env=env,capture_output=True,text=True,timeout=10)
+        self.assertEqual(result.returncode,7,result.stdout+result.stderr)
 
 
 if __name__ == '__main__': unittest.main()
