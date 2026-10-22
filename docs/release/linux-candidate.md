@@ -52,6 +52,14 @@ Keep the previous known-good package and a pre-upgrade profile copy. On failure,
 stop all instances and restore the copy according to the runbook; uninstalling a
 package alone does not reverse migrations or delete user data.
 
-Public promotion is separate from candidate validation. Windows/macOS are
-explicitly deferred for this candidate; physical power-loss and desktop/GPU
-coverage must remain accurately bounded in release notes.
+Public promotion is separate from candidate validation. Subsequent
+Windows/macOS native CI is recorded in [desktop evidence](desktop-stability-evidence.md);
+manual hardware/input/PNG/paste acceptance remains pending. Physical power-loss
+and desktop/GPU coverage must remain accurately bounded in release notes.
+
+The combined candidate CI also builds AppImage and RPM. In containers without
+FUSE, set `APPIMAGE_EXTRACT_AND_RUN=1` for the build tools; install `file`,
+`squashfs-tools` and `rpm` on the disposable build host. Record runtime extraction
+separately from kernel-FUSE execution. `rpm-package-smoke.sh` installs the package
+only in a disposable pinned Fedora container and launches an unprivileged
+WebView with a new profile; it does not install RPMs on the host.

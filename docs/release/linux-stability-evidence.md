@@ -3,6 +3,17 @@
 Reviewed on 2026-10-21. This is an unreleased, unsigned Linux candidate; it
 does not replace the published v1.3.1 assets, create a tag or authorize promotion.
 
+Latest Linux-only integration: `90124ec7e3d2de884913cd33713859b8afa5c4e8`,
+tree `3e250dfb79467393fbca2c017a73e08554bd925c`.
+[Run 39634759386](https://github.com/Deko-sudo/Racoon-Typper/actions/runs/39634759386)
+passed all four jobs, including the Russian-course correction (789 Rust tests,
+one ignored). Corrected production Debian package: SHA-256
+`80273e129829194e7e97a861db90aca3b12a6e955207295cd688bc0d3faf926d`,
+7,072,558 bytes; fresh install and two retained-data launches were repeated.
+The earlier native package/results below retain their original checksums.
+For the subsequent combined source and Windows/macOS/other Linux packages, see
+[desktop evidence](desktop-stability-evidence.md).
+
 ## Source and integration
 
 - Integration PR: <https://github.com/Deko-sudo/Racoon-Typper/pull/14>, targeting
@@ -71,7 +82,7 @@ on 2026-10-20; its revision remained `999ec89d5d3f10f20be14750ec8c2d8b44e0ac9b`.
 
 ## Remaining release boundaries
 
-- Windows/macOS are deferred by the owner and are not verified by Linux results.
+- This original Linux-only pass does not verify Windows/macOS; their subsequent native CI is recorded in desktop evidence.
 - AppImage/FUSE, RPM, a full desktop VM and all physical GPUs/portal combinations
   are not covered by this Debian-container result.
 - One real Pinyin scenario does not validate every CJK IME or keyboard layout.

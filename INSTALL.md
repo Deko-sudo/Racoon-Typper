@@ -2,7 +2,7 @@
 
 ## Support status
 
-The current verified development target is Linux x86_64. Package formats and Windows are currently build targets or experiments, not production support promises. Read [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) before distributing an artifact.
+The primary verified development target is Linux x86_64. Linux package smokes and Windows/macOS native candidate CI have separate recorded boundaries; they are not production support promises. Read [SUPPORT_MATRIX.md](SUPPORT_MATRIX.md) before distributing an artifact.
 
 ## From source
 
@@ -96,7 +96,7 @@ The current verified Linux paths are:
 | SQLite database | `${XDG_DATA_HOME:-$HOME/.local/share}/com.racoon.typper/data.db` |
 | Settings | `${XDG_CONFIG_HOME:-$HOME/.config}/com.racoon.typper/settings.toml` |
 
-Windows and other platform-specific paths remain unverified until the lifecycle/platform phase completes.
+Windows/macOS native CI resolves the platform known folders and checks a fresh disposable profile through restart. Manual upgrade, OS security prompts, Pictures-folder delivery and image paste remain platform acceptance checks; see [desktop evidence](docs/release/desktop-stability-evidence.md).
 
 ## Uninstalling source builds
 
