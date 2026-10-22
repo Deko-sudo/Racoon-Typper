@@ -150,7 +150,7 @@ jobs:
         run: bash scripts/rpm-package-smoke.sh target/release/bundle/rpm/*.rpm
       - name: Record source and unsigned artifact hashes
         run: |
-          mkdir candidate-evidence
+          mkdir -p candidate-evidence
           git rev-parse HEAD > candidate-evidence/source-commit.txt
           git rev-parse 'HEAD^{tree}' > candidate-evidence/source-tree.txt
           rustc --version > candidate-evidence/toolchains.txt
